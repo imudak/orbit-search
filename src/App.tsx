@@ -84,59 +84,57 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
-      <RootContainer>
-        <MainContent maxWidth="xl">
-          <Grid container spacing={2} sx={{ height: '100%' }}>
-            {/* 左側: 地図と検索パネル */}
-            <Grid item xs={12} md={8}>
-              <Paper
-                elevation={0}
-                variant="outlined"
-                sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}
-              >
-                <Map
-                  center={selectedLocation}
-                  onLocationSelect={handleLocationSelect}
-                  orbitPaths={
-                    selectedSatellite
-                      ? [
-                          {
-                            satelliteId: selectedSatellite.id,
-                            points: [], // TODO: 軌道データの計算
-                            timestamp: new Date().toISOString(),
-                          },
-                        ]
-                      : []
-                  }
-                />
-                <SearchPanel
-                  filters={searchFilters}
-                  onFiltersChange={handleFiltersChange}
-                />
-              </Paper>
-            </Grid>
-
-            {/* 右側: 衛星リスト */}
-            <Grid item xs={12} md={4}>
-              <Paper
-                elevation={0}
-                variant="outlined"
-                sx={{ height: '100%', overflow: 'auto' }}
-              >
-                <SatelliteList
-                  satellites={satellites}
-                  onTLEDownload={handleTLEDownload}
-                  onSatelliteSelect={handleSatelliteSelect}
-                  selectedSatellite={selectedSatellite}
-                  isLoading={isLoading}
-                />
-              </Paper>
-            </Grid>
+    <RootContainer>
+      <MainContent maxWidth="xl">
+        <Grid container spacing={2} sx={{ height: '100%' }}>
+          {/* 左側: 地図と検索パネル */}
+          <Grid item xs={12} md={8}>
+            <Paper
+              elevation={0}
+              variant="outlined"
+              sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}
+            >
+              <Map
+                center={selectedLocation}
+                onLocationSelect={handleLocationSelect}
+                orbitPaths={
+                  selectedSatellite
+                    ? [
+                        {
+                          satelliteId: selectedSatellite.id,
+                          points: [], // TODO: 軌道データの計算
+                          timestamp: new Date().toISOString(),
+                        },
+                      ]
+                    : []
+                }
+              />
+              <SearchPanel
+                filters={searchFilters}
+                onFiltersChange={handleFiltersChange}
+              />
+            </Paper>
           </Grid>
-        </MainContent>
-      </RootContainer>
-    </LocalizationProvider>
+
+          {/* 右側: 衛星リスト */}
+          <Grid item xs={12} md={4}>
+            <Paper
+              elevation={0}
+              variant="outlined"
+              sx={{ height: '100%', overflow: 'auto' }}
+            >
+              <SatelliteList
+                satellites={satellites}
+                onTLEDownload={handleTLEDownload}
+                onSatelliteSelect={handleSatelliteSelect}
+                selectedSatellite={selectedSatellite}
+                isLoading={isLoading}
+              />
+            </Paper>
+          </Grid>
+        </Grid>
+      </MainContent>
+    </RootContainer>
   );
 };
 

@@ -2,15 +2,15 @@ import React from 'react';
 import {
   Card,
   CardContent,
-  TextField,
   FormControl,
   FormControlLabel,
   Checkbox,
   Slider,
   Typography,
   Box,
+  TextField,
 } from '@mui/material';
-import { DateTimePicker } from '@mui/x-date-pickers';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import type { SearchFilters } from '@/types';
 
 interface SearchPanelProps {
@@ -19,20 +19,20 @@ interface SearchPanelProps {
 }
 
 const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) => {
-  const handleStartDateChange = (date: Date | null) => {
-    if (date) {
+  const handleStartDateChange = (value: unknown) => {
+    if (value instanceof Date && !isNaN(value.getTime())) {
       onFiltersChange({
         ...filters,
-        startDate: date,
+        startDate: value,
       });
     }
   };
 
-  const handleEndDateChange = (date: Date | null) => {
-    if (date) {
+  const handleEndDateChange = (value: unknown) => {
+    if (value instanceof Date && !isNaN(value.getTime())) {
       onFiltersChange({
         ...filters,
-        endDate: date,
+        endDate: value,
       });
     }
   };
@@ -57,22 +57,26 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* 期間選択 */}
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <DateTimePicker
-              label="開始日時"
-              value={filters.startDate}
-              onChange={handleStartDateChange}
-              format="yyyy/MM/dd HH:mm"
-              ampm={false}
-              sx={{ flex: 1 }}
-            />
-            <DateTimePicker
-              label="終了日時"
-              value={filters.endDate}
-              onChange={handleEndDateChange}
-              format="yyyy/MM/dd HH:mm"
-              ampm={false}
-              sx={{ flex: 1 }}
-            />
+            <Box sx={{ flex: 1 }}>
+              <DateTimePicker
+                label="開始日時"
+                value={filters.startDate}
+                onChange={handleStartDateChange}
+                renderInput={(props) => <TextField {...props} fullWidth />}
+                inputFormat="yyyy/MM/dd HH:mm"
+                ampm={false}
+              />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <DateTimePicker
+                label="終了日時"
+                value={filters.endDate}
+                onChange={handleEndDateChange}
+                renderInput={(props) => <TextField {...props} fullWidth />}
+                inputFormat="yyyy/MM/dd HH:mm"
+                ampm={false}
+              />
+            </Box>
           </Box>
 
           {/* 最低仰角設定 */}

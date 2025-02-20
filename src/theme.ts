@@ -10,6 +10,7 @@ export const theme = createTheme({
     },
     background: {
       default: '#f5f5f5',
+      paper: '#ffffff',
     },
   },
   typography: {
@@ -22,5 +23,18 @@ export const theme = createTheme({
       'Arial',
       'sans-serif',
     ].join(','),
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          height: '100vh',
+          margin: 0,
+        },
+        '#root': {
+          height: '100%',
+        },
+      },
+    },
   },
 });

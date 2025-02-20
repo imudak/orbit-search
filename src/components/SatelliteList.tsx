@@ -14,7 +14,7 @@ import {
   Box,
   Chip,
 } from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
+import { Download as DownloadIcon } from '@mui/icons-material';
 import type { Satellite, Pass } from '@/types';
 
 interface SatelliteListProps {
