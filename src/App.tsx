@@ -88,7 +88,14 @@ const App = () => {
   // TLEデータのダウンロードハンドラー
   const handleTLEDownload = async (satellite: Satellite) => {
     try {
-      const tleData = await tleService.getTLE(satellite.noradId);
+      console.log('Downloading TLE for satellite:', satellite);
+      const tleData = satellite.tle; // サテライトデータ内のTLEを使用
+      console.log('Using TLE data:', tleData);
+
+      if (!tleData || !tleData.line1 || !tleData.line2) {
+        throw new Error('TLE data is incomplete');
+      }
+
       const blob = new Blob(
         [`${satellite.name}\n${tleData.line1}\n${tleData.line2}`],
         { type: 'text/plain' }
@@ -103,6 +110,7 @@ const App = () => {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download TLE data:', error);
+      alert('TLEデータのダウンロードに失敗しました。');
     }
   };
 
