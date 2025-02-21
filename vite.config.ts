@@ -5,16 +5,15 @@ import path from 'path';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname);
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    tsconfigPaths(),
-  ],
+  plugins: [react(), tsconfigPaths()],
+  root,
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(root, 'src'),
     },
   },
   server: {
@@ -23,8 +22,6 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
+    outDir: path.resolve(root, 'dist'),
   },
-  logLevel: 'info',
-  clearScreen: false,
-  root: process.cwd(),
 });

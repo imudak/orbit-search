@@ -1,66 +1,81 @@
-import React, { useState, useCallback } from 'react';
+/**
+ * メインのアプリケーションコンポーネント
+ *
+ * このコンポーネントは以下の機能を提供します：
+ * - 全体のレイアウト構造（Grid-based）
+ * - 地図表示と位置選択機能
+ * - 検索フィルター機能
+ * - 衛星リスト表示と選択機能
+ * - TLEデータのダウンロード機能
+ */
+
+import React from 'react';
 import { Box, Container, Grid, Paper } from '@mui/material';
-import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ja } from 'date-fns/locale';
 import { styled } from '@mui/material/styles';
 import Map from '@/components/Map';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
-import type { Location, SearchFilters, Satellite, Pass } from '@/types';
+import type { Location, SearchFilters, Satellite } from '@/types';
+import { useAppStore } from '@/store';
 import { tleService } from '@/services/tleService';
-import { orbitService } from '@/services/orbitService';
 
-const RootContainer = styled(Box)({
+// ルートコンテナ - アプリケーション全体のレイアウトを制御
+const Root = styled(Box)({
   height: '100vh',
   display: 'flex',
   flexDirection: 'column',
-  overflow: 'hidden',
+  overflow: 'hidden'
 });
 
-const MainContent = styled(Container)({
+// メインコンテナ - コンテンツ領域のレイアウトを制御
+const Main = styled(Container)({
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
   padding: '24px',
-  overflow: 'hidden',
+  overflow: 'hidden'
 });
 
-const App: React.FC = () => {
-  // 状態管理
-  const [selectedLocation, setSelectedLocation] = useState<Location>({
-    lat: 35.6812,
-    lng: 139.7671,
-  });
+// 共通のPaperスタイル - Map/SearchPanelとSatelliteListのコンテナ
+const StyledPaper = styled(Paper)({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  padding: '16px',
+  gap: '16px'
+});
 
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-    startDate: new Date(),
-    endDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24時間後
-    location: selectedLocation,
-    minElevation: 30,
-    considerDaylight: false,
-  });
+const App = () => {
+  const {
+    selectedLocation,
+    searchFilters,
+    satellites,
+    selectedSatellite,
+    isLoading,
+    setSelectedLocation,
+    setSearchFilters,
+    setSelectedSatellite
+  } = useAppStore();
 
-  const [satellites, setSatellites] = useState<Array<Satellite & { passes: Pass[] }>>([]);
-  const [selectedSatellite, setSelectedSatellite] = useState<Satellite>();
-  const [isLoading, setIsLoading] = useState(false);
-
-  // 観測地点が変更された時の処理
-  const handleLocationSelect = useCallback((location: Location) => {
+  // 位置選択時のハンドラー
+  const handleLocationSelect = (location: Location) => {
     setSelectedLocation(location);
-    setSearchFilters(prev => ({ ...prev, location }));
-  }, []);
+  };
 
-  // 検索フィルターが変更された時の処理
-  const handleFiltersChange = useCallback((filters: SearchFilters) => {
+  // フィルター変更時のハンドラー
+  const handleFiltersChange = (filters: SearchFilters) => {
     setSearchFilters(filters);
-  }, []);
+  };
 
-  // TLEデータをダウンロードする処理
-  const handleTLEDownload = useCallback(async (satellite: Satellite) => {
+  // 衛星選択時のハンドラー
+  const handleSatelliteSelect = (satellite: Satellite) => {
+    setSelectedSatellite(satellite);
+  };
+
+  // TLEデータのダウンロードハンドラー
+  const handleTLEDownload = async (satellite: Satellite) => {
     try {
       const tleData = await tleService.getTLE(satellite.noradId);
-      // TLEデータをテキストファイルとしてダウンロード
       const blob = new Blob(
         [`${satellite.name}\n${tleData.line1}\n${tleData.line2}`],
         { type: 'text/plain' }
@@ -76,53 +91,35 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Failed to download TLE data:', error);
     }
-  }, []);
-
-  // 衛星が選択された時の処理
-  const handleSatelliteSelect = useCallback((satellite: Satellite) => {
-    setSelectedSatellite(satellite);
-  }, []);
+  };
 
   return (
-    <RootContainer>
-      <MainContent maxWidth="xl">
+    <Root>
+      <Main maxWidth="xl">
         <Grid container spacing={2} sx={{ height: '100%' }}>
-          {/* 左側: 地図と検索パネル */}
+          {/* 左側エリア - 地図と検索パネル */}
           <Grid item xs={12} md={8}>
-            <Paper
-              elevation={0}
-              variant="outlined"
-              sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}
-            >
+            <StyledPaper elevation={0} variant="outlined">
               <Map
                 center={selectedLocation}
                 onLocationSelect={handleLocationSelect}
-                orbitPaths={
-                  selectedSatellite
-                    ? [
-                        {
-                          satelliteId: selectedSatellite.id,
-                          points: [], // TODO: 軌道データの計算
-                          timestamp: new Date().toISOString(),
-                        },
-                      ]
-                    : []
-                }
+                orbitPaths={selectedSatellite ? [
+                  {
+                    satelliteId: selectedSatellite.id,
+                    points: [],
+                    timestamp: new Date().toISOString()
+                  }
+                ] : []}
               />
               <SearchPanel
                 filters={searchFilters}
                 onFiltersChange={handleFiltersChange}
               />
-            </Paper>
+            </StyledPaper>
           </Grid>
-
-          {/* 右側: 衛星リスト */}
+          {/* 右側エリア - 衛星リスト */}
           <Grid item xs={12} md={4}>
-            <Paper
-              elevation={0}
-              variant="outlined"
-              sx={{ height: '100%', overflow: 'auto' }}
-            >
+            <StyledPaper elevation={0} variant="outlined">
               <SatelliteList
                 satellites={satellites}
                 onTLEDownload={handleTLEDownload}
@@ -130,11 +127,11 @@ const App: React.FC = () => {
                 selectedSatellite={selectedSatellite}
                 isLoading={isLoading}
               />
-            </Paper>
+            </StyledPaper>
           </Grid>
         </Grid>
-      </MainContent>
-    </RootContainer>
+      </Main>
+    </Root>
   );
 };
 
