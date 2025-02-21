@@ -3,6 +3,8 @@ export interface Satellite {
   id: string;
   name: string;
   noradId: string;
+  type: string;
+  operationalStatus: string;
   tle: TLEData;
 }
 
