@@ -1,6 +1,4 @@
 import axios from 'axios';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const axiosRetry = require('axios-retry');
 
 interface ApiError {
   status?: number;
@@ -18,9 +16,38 @@ const API_CONFIG = {
   },
   RETRY: {
     MAX_RETRIES: 3,
-    METHODS: ['get']
+    DELAY: 1000, // 初期遅延（ミリ秒）
+    METHODS: ['get'] as const
+  },
+  CELESTRAK: {
+    BASE_URL: 'https://celestrak.com',  // .orgから.comに変更
+    DEFAULT_FORMAT: 'json'
   }
 } as const;
+
+/**
+ * 指数バックオフ遅延を計算
+ */
+const calculateDelay = (retryCount: number): number => {
+  return Math.min(
+    API_CONFIG.RETRY.DELAY * Math.pow(2, retryCount),
+    10000 // 最大10秒
+  );
+};
+
+/**
+ * リトライ可能なエラーかどうかを判定
+ */
+const isRetryableError = (error: any): boolean => {
+  if (!error.isAxiosError) return false;
+
+  // ネットワークエラー
+  if (error.code === 'ECONNABORTED' || !error.response) return true;
+
+  // 特定のステータスコードの場合
+  const status = error.response.status;
+  return status >= 500 || status === 429;
+};
 
 /**
  * 共通APIクライアントの設定
@@ -37,8 +64,7 @@ const api = axios.create({
  * CelesTrak APIクライアントの設定
  */
 const celestrakApi = axios.create({
-  // https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=json
-  baseURL: 'https://celestrak.org',
+  baseURL: API_CONFIG.CELESTRAK.BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -46,40 +72,25 @@ const celestrakApi = axios.create({
   timeout: API_CONFIG.TIMEOUT.CELESTRAK
 });
 
-// リトライ設定
-axiosRetry(celestrakApi, {
-  retries: API_CONFIG.RETRY.MAX_RETRIES,
-  retryDelay: axiosRetry.exponentialDelay,
-  retryCondition: (error: unknown) => {
-    // ネットワークエラーまたはタイムアウトの場合にリトライ
-    return (
-      axiosRetry.isNetworkOrIdempotentRequestError(error) ||
-      (error as { code?: string }).code === 'ECONNABORTED'
-    );
-  },
-  retryableHTTPMethods: API_CONFIG.RETRY.METHODS
-});
-
 /**
  * エラー情報の抽出
  */
-const extractErrorInfo = (error: unknown): ApiError => {
-  const axiosError = error as { response?: any; request?: any; config?: any; message?: string; code?: string };
-
-  if (axiosError.response) {
-    return {
-      status: axiosError.response.status,
-      data: axiosError.response.data,
-      url: axiosError.config?.url
-    };
-  }
-
-  if (axiosError.request) {
-    return {
-      message: axiosError.message,
-      code: axiosError.code,
-      url: axiosError.config?.url
-    };
+const extractErrorInfo = (error: any): ApiError => {
+  if (error.isAxiosError) {
+    if (error.response) {
+      return {
+        status: error.response.status,
+        data: error.response.data,
+        url: error.config?.url
+      };
+    }
+    if (error.request) {
+      return {
+        message: error.message,
+        code: error.code,
+        url: error.config?.url
+      };
+    }
   }
 
   return {
@@ -93,7 +104,8 @@ const setupInterceptors = (instance: ReturnType<typeof axios.create>) => {
   instance.interceptors.request.use(
     config => {
       // リクエストログ
-      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`,
+        config.params ? `with params: ${JSON.stringify(config.params)}` : '');
       return config;
     },
     error => {
@@ -108,11 +120,35 @@ const setupInterceptors = (instance: ReturnType<typeof axios.create>) => {
     response => {
       // レスポンスログ
       console.log(`API Response: ${response.status} ${response.config.url}`);
+      if (response.data) {
+        console.log('Response data sample:',
+          Array.isArray(response.data)
+            ? `Array with ${response.data.length} items`
+            : typeof response.data);
+      }
       return response;
     },
-    error => {
+    async error => {
       const errorInfo = extractErrorInfo(error);
       console.error('API Error:', errorInfo);
+
+      // リトライ処理
+      const config = error.config;
+      if (!config) return Promise.reject(error);
+
+      // リトライカウントの初期化
+      config.retryCount = config.retryCount || 0;
+
+      if (config.retryCount < API_CONFIG.RETRY.MAX_RETRIES && isRetryableError(error)) {
+        config.retryCount += 1;
+        const delay = calculateDelay(config.retryCount);
+
+        console.log(`Retrying request (${config.retryCount}/${API_CONFIG.RETRY.MAX_RETRIES}) after ${delay}ms...`);
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return instance(config);
+      }
+
       return Promise.reject(error);
     }
   );

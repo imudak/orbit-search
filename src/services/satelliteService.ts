@@ -36,22 +36,27 @@ const isValidTLE = (line1: string, line2: string): boolean => {
   // 行番号チェック
   if (line1[0] !== '1' || line2[0] !== '2') return false;
 
-  // チェックサムの検証
-  const validateChecksum = (line: string): boolean => {
-    let sum = 0;
-    for (let i = 0; i < 68; i++) {
-      const char = line[i];
-      if (char === '-') {
-        sum += 1;
-      } else if (char >= '0' && char <= '9') {
-        sum += parseInt(char, 10);
+  try {
+    // チェックサムの検証
+    const validateChecksum = (line: string): boolean => {
+      let sum = 0;
+      for (let i = 0; i < 68; i++) {
+        const char = line[i];
+        if (char === '-') {
+          sum += 1;
+        } else if (char >= '0' && char <= '9') {
+          sum += parseInt(char, 10);
+        }
       }
-    }
-    const checksum = parseInt(line[68], 10);
-    return (sum % 10) === checksum;
-  };
+      const checksum = parseInt(line[68], 10);
+      return (sum % 10) === checksum;
+    };
 
-  return validateChecksum(line1) && validateChecksum(line2);
+    return validateChecksum(line1) && validateChecksum(line2);
+  } catch (error) {
+    console.warn('TLE checksum validation error:', error);
+    return false;
+  }
 };
 
 /**
@@ -79,86 +84,160 @@ const convertGPDataToSatellite = (gpData: CelesTrakGPData): Satellite | null => 
 };
 
 /**
+ * オフラインモードかどうかを判定
+ */
+const isOfflineMode = (): boolean => {
+  return import.meta.env.VITE_USE_MOCK_DATA === 'true' || import.meta.env.VITE_OFFLINE_MODE === 'true';
+};
+
+/**
+ * TLEテキストデータをパース
+ */
+const parseTLEText = (text: string): CelesTrakGPData[] => {
+  const lines = text.trim().split('\n');
+  const satellites: CelesTrakGPData[] = [];
+
+  for (let i = 0; i < lines.length; i += 3) {
+    if (i + 2 >= lines.length) break;
+
+    const name = lines[i].trim();
+    const line1 = lines[i + 1].trim();
+    const line2 = lines[i + 2].trim();
+
+    if (!name || !line1 || !line2) continue;
+
+    satellites.push({
+      OBJECT_NAME: name,
+      OBJECT_ID: line1.substring(2, 7),
+      NORAD_CAT_ID: line1.substring(2, 7),
+      OBJECT_TYPE: 'PAYLOAD', // デフォルト値
+      OPERATIONAL_STATUS: 'UNKNOWN', // デフォルト値
+      TLE_LINE1: line1,
+      TLE_LINE2: line2
+    });
+  }
+
+  return satellites;
+};
+
+/**
  * 指定された位置とフィルター条件に基づいて衛星を検索します
- * @param params 検索パラメータ（位置情報とフィルター条件）
- * @returns 衛星のリスト
  */
 export const searchSatellites = async (params: SearchSatellitesParams): Promise<SatelliteResponse[]> => {
   try {
     console.log('Searching satellites with params:', params);
 
-    if (import.meta.env.VITE_USE_MOCK_DATA === 'true') {
+    // オフラインモードまたはモックデータの使用が指定されている場合
+    if (isOfflineMode()) {
+      console.log('Using mock data (offline mode or mock data enabled)');
       return mockSatellites;
     }
 
-    // GPデータをバッチで取得（TLEデータを含む）
-    const response = await celestrakApi.get<CelesTrakGPData[]>('/NORAD/elements/gp.php', {
-      params: {
-        GROUP: 'active',
-        FORMAT: 'json',
+    // APIエンドポイントの配列（フォールバック用）
+    const endpoints = [
+      '/NORAD/elements/gp.php',  // 新しいエンドポイント
+      '/NORAD/elements/visual.txt' // 従来のエンドポイント
+    ];
+
+    let lastError: Error | null = null;
+
+    // 各エンドポイントを順番に試す
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Trying endpoint: ${endpoint}`);
+
+        const response = await celestrakApi.get(endpoint, {
+          params: endpoint.endsWith('.txt') ? undefined : {
+            GROUP: 'visual',
+            FORMAT: 'json',
+          }
+        });
+
+        // テキスト形式の場合は変換が必要
+        let satelliteData: CelesTrakGPData[];
+
+        if (endpoint.endsWith('.txt')) {
+          if (typeof response.data !== 'string') {
+            console.warn('Invalid text response:', response.data);
+            continue;
+          }
+          satelliteData = parseTLEText(response.data);
+        } else {
+          if (!Array.isArray(response.data)) {
+            console.warn('Invalid JSON response:', response.data);
+            continue;
+          }
+          satelliteData = response.data;
+        }
+
+        console.log('Received satellite data:', satelliteData.length, 'satellites');
+
+        // 衛星データを変換（一度に処理する数を制限）
+        const satellites = satelliteData
+          .slice(0, MAX_SATELLITES)
+          .map(convertGPDataToSatellite)
+          .filter((satellite): satellite is Satellite => satellite !== null);
+
+        console.log('Filtered satellites:', satellites.length);
+
+        // 可視パスを計算
+        const loc = {
+          lat: params.latitude,
+          lng: params.longitude
+        };
+
+        const results = await Promise.all(
+          satellites.map(async (satellite, index) => {
+            if (index > 0) {
+              await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
+            }
+
+            try {
+              const passes = await orbitService.calculatePasses(
+                satellite.tle,
+                loc,
+                params
+              );
+
+              return {
+                ...satellite,
+                passes
+              };
+            } catch (error) {
+              console.error(`Failed to calculate passes for satellite ${satellite.noradId}:`, error);
+              return {
+                ...satellite,
+                passes: []
+              };
+            }
+          })
+        );
+
+        // フィルタリング
+        const filteredSatellites = results.filter(satellite => {
+          return satellite.passes.length > 0 &&
+            satellite.passes.some(pass => pass.maxElevation >= params.minElevation);
+        });
+
+        console.log('Final filtered satellites:', filteredSatellites.length);
+
+        // 最大仰角の高い順にソート
+        return filteredSatellites.sort((a, b) => {
+          const maxElevA = Math.max(...a.passes.map(p => p.maxElevation));
+          const maxElevB = Math.max(...b.passes.map(p => p.maxElevation));
+          return maxElevB - maxElevA;
+        });
+
+      } catch (error) {
+        console.warn(`Failed to fetch data from ${endpoint}:`, error);
+        lastError = error as Error;
+        continue;
       }
-    });
+    }
 
-    console.log('Received satellite data:', response.data.length, 'satellites');
-
-    // 衛星データを変換（一度に処理する数を制限）
-    const satellites = response.data
-      .slice(0, MAX_SATELLITES)
-      .map(convertGPDataToSatellite)
-      .filter((satellite): satellite is Satellite => satellite !== null); // null値を除外
-
-    console.log('Filtered satellites:', satellites.length);
-
-    // 可視パスを計算
-    const location = {
-      lat: params.latitude,
-      lng: params.longitude
-    };
-
-    const results = await Promise.all(
-      satellites.map(async (satellite, index) => {
-        // API制限を考慮して遅延を入れる
-        if (index > 0) {
-          await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
-        }
-
-        try {
-          const passes = await orbitService.calculatePasses(
-            satellite.tle,
-            location,
-            params
-          );
-
-          return {
-            ...satellite,
-            passes
-          };
-        } catch (error) {
-          console.error(`Failed to calculate passes for satellite ${satellite.noradId}:`, error);
-          return {
-            ...satellite,
-            passes: []
-          };
-        }
-      })
-    );
-
-    // フィルタリング
-    const filteredSatellites = results.filter(satellite => {
-      // 有効なパスが存在する衛星のみを返す
-      return satellite.passes.length > 0 &&
-        // 最大仰角でフィルタリング
-        satellite.passes.some(pass => pass.maxElevation >= params.minElevation);
-    });
-
-    console.log('Final filtered satellites:', filteredSatellites.length);
-
-    // 最大仰角の高い順にソート
-    return filteredSatellites.sort((a, b) => {
-      const maxElevA = Math.max(...a.passes.map(p => p.maxElevation));
-      const maxElevB = Math.max(...b.passes.map(p => p.maxElevation));
-      return maxElevB - maxElevA;
-    });
+    // すべてのエンドポイントが失敗した場合
+    console.warn('All endpoints failed, falling back to mock data');
+    return mockSatellites;
 
   } catch (error) {
     console.error('Satellite search failed:', {
@@ -173,7 +252,7 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
 const mockSatellites: SatelliteResponse[] = [
   {
     id: '1',
-    name: 'Mock Satellite 1',
+    name: 'ISS (ZARYA)',
     noradId: '25544',
     type: 'PAYLOAD',
     operationalStatus: 'OPERATIONAL',
@@ -194,13 +273,13 @@ const mockSatellites: SatelliteResponse[] = [
   },
   {
     id: '2',
-    name: 'Mock Satellite 2',
-    noradId: '25545',
+    name: 'STARLINK-1007',
+    noradId: '45197',
     type: 'PAYLOAD',
     operationalStatus: 'OPERATIONAL',
     tle: {
-      line1: '1 25545U 98067B   08264.51782528 -.00002182  00000-0 -11606-4 0  2927',
-      line2: '2 25545  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537',
+      line1: '1 45197U 20019G   24052.17517593  .00002683  00000+0  17330-3 0  9992',
+      line2: '2 45197  53.0533 157.6667 0001419  75.4368 284.6793 15.06395718225856',
       timestamp: new Date().toISOString()
     },
     passes: [
