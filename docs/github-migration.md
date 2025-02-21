@@ -63,9 +63,6 @@
 
 ### 両方のリモートを維持する場合
 ```bash
-# Bitbucketへのプッシュ
-git push bitbucket main
-
 # GitHubへのプッシュ
 git push github main
 
@@ -73,21 +70,13 @@ git push github main
 git push --all
 ```
 
-### GitHubに完全移行する場合
-```bash
-# Bitbucketリモートの削除
-git remote remove bitbucket
-
-# デフォルトリモートをGitHubに設定
-git remote rename github origin
-```
 
 ## 注意事項
 
 ### Private Repositoryでの GitHub Pages
-- Private repositoryでもGitHub Pagesは利用可能
-- アクセス制限は repository の設定に従う
-- カスタムドメインも利用可能
+- Private repositoryではGitHub Pagesは利用できない（Public設定が必要）
+- リポジトリをPublicに変更する必要があります
+- カスタムドメインは利用可能
 
 ### セキュリティ設定
 - リポジトリの可視性設定を確認
@@ -98,3 +87,49 @@ git remote rename github origin
 - GitHub Actionsの使用制限を確認
 - ビルドキャッシュの活用
 - デプロイメントログの監視
+
+## 他のホスティングサービスとの比較
+
+### GitHub Pages
+- 利点：
+  - 無料で利用可能
+  - GitHub Actionsと統合が容易
+  - カスタムドメイン対応
+- 欠点：
+  - Private リポジトリでは利用不可（Public設定が必要）
+  - ソースコードが公開されることを考慮する必要あり
+- 環境変数の扱い：
+  - ビルド時にGitHub Secretsから環境変数を注入可能
+  - 実行時の環境変数は静的にバンドルする必要あり
+
+### Netlify
+- 利点：
+  - 環境変数の管理が容易
+  - 本番/開発環境の変数を分けやすい
+- 欠点：
+  - 無料プランの制限が厳しい
+  - CIパイプラインが独自仕様
+
+### Vercel
+- 利点：
+  - Next.js等との相性が良い
+  - 環境変数のUI管理が優れている
+- 欠点：
+  - 無料プランの制限
+  - プレビュー環境ごとの変数設定が有料機能
+
+### 採用理由と注意点
+GitHub Pagesを選択した理由：
+1. 既存のGitHubワークフローとの統合が容易
+2. GitHub Actionsで環境変数をビルド時に注入できる
+3. 静的サイトホスティングとしては十分な機能を無料で提供
+
+重要な注意点：
+- リポジトリをPublicにする必要があります
+- ソースコードは公開されますが、機密情報はGitHub Secretsで保護します
+- オープンソースとしての価値も提供できます
+
+### 環境変数の取り扱い方針
+1. 開発時は.env.localを使用（git管理外）
+2. 本番環境（GitHub Pages）用の環境変数はGitHub Secretsで管理
+3. ビルド時にGitHub Actionsで環境変数を注入し、静的ファイルとしてバンドル
