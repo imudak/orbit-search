@@ -67,6 +67,17 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
     }).format(date);
   };
 
+  const renderSecondaryText = (satellite: Satellite & { passes: Pass[] }) => {
+    if (satellite.passes.length === 0) {
+      return '可視パスなし';
+    }
+
+    return [
+      `最大仰角: ${satellite.passes[0].maxElevation.toFixed(1)}°`,
+      `次回可視: ${formatDateTime(satellite.passes[0].startTime)}`
+    ].join('\n');
+  };
+
   return (
     <Card variant="outlined">
       <CardContent sx={{ p: 0 }}>
@@ -105,20 +116,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                       />
                     </Box>
                   }
-                  secondary={
-                    satellite.passes.length > 0 ? (
-                      <>
-                        <Typography variant="caption" component="div">
-                          最大仰角: {satellite.passes[0].maxElevation.toFixed(1)}°
-                        </Typography>
-                        <Typography variant="caption" component="div">
-                          次回可視: {formatDateTime(satellite.passes[0].startTime)}
-                        </Typography>
-                      </>
-                    ) : (
-                      '可視パスなし'
-                    )
-                  }
+                  secondary={renderSecondaryText(satellite)}
                 />
               </ListItemButton>
             </ListItem>

@@ -1,15 +1,4 @@
-/**
- * メインのアプリケーションコンポーネント
- *
- * このコンポーネントは以下の機能を提供します：
- * - 全体のレイアウト構造（Grid-based）
- * - 地図表示と位置選択機能
- * - 検索フィルター機能
- * - 衛星リスト表示と選択機能
- * - TLEデータのダウンロード機能
- */
-
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Box, Container, Grid, Paper } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Map from '@/components/Map';
@@ -18,8 +7,8 @@ import SatelliteList from '@/components/SatelliteList';
 import type { Location, SearchFilters, Satellite } from '@/types';
 import { useAppStore } from '@/store';
 import { tleService } from '@/services/tleService';
+import { searchSatellites } from '@/services/satelliteService';
 
-// ルートコンテナ - アプリケーション全体のレイアウトを制御
 const Root = styled(Box)({
   height: '100vh',
   display: 'flex',
@@ -27,7 +16,6 @@ const Root = styled(Box)({
   overflow: 'hidden'
 });
 
-// メインコンテナ - コンテンツ領域のレイアウトを制御
 const Main = styled(Container)({
   flex: 1,
   display: 'flex',
@@ -36,7 +24,6 @@ const Main = styled(Container)({
   overflow: 'hidden'
 });
 
-// 共通のPaperスタイル - Map/SearchPanelとSatelliteListのコンテナ
 const StyledPaper = styled(Paper)({
   height: '100%',
   display: 'flex',
@@ -54,17 +41,43 @@ const App = () => {
     isLoading,
     setSelectedLocation,
     setSearchFilters,
-    setSelectedSatellite
+    setSelectedSatellite,
+    setSatellites,
+    setIsLoading
   } = useAppStore();
+
+  // 衛星検索の実行
+  const searchSatellitesWithFilters = useCallback(async () => {
+    if (!selectedLocation) return;
+
+    setIsLoading(true);
+    try {
+      const results = await searchSatellites({
+        ...searchFilters,
+        latitude: selectedLocation.lat,
+        longitude: selectedLocation.lng
+      });
+      setSatellites(results);
+    } catch (error) {
+      console.error('Failed to search satellites:', error);
+      setSatellites([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedLocation, searchFilters, setIsLoading, setSatellites]);
 
   // 位置選択時のハンドラー
   const handleLocationSelect = (location: Location) => {
     setSelectedLocation(location);
+    // 位置が選択されたら衛星を検索
+    searchSatellitesWithFilters();
   };
 
   // フィルター変更時のハンドラー
   const handleFiltersChange = (filters: SearchFilters) => {
     setSearchFilters(filters);
+    // フィルターが変更されたら再検索
+    searchSatellitesWithFilters();
   };
 
   // 衛星選択時のハンドラー
