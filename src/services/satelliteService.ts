@@ -26,9 +26,44 @@ const MAX_SATELLITES = 100; // 一度に処理する最大衛星数
 const RATE_LIMIT_DELAY = 1000; // APIリクエスト間の遅延（ミリ秒）
 
 /**
+ * TLEデータのバリデーション
+ */
+const isValidTLE = (line1: string, line2: string): boolean => {
+  // TLEの基本フォーマットチェック
+  if (!line1 || !line2) return false;
+  if (line1.length !== 69 || line2.length !== 69) return false;
+
+  // 行番号チェック
+  if (line1[0] !== '1' || line2[0] !== '2') return false;
+
+  // チェックサムの検証
+  const validateChecksum = (line: string): boolean => {
+    let sum = 0;
+    for (let i = 0; i < 68; i++) {
+      const char = line[i];
+      if (char === '-') {
+        sum += 1;
+      } else if (char >= '0' && char <= '9') {
+        sum += parseInt(char, 10);
+      }
+    }
+    const checksum = parseInt(line[68], 10);
+    return (sum % 10) === checksum;
+  };
+
+  return validateChecksum(line1) && validateChecksum(line2);
+};
+
+/**
  * CelesTrakのGPデータを内部の衛星型に変換
  */
-const convertGPDataToSatellite = (gpData: CelesTrakGPData): Satellite => {
+const convertGPDataToSatellite = (gpData: CelesTrakGPData): Satellite | null => {
+  // TLEデータのバリデーション
+  if (!isValidTLE(gpData.TLE_LINE1, gpData.TLE_LINE2)) {
+    console.warn(`Invalid TLE data for satellite ${gpData.NORAD_CAT_ID}`);
+    return null;
+  }
+
   return {
     id: gpData.OBJECT_ID,
     name: gpData.OBJECT_NAME,
@@ -68,7 +103,8 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
     // 衛星データを変換（一度に処理する数を制限）
     const satellites = response.data
       .slice(0, MAX_SATELLITES)
-      .map(convertGPDataToSatellite);
+      .map(convertGPDataToSatellite)
+      .filter((satellite): satellite is Satellite => satellite !== null); // null値を除外
 
     // 可視パスを計算
     const location = {
