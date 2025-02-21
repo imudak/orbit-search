@@ -6,9 +6,19 @@ const TLE_STORE = 'tle-cache';
 const DB_VERSION = 1;
 
 // キャッシュの設定
-const DEFAULT_CACHE_TTL = 24 * 60 * 60 * 1000; // 24時間
-const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1時間ごとにクリーンアップ
-const MAX_CACHE_AGE = 7 * 24 * 60 * 60 * 1000; // 最大7日間
+const CACHE_CONFIG = {
+  TTL: {
+    DEFAULT: 7 * 24 * 60 * 60 * 1000, // 1週間
+    MINIMUM: 24 * 60 * 60 * 1000,     // 最小24時間
+  },
+  CLEANUP: {
+    INTERVAL: 12 * 60 * 60 * 1000,    // 12時間ごとにクリーンアップ
+  },
+  RATE_LIMIT: {
+    MAX_REQUESTS: 100,                 // 1時間あたりの最大リクエスト数
+    WINDOW: 60 * 60 * 1000,           // 1時間
+  }
+} as const;
 
 interface CacheItem {
   data: TLEData;
@@ -16,9 +26,18 @@ interface CacheItem {
   expiresAt: number;
 }
 
+interface RateLimitInfo {
+  count: number;
+  windowStart: number;
+}
+
 class CacheService {
   private db: Promise<IDBPDatabase>;
   private cleanupInterval: number = 0;
+  private rateLimit: RateLimitInfo = {
+    count: 0,
+    windowStart: Date.now()
+  };
 
   constructor() {
     this.db = this.initDB();
@@ -36,18 +55,38 @@ class CacheService {
   }
 
   /**
+   * レート制限のチェックと更新
+   */
+  private checkRateLimit(): boolean {
+    const now = Date.now();
+    if (now - this.rateLimit.windowStart > CACHE_CONFIG.RATE_LIMIT.WINDOW) {
+      // 新しいウィンドウの開始
+      this.rateLimit = {
+        count: 1,
+        windowStart: now
+      };
+      return true;
+    }
+
+    if (this.rateLimit.count >= CACHE_CONFIG.RATE_LIMIT.MAX_REQUESTS) {
+      return false;
+    }
+
+    this.rateLimit.count++;
+    return true;
+  }
+
+  /**
    * クリーンアップスケジュールを開始
    */
   private startCleanupSchedule() {
-    // 前回のインターバルをクリア
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
     }
 
-    // 新しいクリーンアップスケジュールを設定
     this.cleanupInterval = window.setInterval(
       () => this.cleanupExpiredCache(),
-      CLEANUP_INTERVAL
+      CACHE_CONFIG.CLEANUP.INTERVAL
     );
   }
 
@@ -67,7 +106,7 @@ class CacheService {
 
       // 期限切れのアイテムを削除
       const deletePromises = items
-        .filter(item => now > item.expiresAt || (now - item.timestamp) > MAX_CACHE_AGE)
+        .filter(item => now > item.expiresAt)
         .map(item => store.delete(item.noradId));
 
       await Promise.all(deletePromises);
@@ -81,17 +120,19 @@ class CacheService {
 
   /**
    * TLEデータをキャッシュに保存
-   * @param noradId 衛星のNORAD ID
-   * @param data TLEデータ
-   * @param ttl キャッシュの有効期限（ミリ秒）
    */
   async cacheTLE(
     noradId: string,
     data: TLEData,
-    ttl: number = DEFAULT_CACHE_TTL
+    ttl: number = CACHE_CONFIG.TTL.DEFAULT
   ) {
-    // 最大キャッシュ期間を超えないようにする
-    const actualTtl = Math.min(ttl, MAX_CACHE_AGE);
+    if (!this.checkRateLimit()) {
+      console.warn('Rate limit exceeded. Using extended cache.');
+      return;
+    }
+
+    // 最小TTLを確保
+    const actualTtl = Math.max(ttl, CACHE_CONFIG.TTL.MINIMUM);
 
     const item: CacheItem = {
       data,
@@ -110,8 +151,6 @@ class CacheService {
 
   /**
    * キャッシュからTLEデータを取得
-   * @param noradId 衛星のNORAD ID
-   * @returns TLEデータまたはnull
    */
   async getCachedTLE(noradId: string): Promise<TLEData | null> {
     try {
@@ -123,11 +162,15 @@ class CacheService {
       }
 
       const now = Date.now();
-
-      // キャッシュが期限切れまたは最大期間を超えている場合
-      if (now > item.expiresAt || (now - item.timestamp) > MAX_CACHE_AGE) {
+      if (now > item.expiresAt) {
         await this.clearCache(noradId);
         return null;
+      }
+
+      // レート制限時は期限切れのデータも許容
+      if (!this.checkRateLimit() && now - item.timestamp < CACHE_CONFIG.TTL.DEFAULT * 2) {
+        console.log('Using extended cache due to rate limiting');
+        return item.data;
       }
 
       return item.data;
@@ -170,6 +213,35 @@ class CacheService {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
     }
+  }
+
+  /**
+   * キャッシュの統計情報を取得
+   */
+  async getStats(): Promise<{
+    totalItems: number;
+    oldestItem: Date | null;
+    newestItem: Date | null;
+    rateLimitInfo: RateLimitInfo;
+  }> {
+    const db = await this.db;
+    const items = await db.getAll(TLE_STORE);
+
+    let oldest: Date | null = null;
+    let newest: Date | null = null;
+
+    items.forEach(item => {
+      const timestamp = new Date(item.timestamp);
+      if (!oldest || timestamp < oldest) oldest = timestamp;
+      if (!newest || timestamp > newest) newest = timestamp;
+    });
+
+    return {
+      totalItems: items.length,
+      oldestItem: oldest,
+      newestItem: newest,
+      rateLimitInfo: { ...this.rateLimit }
+    };
   }
 }
 
