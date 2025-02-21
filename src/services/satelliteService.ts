@@ -18,21 +18,28 @@ interface CelesTrakGPData {
   NORAD_CAT_ID: string;
   OBJECT_TYPE: string;
   OPERATIONAL_STATUS: string;
+  TLE_LINE1: string;
+  TLE_LINE2: string;
 }
+
+const MAX_SATELLITES = 100; // 一度に処理する最大衛星数
+const RATE_LIMIT_DELAY = 1000; // APIリクエスト間の遅延（ミリ秒）
 
 /**
  * CelesTrakのGPデータを内部の衛星型に変換
  */
-const convertGPDataToSatellite = async (gpData: CelesTrakGPData): Promise<Satellite> => {
-  const tleData = await tleService.getTLE(gpData.NORAD_CAT_ID);
-
+const convertGPDataToSatellite = (gpData: CelesTrakGPData): Satellite => {
   return {
     id: gpData.OBJECT_ID,
     name: gpData.OBJECT_NAME,
     noradId: gpData.NORAD_CAT_ID,
     type: gpData.OBJECT_TYPE,
     operationalStatus: gpData.OPERATIONAL_STATUS,
-    tle: tleData
+    tle: {
+      line1: gpData.TLE_LINE1,
+      line2: gpData.TLE_LINE2,
+      timestamp: new Date().toISOString()
+    }
   };
 };
 
@@ -49,47 +56,68 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
       return mockSatellites;
     }
 
-    // CelesTrak GPから衛星データを取得
+    // GPデータをバッチで取得（TLEデータを含む）
     const response = await celestrakApi.get<CelesTrakGPData[]>('/gp/gp.php', {
       params: {
         GROUP: 'active',
-        FORMAT: 'json'
+        FORMAT: 'json',
+        EPOCH: '1', // 最新のTLEデータのみを取得
       }
     });
 
-    // 衛星データを取得・変換
-    const satellites = await Promise.all(
-      response.data.map(async (gpData) => {
-        const satellite = await convertGPDataToSatellite(gpData);
+    // 衛星データを変換（一度に処理する数を制限）
+    const satellites = response.data
+      .slice(0, MAX_SATELLITES)
+      .map(convertGPDataToSatellite);
 
-        // 可視パスを計算
-        const location = {
-          lat: params.latitude,
-          lng: params.longitude
-        };
+    // 可視パスを計算
+    const location = {
+      lat: params.latitude,
+      lng: params.longitude
+    };
 
-        const passes = await orbitService.calculatePasses(
-          satellite.tle,
-          location,
-          params
-        );
+    const results = await Promise.all(
+      satellites.map(async (satellite, index) => {
+        // API制限を考慮して遅延を入れる
+        if (index > 0) {
+          await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
+        }
 
-        return {
-          ...satellite,
-          passes
-        };
+        try {
+          const passes = await orbitService.calculatePasses(
+            satellite.tle,
+            location,
+            params
+          );
+
+          return {
+            ...satellite,
+            passes
+          };
+        } catch (error) {
+          console.error(`Failed to calculate passes for satellite ${satellite.noradId}:`, error);
+          return {
+            ...satellite,
+            passes: []
+          };
+        }
       })
     );
 
     // フィルタリング
-    const filteredSatellites = satellites.filter(satellite => {
+    const filteredSatellites = results.filter(satellite => {
       // 有効なパスが存在する衛星のみを返す
       return satellite.passes.length > 0 &&
         // 最大仰角でフィルタリング
         satellite.passes.some(pass => pass.maxElevation >= params.minElevation);
     });
 
-    return filteredSatellites;
+    // 最大仰角の高い順にソート
+    return filteredSatellites.sort((a, b) => {
+      const maxElevA = Math.max(...a.passes.map(p => p.maxElevation));
+      const maxElevB = Math.max(...b.passes.map(p => p.maxElevation));
+      return maxElevB - maxElevA;
+    });
 
   } catch (error) {
     console.error('Satellite search failed:', {
