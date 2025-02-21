@@ -92,19 +92,22 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
     }
 
     // GPデータをバッチで取得（TLEデータを含む）
-    const response = await celestrakApi.get<CelesTrakGPData[]>('/gp/gp.php', {
+    const response = await celestrakApi.get<CelesTrakGPData[]>('/NORAD/elements/gp.php', {
       params: {
         GROUP: 'active',
         FORMAT: 'json',
-        EPOCH: '1', // 最新のTLEデータのみを取得
       }
     });
+
+    console.log('Received satellite data:', response.data.length, 'satellites');
 
     // 衛星データを変換（一度に処理する数を制限）
     const satellites = response.data
       .slice(0, MAX_SATELLITES)
       .map(convertGPDataToSatellite)
       .filter((satellite): satellite is Satellite => satellite !== null); // null値を除外
+
+    console.log('Filtered satellites:', satellites.length);
 
     // 可視パスを計算
     const location = {
@@ -147,6 +150,8 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
         // 最大仰角でフィルタリング
         satellite.passes.some(pass => pass.maxElevation >= params.minElevation);
     });
+
+    console.log('Final filtered satellites:', filteredSatellites.length);
 
     // 最大仰角の高い順にソート
     return filteredSatellites.sort((a, b) => {
