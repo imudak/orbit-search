@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Box, Container, Grid, Paper } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Map from '@/components/Map';
@@ -66,11 +66,16 @@ const App = () => {
     }
   }, [selectedLocation, searchFilters, setIsLoading, setSatellites]);
 
+  // 選択された位置が変更されたら衛星を検索
+  useEffect(() => {
+    if (selectedLocation) {
+      searchSatellitesWithFilters();
+    }
+  }, [selectedLocation, searchSatellitesWithFilters]);
+
   // 位置選択時のハンドラー
   const handleLocationSelect = (location: Location) => {
     setSelectedLocation(location);
-    // 位置が選択されたら衛星を検索
-    searchSatellitesWithFilters();
   };
 
   // フィルター変更時のハンドラー
