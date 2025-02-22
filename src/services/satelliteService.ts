@@ -126,12 +126,18 @@ const parseTLEText = (text: string): CelesTrakGPData[] => {
 export const searchSatellites = async (params: SearchSatellitesParams): Promise<SatelliteResponse[]> => {
   try {
     console.log('Searching satellites with params:', params);
+    console.log('Environment variables:', {
+      VITE_USE_MOCK_DATA: import.meta.env.VITE_USE_MOCK_DATA,
+      VITE_OFFLINE_MODE: import.meta.env.VITE_OFFLINE_MODE
+    });
 
     // オフラインモードまたはモックデータの使用が指定されている場合
     if (isOfflineMode()) {
       console.log('Using mock data (offline mode or mock data enabled)');
       return mockSatellites;
     }
+
+    console.log('Proceeding with live API call');
 
     // APIエンドポイントの配列（フォールバック用）
     const endpoints = [
@@ -145,13 +151,19 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
     for (const endpoint of endpoints) {
       try {
         console.log(`Trying endpoint: ${endpoint}`);
-
-        const response = await celestrakApi.get(endpoint, {
+        const requestConfig = {
           params: endpoint.endsWith('.txt') ? undefined : {
             GROUP: 'visual',
             FORMAT: 'json',
           }
+        };
+        console.log('API Request configuration:', {
+          url: endpoint,
+          config: requestConfig
         });
+
+        const response = await celestrakApi.get(endpoint, requestConfig);
+        console.log('API Response headers:', response.headers);
 
         // テキスト形式の場合は変換が必要
         let satelliteData: CelesTrakGPData[];

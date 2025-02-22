@@ -32,6 +32,30 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      },
+      '/celestrak': {
+        target: 'https://celestrak.org',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/celestrak/, ''),
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Proxy request:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Proxy response:', proxyRes.statusCode, req.url);
+          });
+        }
+      }
+    }
   },
   build: {
     sourcemap: true,

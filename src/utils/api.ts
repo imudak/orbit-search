@@ -20,7 +20,7 @@ const API_CONFIG = {
     METHODS: ['get'] as const
   },
   CELESTRAK: {
-    BASE_URL: 'https://celestrak.com',  // .orgから.comに変更
+    BASE_URL: 'https://celestrak.org',  // .comから.orgに変更
     DEFAULT_FORMAT: 'json'
   }
 } as const;
@@ -53,7 +53,7 @@ const isRetryableError = (error: any): boolean => {
  * 共通APIクライアントの設定
  */
 const api = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
   },
@@ -64,7 +64,7 @@ const api = axios.create({
  * CelesTrak APIクライアントの設定
  */
 const celestrakApi = axios.create({
-  baseURL: API_CONFIG.CELESTRAK.BASE_URL,
+  baseURL: '/celestrak',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
