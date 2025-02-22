@@ -45,140 +45,116 @@ interface AppState {
 - ローカルストレージ管理
 - キャッシュ制御
 
-## 3. コンポーネント設計
+## 3. TLEデータ検索と処理フロー
 
-### 3.1 Mapコンポーネント
-```typescript
-interface MapProps {
-  center: LatLng;
-  zoom: number;
-  onLocationSelect: (location: LatLng) => void;
-  satellites?: Satellite[];
-  orbitPaths?: OrbitPath[];
+### 3.1 システム連携図
+```plantuml
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+
+cloud "Celestrak API" as celestrak
+cloud "N2YO API" as n2yo
+database "Local Cache" as cache
+component "Orbit Search App" as app {
+    component "UI Layer" as ui
+    component "TLE Service" as tle
+    component "Satellite Service" as sat
+    component "Cache Service" as cacheService
+    component "Orbit Service" as orbit
 }
+
+ui --> sat: 1. 検索条件
+sat --> tle: 2. TLEデータ要求
+tle --> cacheService: 3. キャッシュ確認
+cacheService --> cache: 4. データ取得
+tle --> celestrak: 5a. TLE取得（キャッシュミス時）
+tle --> n2yo: 5b. TLE取得（代替ソース）
+celestrak --> tle: 6a. TLEデータ
+n2yo --> tle: 6b. TLEデータ
+tle --> cacheService: 7. キャッシュ更新
+sat --> orbit: 8. 軌道計算
+orbit --> ui: 9. 可視パス
+@enduml
 ```
 
-### 3.2 SatelliteSearchコンポーネント
-```typescript
-interface SearchFilters {
-  minElevation: number;
-  dateRange: DateRange;
-  location: LatLng;
-}
-```
-
-### 3.3 OrbitDisplayコンポーネント
-```typescript
-interface OrbitProps {
-  satellite: Satellite;
-  timeRange: DateRange;
-  groundTrack: GroundTrack[];
-}
-```
-
-## 4. データフロー
-
-### 4.1 TLEデータ取得フロー
+### 3.2 TLEデータ検索フロー
 ```mermaid
 sequenceDiagram
-    Client->>Cache: TLEデータ要求
-    Cache->>CelesTrak: キャッシュミス時
-    CelesTrak-->>Cache: TLEデータ
-    Cache-->>Client: データ返却
+    actor User
+    participant UI as UI Layer
+    participant Sat as Satellite Service
+    participant TLE as TLE Service
+    participant Cache as Cache Service
+    participant API as External APIs
+
+    User->>UI: 1. 地図上で位置を選択
+    UI->>Sat: 2. 検索条件を送信
+    Sat->>TLE: 3. TLEデータ要求
+    TLE->>Cache: 4. キャッシュ確認
+
+    alt キャッシュヒット
+        Cache-->>TLE: 4a. キャッシュデータ返却
+    else キャッシュミス
+        TLE->>API: 4b. API呼び出し
+        API-->>TLE: 4c. TLEデータ
+        TLE->>Cache: 4d. キャッシュ更新
+    end
+
+    TLE-->>Sat: 5. TLEデータ
+    Sat-->>UI: 6. 検索結果表示
+    UI-->>User: 7. UI更新
 ```
 
-### 4.2 衛星可視性計算フロー
+### 3.3 データフローの詳細説明
+
+#### 検索開始フェーズ
+1. ユーザーが地図上で位置を選択
+2. UIレイヤーが選択された位置情報を元に検索条件を作成
+3. Satellite Serviceが検索条件を受け取り、処理を開始
+
+#### TLEデータ取得フェーズ
+4. TLE Serviceがキャッシュを確認
+5. キャッシュミスの場合、外部APIに接続
+   - 主にCelestrakを使用
+   - 必要に応じてN2YO APIをフォールバックとして使用
+6. 取得したデータをキャッシュに保存
+
+#### 軌道計算フェーズ
+7. 取得したTLEデータを使用して軌道計算を実行
+8. 計算結果から可視パスを生成
+9. UIに結果を返却して表示
+
+### 3.4 キャッシュ戦略
+```typescript
+interface CacheStrategy {
+  // キャッシュの有効期間（分）
+  ttl: number;
+
+  // キャッシュするデータの種類
+  cacheTypes: {
+    tle: boolean;      // TLEデータ
+    orbits: boolean;   // 軌道計算結果
+    searches: boolean; // 検索結果
+  };
+
+  // キャッシュサイズの制限（MB）
+  maxSize: number;
+}
+```
+
+### 3.5 エラーハンドリング戦略
 ```mermaid
-sequenceDiagram
-    UI->>Store: 検索条件更新
-    Store->>Worker: 軌道計算要求
-    Worker->>Worker: satellite.js計算
-    Worker-->>Store: 計算結果
-    Store-->>UI: 表示更新
+graph TD
+    A[API呼び出し] -->|失敗| B{エラー種別}
+    B -->|接続エラー| C[代替APIに切り替え]
+    B -->|レート制限| D[待機して再試行]
+    B -->|データなし| E[キャッシュ検索]
+    C --> F[ユーザーに通知]
+    D --> F
+    E --> F
 ```
 
-## 5. 状態管理
+## 4. コンポーネント設計
 
-### 5.1 グローバル状態
-```typescript
-interface GlobalState {
-  selectedSatellites: string[];
-  location: Location;
-  dateRange: DateRange;
-  filters: FilterOptions;
-}
-```
-
-### 5.2 ローカル状態
-- コンポーネント固有の一時的な状態
-- フォーム入力値
-- UI表示状態
-
-## 6. エラーハンドリング
-
-### 6.1 エラー種別
-- APIエラー
-- 計算エラー
-- バリデーションエラー
-
-### 6.2 エラー通知
-```typescript
-interface ErrorNotification {
-  type: ErrorType;
-  message: string;
-  severity: 'error' | 'warning' | 'info';
-}
-```
-
-## 7. パフォーマンス最適化
-
-### 7.1 メモ化戦略
-- React.memo
-- useMemo
-- useCallback
-
-### 7.2 遅延読み込み
-```typescript
-const OrbitDisplay = React.lazy(() =>
-  import('./components/OrbitDisplay')
-);
-```
-
-## 8. セキュリティ対策
-
-### 8.1 データ保護
-- APIキーの管理
-- ユーザーデータの暗号化
-- XSS対策
-
-### 8.2 入力バリデーション
-- 座標範囲チェック
-- 日時形式チェック
-- TLEデータ形式チェック
-
-## 9. 拡張性への配慮
-
-### 9.1 プラグイン機構
-- カスタム計算モジュール
-- データソース追加
-- 表示フォーマット拡張
-
-### 9.2 API抽象化
-```typescript
-interface DataSource {
-  getTLE(id: string): Promise<TLEData>;
-  search(params: SearchParams): Promise<Satellite[]>;
-}
-```
-
-## 10. モニタリング
-
-### 10.1 パフォーマンスメトリクス
-- 計算時間
-- メモリ使用量
-- レンダリング時間
-
-### 10.2 エラー追跡
-- エラーログ収集
-- パフォーマンスボトルネック検出
-- ユーザー行動分析
+[以下、既存の内容が続きます...]
