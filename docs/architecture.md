@@ -48,34 +48,36 @@ interface AppState {
 ## 3. TLEデータ検索と処理フロー
 
 ### 3.1 システム連携図
-```plantuml
-@startuml
-!theme plain
-skinparam componentStyle rectangle
+```mermaid
+graph TB
+    subgraph External ["外部API"]
+        celestrak["Celestrak API"]
+        n2yo["N2YO API"]
+    end
 
-cloud "Celestrak API" as celestrak
-cloud "N2YO API" as n2yo
-database "Local Cache" as cache
-component "Orbit Search App" as app {
-    component "UI Layer" as ui
-    component "TLE Service" as tle
-    component "Satellite Service" as sat
-    component "Cache Service" as cacheService
-    component "Orbit Service" as orbit
-}
+    subgraph App ["Orbit Search App"]
+        ui["UI Layer"]
+        sat["Satellite Service"]
+        tle["TLE Service"]
+        cache["Cache Service"]
+        orbit["Orbit Service"]
+        db[(Local Cache)]
+    end
 
-ui --> sat: 1. 検索条件
-sat --> tle: 2. TLEデータ要求
-tle --> cacheService: 3. キャッシュ確認
-cacheService --> cache: 4. データ取得
-tle --> celestrak: 5a. TLE取得（キャッシュミス時）
-tle --> n2yo: 5b. TLE取得（代替ソース）
-celestrak --> tle: 6a. TLEデータ
-n2yo --> tle: 6b. TLEデータ
-tle --> cacheService: 7. キャッシュ更新
-sat --> orbit: 8. 軌道計算
-orbit --> ui: 9. 可視パス
-@enduml
+    ui -->|1. 検索条件| sat
+    sat -->|2. TLEデータ要求| tle
+    tle -->|3. キャッシュ確認| cache
+    cache -->|4. データ取得| db
+    tle -->|5a. TLE取得| celestrak
+    tle -->|5b. TLE取得| n2yo
+    celestrak -->|6a. TLEデータ| tle
+    n2yo -->|6b. TLEデータ| tle
+    tle -->|7. キャッシュ更新| cache
+    sat -->|8. 軌道計算| orbit
+    orbit -->|9. 可視パス| ui
+
+    style External fill:#f9f,stroke:#333,stroke-width:2px
+    style App fill:#fff,stroke:#333,stroke-width:2px
 ```
 
 ### 3.2 TLEデータ検索フロー
