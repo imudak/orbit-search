@@ -4,5 +4,7 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"markdown-preview-enhanced.plantumlJarPath": "${env:USERPROFILE}/.vscode/extensions/jebbs.plantuml-2.18.1/plantuml.jar"
+	}
 }
