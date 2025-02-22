@@ -159,4 +159,102 @@ graph TD
 
 ## 4. コンポーネント設計
 
-[以下、既存の内容が続きます...]
+### 4.1 Mapコンポーネント
+```typescript
+interface MapProps {
+  center: LatLng;
+  zoom: number;
+  onLocationSelect: (location: LatLng) => void;
+  satellites?: Satellite[];
+  orbitPaths?: OrbitPath[];
+}
+```
+
+### 4.2 SatelliteSearchコンポーネント
+```typescript
+interface SearchFilters {
+  minElevation: number;
+  dateRange: DateRange;
+  location: LatLng;
+}
+```
+
+### 4.3 OrbitDisplayコンポーネント
+```typescript
+interface OrbitProps {
+  satellite: Satellite;
+  timeRange: DateRange;
+  groundTrack: GroundTrack[];
+}
+```
+
+## 5. 状態管理
+
+### 5.1 グローバル状態
+```typescript
+interface GlobalState {
+  selectedSatellites: string[];
+  location: Location;
+  dateRange: DateRange;
+  filters: FilterOptions;
+}
+```
+
+### 5.2 ローカル状態
+- コンポーネント固有の一時的な状態
+- フォーム入力値
+- UI表示状態
+
+## 6. エラーハンドリング
+
+### 6.1 エラー種別
+- APIエラー
+- 計算エラー
+- バリデーションエラー
+
+### 6.2 エラー通知
+```typescript
+interface ErrorNotification {
+  type: ErrorType;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+}
+```
+
+## 7. パフォーマンス最適化
+
+### 7.1 メモ化戦略
+- React.memo
+- useMemo
+- useCallback
+
+### 7.2 遅延読み込み
+```typescript
+const OrbitDisplay = React.lazy(() =>
+  import('./components/OrbitDisplay')
+);
+```
+
+## 8. セキュリティ対策
+
+### 8.1 データ保護
+- APIキーの管理
+- ユーザーデータの暗号化
+- XSS対策
+
+### 8.2 入力バリデーション
+- 座標範囲チェック
+- 日時形式チェック
+- TLEデータ形式チェック
+
+## 9. モニタリング
+
+### 9.1 パフォーマンスメトリクス
+- 計算時間
+- メモリ使用量
+- レンダリング時間
+
+### 9.2 エラー追跡
+- エラーログ収集
+- パフォーマンスボトルネック検出
+- ユーザー行動分析
