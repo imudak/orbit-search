@@ -62,6 +62,17 @@ export interface OrbitPath {
   timestamp: string;
 }
 
+// CelesTrak APIのレスポンス型
+export interface CelesTrakGPData {
+  OBJECT_NAME: string;
+  OBJECT_ID: string;
+  NORAD_CAT_ID: string;
+  OBJECT_TYPE: string;
+  OPERATIONAL_STATUS: string;
+  TLE_LINE1: string;
+  TLE_LINE2: string;
+}
+
 // 緯度経度の型
 export interface LatLng {
   lat: number;

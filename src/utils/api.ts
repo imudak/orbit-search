@@ -66,8 +66,7 @@ const api = axios.create({
 const celestrakApi = axios.create({
   baseURL: '/celestrak',
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'text/plain, application/json'
   },
   timeout: API_CONFIG.TIMEOUT.CELESTRAK
 });
