@@ -95,13 +95,32 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
       try {
         console.log(`Trying endpoint: ${endpoint.url}`);
         const requestConfig = {
-          params: endpoint.format === 'txt' ? undefined : {
+          params: endpoint.format === 'txt' ? {
+            _: Date.now() // キャッシュ回避用のタイムスタンプ
+          } : {
             GROUP: 'visual',
-            FORMAT: endpoint.format
+            FORMAT: 'json',
+            _: Date.now() // キャッシュ回避用のタイムスタンプ
+          },
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
           }
         };
 
+        console.log(`Requesting data from ${endpoint.url}`, requestConfig);
         const response = await celestrakApi.get(endpoint.url, requestConfig);
+        console.log('API Response:', {
+          status: response.status,
+          contentType: response.headers['content-type'],
+          dataType: typeof response.data,
+          dataLength: typeof response.data === 'string'
+            ? response.data.length
+            : Array.isArray(response.data)
+              ? response.data.length
+              : 0
+        });
+
         let satelliteData: CelesTrakGPData[];
 
         if (endpoint.format === 'txt') {
@@ -109,27 +128,82 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             console.warn('Expected text response but got:', typeof response.data);
             continue;
           }
+          // TLEテキストデータの最初の部分を確認
+          console.log('TLE text sample:', response.data.substring(0, 200));
           satelliteData = tleParserService.parseTLEText(response.data);
+          console.log('Parsed TLE data:', {
+            count: satelliteData.length,
+            firstSatellite: satelliteData[0]
+          });
         } else {
           if (!Array.isArray(response.data)) {
             console.warn('Expected array response but got:', typeof response.data);
             continue;
           }
-          satelliteData = response.data.map(item => ({
-            ...item,
-            ...tleParserService.generateTLEFromJSON(item)
-          }));
+          console.log('JSON response sample:', {
+            first_item: response.data[0],
+            total_items: response.data.length
+          });
+
+          // APIレスポンスを型安全に処理
+          satelliteData = response.data.map(item => {
+            try {
+              const tleData = tleParserService.generateTLEFromJSON(item);
+              return {
+                OBJECT_NAME: item.OBJECT_NAME,
+                OBJECT_ID: item.OBJECT_ID,
+                NORAD_CAT_ID: item.NORAD_CAT_ID,
+                OBJECT_TYPE: 'PAYLOAD',
+                OPERATIONAL_STATUS: 'UNKNOWN',
+                ...tleData
+              };
+            } catch (error) {
+              console.warn('Failed to process satellite data:', {
+                item,
+                error: error instanceof Error ? error.message : String(error)
+              });
+              return null;
+            }
+          }).filter((item): item is CelesTrakGPData => item !== null);
         }
 
         console.log('Received satellite data:', satelliteData.length, 'satellites');
 
-        // 観測地点からの可視性に基づいてフィルタリング
-        const filteredData = satelliteData.filter(data => {
-          const orbitalElements = visibilityService.extractOrbitalElements(data.TLE_LINE2);
-          return visibilityService.isInVisibilityRange(observerLat, observerLng, orbitalElements);
+        console.log('Processing satellites for visibility check:', {
+          total: satelliteData.length,
+          location: { lat: observerLat, lng: observerLng }
         });
 
-        console.log('Filtered by visibility:', filteredData.length, 'satellites');
+        // 観測地点からの可視性に基づいてフィルタリング
+        const filteredData = satelliteData.filter(data => {
+          try {
+            const orbitalElements = visibilityService.extractOrbitalElements(data.TLE_LINE2);
+            const isVisible = visibilityService.isInVisibilityRange(observerLat, observerLng, orbitalElements);
+
+            if (isVisible) {
+              console.log('Satellite visible:', {
+                name: data.OBJECT_NAME,
+                noradId: data.NORAD_CAT_ID,
+                elements: orbitalElements
+              });
+            }
+
+            return isVisible;
+          } catch (error) {
+            console.warn('Failed to check visibility for satellite:', {
+              name: data.OBJECT_NAME,
+              noradId: data.NORAD_CAT_ID,
+              error: error instanceof Error ? error.message : String(error)
+            });
+            return false;
+          }
+        });
+
+        console.log('Visibility filtering results:', {
+          total: satelliteData.length,
+          visible: filteredData.length,
+          location: { lat: observerLat, lng: observerLng }
+        });
 
         // 衛星データを変換（一度に処理する数を制限）
         const satellites = filteredData
@@ -166,17 +240,42 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
           })
         );
 
+        // フィルタリング前の状態をログ
+        console.log('Before pass filtering:', {
+          satellitesCount: results.length,
+          withPasses: results.filter(s => s.passes.length > 0).length,
+          location: loc
+        });
+
         // パスフィルタリングと並び替え
-        return results
-          .filter(satellite =>
-            satellite.passes.length > 0 &&
-            satellite.passes.some(pass => pass.maxElevation >= params.minElevation)
-          )
+        const filteredResults = results
+          .filter(satellite => {
+            const hasPasses = satellite.passes.length > 0;
+            const hasVisiblePasses = satellite.passes.some(pass => pass.maxElevation >= params.minElevation);
+            console.log('Satellite passes:', {
+              name: satellite.name,
+              noradId: satellite.noradId,
+              passCount: satellite.passes.length,
+              maxElevation: Math.max(...satellite.passes.map(p => p.maxElevation))
+            });
+            return hasPasses && hasVisiblePasses;
+          })
           .sort((a, b) => {
             const maxElevA = Math.max(...a.passes.map(p => p.maxElevation));
             const maxElevB = Math.max(...b.passes.map(p => p.maxElevation));
             return maxElevB - maxElevA;
           });
+
+        console.log('Final filtered results:', {
+          count: filteredResults.length,
+          satellites: filteredResults.map(s => ({
+            name: s.name,
+            noradId: s.noradId,
+            passCount: s.passes.length
+          }))
+        });
+
+        return filteredResults;
 
       } catch (error) {
         console.warn(`Failed to fetch data from ${endpoint}:`, error);

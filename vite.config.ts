@@ -43,15 +43,43 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/celestrak/, ''),
+        headers: {
+          'Accept-Encoding': 'identity'  // 圧縮を無効化
+        },
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             console.log('Proxy request:', req.method, req.url);
+            // 文字エンコーディングを指定
+            proxyReq.setHeader('Accept-Charset', 'utf-8');
           });
-          proxy.on('proxyRes', (proxyRes, req, _res) => {
-            console.log('Proxy response:', proxyRes.statusCode, req.url);
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('Proxy response:', {
+              statusCode: proxyRes.statusCode,
+              url: req.url,
+              contentType: proxyRes.headers['content-type'],
+              contentLength: proxyRes.headers['content-length']
+            });
+
+            // テキストレスポンスの場合、エンコーディングを処理
+            if (proxyRes.headers['content-type']?.includes('text/plain')) {
+              const chunks: Buffer[] = [];
+              proxyRes.on('data', chunk => chunks.push(Buffer.from(chunk)));
+              proxyRes.on('end', () => {
+                const buffer = Buffer.concat(chunks);
+                try {
+                  // UTF-8でデコード試行
+                  const utf8Text = buffer.toString('utf-8');
+                  console.log('Response preview (UTF-8):', utf8Text.substring(0, 200));
+                } catch (e) {
+                  // 失敗した場合はLatin1でデコード
+                  const latin1Text = buffer.toString('latin1');
+                  console.log('Response preview (Latin1):', latin1Text.substring(0, 200));
+                }
+              });
+            }
           });
         }
       }

@@ -118,12 +118,24 @@ const setupInterceptors = (instance: ReturnType<typeof axios.create>) => {
   instance.interceptors.response.use(
     response => {
       // レスポンスログ
-      console.log(`API Response: ${response.status} ${response.config.url}`);
+      console.log(`API Response: ${response.status} ${response.config.url}`, {
+        contentType: response.headers['content-type'],
+        contentLength: response.headers['content-length'],
+        dataType: typeof response.data
+      });
+
+      // レスポンスデータの詳細ログ
       if (response.data) {
-        console.log('Response data sample:',
-          Array.isArray(response.data)
-            ? `Array with ${response.data.length} items`
-            : typeof response.data);
+        if (typeof response.data === 'string') {
+          console.log('Text response first 200 chars:', response.data.substring(0, 200));
+        } else if (Array.isArray(response.data)) {
+          console.log('Array response:', {
+            length: response.data.length,
+            sample: response.data.slice(0, 2)
+          });
+        } else {
+          console.log('Response data:', response.data);
+        }
       }
       return response;
     },
