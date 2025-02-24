@@ -103,7 +103,8 @@ function calculatePasses(
 
       // 地平座標系での位置を取得
       const elevation = satellite.degreesLat(lookAngles.elevation);
-      const azimuth = satellite.degreesLong(lookAngles.azimuth);
+      // 方位角は0-360度の範囲なので、radiansToDegreesを使用
+      const azimuth = (lookAngles.azimuth * 180 / Math.PI + 360) % 360;
       const rangeSat = lookAngles.rangeSat;
 
       // 衛星の地理座標を計算（昼夜判定用）
