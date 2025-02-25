@@ -15,7 +15,7 @@ const CACHE_CONFIG = {
     INTERVAL: 12 * 60 * 60 * 1000,    // 12時間ごとにクリーンアップ
   },
   RATE_LIMIT: {
-    MAX_REQUESTS: 100,                 // 1時間あたりの最大リクエスト数
+    MAX_REQUESTS: 1000,               // 1時間あたりの最大リクエスト数を1000に増加
     WINDOW: 60 * 60 * 1000,           // 1時間
   }
 } as const;
