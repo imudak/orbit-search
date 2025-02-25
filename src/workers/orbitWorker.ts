@@ -72,11 +72,15 @@ function calculatePasses(
   location: Location,
   filters: SearchFilters
 ): Pass[] {
-  // パス計算の初期設定
-  console.log('Starting pass calculation:', {
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    minElevation: filters.minElevation
+  // パス計算の詳細設定をログ出力
+  console.log('Pass calculation settings:', {
+    rawFilters: filters,
+    location: {
+      lat: location.lat.toFixed(4),
+      lng: location.lng.toFixed(4)
+    },
+    startDate: filters.startDate?.toISOString(),
+    endDate: filters.endDate?.toISOString(),
   });
 
   const passes: Pass[] = [];
@@ -85,11 +89,21 @@ function calculatePasses(
   const minElevation = filters.minElevation || 0;
   const stepSize = 30 * 1000; // 30秒ごとに計算（精度向上）
 
-  console.log('Calculation parameters:', {
-    startTime: new Date(startTime).toISOString(),
-    endTime: new Date(endTime).toISOString(),
-    minElevation,
-    stepSize
+  // 計算パラメータの詳細をログ出力
+  console.log('Calculation details:', {
+    timeRange: {
+      start: new Date(startTime).toISOString(),
+      end: new Date(endTime).toISOString(),
+      durationHours: (endTime - startTime) / (1000 * 60 * 60)
+    },
+    elevationSettings: {
+      minElevation,
+      useDefaultValue: !filters.minElevation
+    },
+    observerPosition: {
+      lat: location.lat.toFixed(4),
+      lng: location.lng.toFixed(4)
+    }
   });
 
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
