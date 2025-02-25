@@ -38,12 +38,29 @@ export default {
         responseHeaders.set(key, corsHeaders[key]);
       });
 
-      // 新しいレスポンスを作成
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: responseHeaders
-      });
+      // レスポンスの処理
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('text/plain')) {
+        // テキストデータの場合、適切にエンコーディングを処理
+        const arrayBuffer = await response.arrayBuffer();
+        // Latin1（ISO-8859-1）でデコード
+        const text = new TextDecoder('latin1').decode(arrayBuffer);
+        return new Response(text, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: {
+            ...Object.fromEntries(responseHeaders.entries()),
+            'content-type': 'text/plain; charset=utf-8'
+          }
+        });
+      } else {
+        // その他のデータ形式の場合
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: responseHeaders
+        });
+      }
 
     } catch (err) {
       console.error('Proxy Error:', err);
