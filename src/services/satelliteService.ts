@@ -153,7 +153,13 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             continue;
           }
           // TLEテキストデータの最初の部分を確認
-          console.log('TLE text sample:', response.data.substring(0, 200));
+          // TLEデータの検証用ログ
+          const lines = response.data.split('\n').slice(0, 3);
+          console.log('First TLE entry:', {
+            name: lines[0]?.trim(),
+            line1: lines[1]?.trim(),
+            line2: lines[2]?.trim()
+          });
           satelliteData = tleParserService.parseTLEText(response.data);
           console.log('Parsed TLE data:', {
             count: satelliteData.length,
