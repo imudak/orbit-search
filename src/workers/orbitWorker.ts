@@ -57,9 +57,12 @@ function calculatePasses(
   location: Location,
   filters: SearchFilters
 ): Pass[] {
+  console.log('Starting pass calculation with filters:', filters);
   const passes: Pass[] = [];
-  const startTime = filters.startDate.getTime();
-  const endTime = filters.endDate.getTime();
+  // デフォルト値を設定（1日前から1週間）
+  const startTime = (filters.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000)).getTime();
+  const endTime = (filters.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).getTime();
+  const minElevation = filters.minElevation || 0;  // デフォルト値を0度に設定
   const stepSize = 30 * 1000; // 30秒ごとに計算（精度向上）
 
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
@@ -120,7 +123,15 @@ function calculatePasses(
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
       };
 
-      if (elevation >= filters.minElevation) {
+      // デバッグログを追加
+      console.log('Point calculation:', {
+        time: date.toISOString(),
+        elevation,
+        minElevation,
+        isVisible
+      });
+
+      if (elevation >= minElevation) {
         if (!isVisible) {
           isVisible = true;
           currentPass = {
