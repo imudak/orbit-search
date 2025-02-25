@@ -39,13 +39,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       },
       '/celestrak': {
-        target: 'https://celestrak.org',
+        // Cloudflare Workersのエンドポイントに置き換えてください
+        target: 'https://celestrak-proxy.imudak.workers.dev',
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/celestrak/, ''),
-        headers: {
-          'Accept-Encoding': 'identity'  // 圧縮を無効化
-        },
+        secure: true,
+        rewrite: (path) => path.replace(/^\/celestrak/, '/proxy'),
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);
