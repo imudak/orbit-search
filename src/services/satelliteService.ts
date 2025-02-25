@@ -3,6 +3,7 @@ import { celestrakApi } from '@/utils/api';
 import { orbitService } from './orbitService';
 import { tleParserService } from './tleParserService';
 import { visibilityService } from './visibilityService';
+import { cacheService } from './cacheService';
 
 interface SearchSatellitesParams extends SearchFilters {
   latitude: number;
@@ -42,13 +43,40 @@ const mockSatellites: SatelliteResponse[] = [
 ];
 
 /**
- * CelesTrakのGPデータを内部の衛星型に変換
+ * キャッシュからTLEデータを取得
  */
-const convertGPDataToSatellite = (gpData: CelesTrakGPData): Satellite | null => {
+const getCachedSatellite = async (noradId: string): Promise<Satellite | null> => {
+  const cachedTLE = await cacheService.getCachedTLE(noradId);
+  if (!cachedTLE) {
+    return null;
+  }
+  return {
+    id: noradId,
+    name: `NORAD ID: ${noradId}`,
+    noradId,
+    type: 'UNKNOWN',
+    operationalStatus: 'UNKNOWN',
+    tle: cachedTLE
+  };
+};
+
+/**
+ * CelesTrakのGPデータを内部の衛星型に変換してキャッシュ
+ */
+const convertGPDataToSatellite = async (gpData: CelesTrakGPData): Promise<Satellite | null> => {
   if (!tleParserService.isValidTLE(gpData.TLE_LINE1, gpData.TLE_LINE2)) {
     console.warn(`Invalid TLE data for satellite ${gpData.NORAD_CAT_ID}`);
     return null;
   }
+
+  const tle = {
+    line1: gpData.TLE_LINE1,
+    line2: gpData.TLE_LINE2,
+    timestamp: new Date().toISOString()
+  };
+
+  // TLEデータをキャッシュ
+  await cacheService.cacheTLE(gpData.NORAD_CAT_ID, tle);
 
   return {
     id: gpData.OBJECT_ID,
@@ -56,11 +84,7 @@ const convertGPDataToSatellite = (gpData: CelesTrakGPData): Satellite | null => 
     noradId: gpData.NORAD_CAT_ID,
     type: gpData.OBJECT_TYPE,
     operationalStatus: gpData.OPERATIONAL_STATUS,
-    tle: {
-      line1: gpData.TLE_LINE1,
-      line2: gpData.TLE_LINE2,
-      timestamp: new Date().toISOString()
-    }
+    tle
   };
 };
 
@@ -206,9 +230,23 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
         });
 
         // 衛星データを変換（一度に処理する数を制限）
-        const satellites = filteredData
+        const satellitePromises = filteredData
           .slice(0, MAX_SATELLITES)
-          .map(convertGPDataToSatellite)
+          .map(async (data) => {
+            try {
+              // まずキャッシュを確認
+              const cached = await getCachedSatellite(data.NORAD_CAT_ID);
+              if (cached) return cached;
+
+              // キャッシュになければ変換して保存
+              return await convertGPDataToSatellite(data);
+            } catch (error) {
+              console.warn('Failed to process satellite:', error);
+              return null;
+            }
+          });
+
+        const satellites = (await Promise.all(satellitePromises))
           .filter((satellite): satellite is Satellite => satellite !== null);
 
         // 可視パスを計算
