@@ -43,10 +43,9 @@ export default {
       if (contentType.includes('text/plain')) {
         // テキストデータの場合、適切にエンコーディングを処理
         const arrayBuffer = await response.arrayBuffer();
-        // ASCII文字として処理
-        const text = Array.from(new Uint8Array(arrayBuffer))
-          .map(byte => byte <= 0x7F ? String.fromCharCode(byte) : '')
-          .join('');
+        // Base64でエンコードしてからデコード
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const text = atob(base64);
 
         return new Response(text, {
           status: response.status,
