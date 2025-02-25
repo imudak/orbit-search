@@ -43,8 +43,11 @@ export default {
       if (contentType.includes('text/plain')) {
         // テキストデータの場合、適切にエンコーディングを処理
         const arrayBuffer = await response.arrayBuffer();
-        // Latin1（ISO-8859-1）でデコード
-        const text = new TextDecoder('latin1').decode(arrayBuffer);
+        // ASCII文字として処理
+        const text = Array.from(new Uint8Array(arrayBuffer))
+          .map(byte => byte <= 0x7F ? String.fromCharCode(byte) : '')
+          .join('');
+
         return new Response(text, {
           status: response.status,
           statusText: response.statusText,
