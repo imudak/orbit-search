@@ -127,11 +127,15 @@ function calculatePasses(
         continue;
       }
 
-      // 計算進捗のログ（1時間ごと）
-      if (currentTime % (60 * 60 * 1000) === 0) {
+      // 計算進捗のログ（30分ごと）
+      const PROGRESS_INTERVAL = 30 * 60 * 1000; // 30分
+      if (currentTime % PROGRESS_INTERVAL === 0) {
+        const progress = (currentTime - startTime) / (endTime - startTime) * 100;
         console.log('Calculation progress:', {
           time: date.toISOString(),
-          passCount: passes.length
+          progress: `${progress.toFixed(1)}%`,
+          passCount: passes.length,
+          timeRemaining: `${((endTime - currentTime) / 1000 / 60).toFixed(1)} minutes`
         });
       }
 
@@ -162,14 +166,16 @@ function calculatePasses(
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
       };
 
-      // 可視判定のデバッグ情報
-      console.log('Visibility check:', {
-        time: date.toISOString(),
-        elevation,
-        minElevation,
-        isVisible,
-        currentPassPoints: currentPass?.points.length || 0
-      });
+      // 可視判定のデバッグ情報（仰角が閾値付近の場合のみ出力）
+      if (Math.abs(elevation - minElevation) < 1) {
+        console.log('Visibility check near threshold:', {
+          time: date.toISOString(),
+          elevation,
+          minElevation,
+          isVisible,
+          currentPassPoints: currentPass?.points.length || 0
+        });
+      }
 
       if (elevation >= minElevation) {
         if (!isVisible) {
