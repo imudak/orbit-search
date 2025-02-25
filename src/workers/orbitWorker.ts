@@ -16,11 +16,26 @@ ctx.addEventListener('message', (event: MessageEvent<CalculatePassesMessage>) =>
   if (event.data.type === 'calculatePasses') {
     try {
       const { tle, location, filters } = event.data;
+      console.log('Processing TLE:', {
+        line1: tle.line1,
+        line2: tle.line2,
+        location,
+        filters
+      });
+
       // TLEデータの検証
       if (!validateTLE(tle)) {
+        console.error('TLE validation failed:', { tle });
         throw new Error('Invalid TLE data format');
       }
+
       const passes = calculatePasses(tle, location, filters);
+      console.log('Calculated passes:', {
+        count: passes.length,
+        firstPass: passes[0] || null,
+        filters
+      });
+
       ctx.postMessage({ type: 'passes', data: passes });
     } catch (error) {
       console.error('Orbit calculation error:', error);
@@ -57,12 +72,25 @@ function calculatePasses(
   location: Location,
   filters: SearchFilters
 ): Pass[] {
-  // デフォルト値を設定
+  // パス計算の初期設定
+  console.log('Starting pass calculation:', {
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    minElevation: filters.minElevation
+  });
+
   const passes: Pass[] = [];
   const startTime = (filters.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000)).getTime();
   const endTime = (filters.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).getTime();
   const minElevation = filters.minElevation || 0;
   const stepSize = 30 * 1000; // 30秒ごとに計算（精度向上）
+
+  console.log('Calculation parameters:', {
+    startTime: new Date(startTime).toISOString(),
+    endTime: new Date(endTime).toISOString(),
+    minElevation,
+    stepSize
+  });
 
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
   if (!satrec) {
@@ -91,8 +119,20 @@ function calculatePasses(
       // 衛星の位置と速度を計算
       const positionAndVelocity = satellite.propagate(satrec, date);
       if (!positionAndVelocity.position || typeof positionAndVelocity.position === 'boolean') {
+        console.warn('Invalid position at:', {
+          time: date.toISOString(),
+          position: positionAndVelocity.position
+        });
         currentTime += stepSize;
         continue;
+      }
+
+      // 計算進捗のログ（1時間ごと）
+      if (currentTime % (60 * 60 * 1000) === 0) {
+        console.log('Calculation progress:', {
+          time: date.toISOString(),
+          passCount: passes.length
+        });
       }
 
       // グリニッジ恒星時を計算
@@ -122,6 +162,15 @@ function calculatePasses(
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
       };
 
+      // 可視判定のデバッグ情報
+      console.log('Visibility check:', {
+        time: date.toISOString(),
+        elevation,
+        minElevation,
+        isVisible,
+        currentPassPoints: currentPass?.points.length || 0
+      });
+
       if (elevation >= minElevation) {
         if (!isVisible) {
           isVisible = true;
@@ -130,6 +179,11 @@ function calculatePasses(
             maxElevation: elevation,
             startTime: date,
           };
+          console.log('New pass started:', {
+            time: date.toISOString(),
+            elevation,
+            azimuth
+          });
         } else {
           if (currentPass) {
             currentPass.points.push(pointData);
