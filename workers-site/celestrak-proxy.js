@@ -43,9 +43,17 @@ export default {
       if (contentType.includes('text/plain')) {
         // テキストデータの場合、適切にエンコーディングを処理
         const arrayBuffer = await response.arrayBuffer();
-        // Base64でエンコードしてからデコード
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        const text = atob(base64);
+        // テキストデコーダで直接変換
+        const decoder = new TextDecoder('ascii');
+        const text = decoder.decode(arrayBuffer);
+
+        // レスポンス本文の最初の部分をログに出力
+        const lines = text.split('\n').slice(0, 3);
+        console.log('Raw TLE data sample:', {
+          line1: lines[0] || '',
+          line2: lines[1] || '',
+          line3: lines[2] || ''
+        });
 
         return new Response(text, {
           status: response.status,
