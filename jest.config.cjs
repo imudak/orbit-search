@@ -16,7 +16,10 @@ module.exports = {
       useESM: true
     }],
   },
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
+  setupFilesAfterEnv: [
+    '<rootDir>/jest.setup.cjs',
+    '<rootDir>/src/__tests__/integration/setup.ts'
+  ],
   testMatch: [
     '<rootDir>/src/__tests__/**/*.test.ts',
     '<rootDir>/src/__tests__/**/*.test.tsx'
@@ -29,9 +32,14 @@ module.exports = {
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   transformIgnorePatterns: [
-    'node_modules/(?!(@testing-library|axios)/)'
+    'node_modules/(?!(@testing-library|axios|idb)/)'
   ],
   testEnvironmentOptions: {
+    url: 'https://celestrak-proxy.imudak.workers.dev',
+    referrer: 'https://celestrak-proxy.imudak.workers.dev',
+    resources: 'usable',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
     customExportConditions: ['node', 'node-addons']
   }
 };
