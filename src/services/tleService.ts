@@ -3,6 +3,17 @@ import { celestrakApi } from '@/utils/api';
 import { cacheService } from './cacheService';
 import { mockDebugData } from '../__tests__/mocks/tleService.mock';
 
+let lastTleCallTimestamp = 0;
+const rateLimitDelay = async (): Promise<void> => {
+  const now = Date.now();
+  const minInterval = 500; // 500ms for 2 requests per second
+  const waitTime = minInterval - (now - lastTleCallTimestamp);
+  if (waitTime > 0) {
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  lastTleCallTimestamp = Date.now();
+};
+
 // CelesTrak APIのレスポンス形式
 interface CelesTrakResponse {
   OBJECT_NAME: string;
@@ -86,14 +97,20 @@ export const tleService = {
    * @param noradId 衛星のNORAD ID
    * @returns TLEデータ
    */
-  getTLE: async (noradId: string): Promise<TLEData> => {
+  getTLE: async (noradId: string, bypassCache: boolean = false): Promise<TLEData> => {
     try {
-      // キャッシュをチェック
-      const cachedData = await cacheService.getCachedTLE(noradId);
-      if (cachedData) {
-        return cachedData;
+      // キャッシュをチェック (bypassCacheがfalseの場合のみ)
+      if (!bypassCache) {
+        const cachedData = await cacheService.getCachedTLE(noradId);
+        if (cachedData) {
+          return cachedData;
+        }
       }
 
+      await rateLimitDelay();
+      if (bypassCache) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
       // CelesTrak APIからデータを取得
       const response = await celestrakApi.get<CelesTrakResponse[]>('', {
         params: {

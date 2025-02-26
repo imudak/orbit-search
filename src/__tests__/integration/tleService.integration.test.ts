@@ -1,5 +1,5 @@
 import { tleService } from '../../services/tleService';
-import { TEST_NORAD_ID, TEST_RATE_LIMIT } from './constants';
+import { TEST_NORAD_ID } from './constants';
 
 describe('tleService Integration Tests', () => {
   // コンソール出力の一時的な設定
@@ -80,7 +80,7 @@ describe('tleService Integration Tests', () => {
       // リクエストを逐次実行し、タイミングを記録
       for (let i = 0; i < requestCount; i++) {
         const requestStartMsec = Date.now();
-        const result = await tleService.getTLE(TEST_NORAD_ID);
+        const result = await tleService.getTLE(TEST_NORAD_ID, true);
         const requestEndMsec = Date.now();
 
         results.push(result);
