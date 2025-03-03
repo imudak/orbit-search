@@ -379,6 +379,20 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
           }))
         });
 
+        // 最終的なリスト件数を強調表示
+        console.log(`%c最終的な衛星リスト: ${filteredResults.length}件`, 'color: red; font-size: 16px; font-weight: bold;');
+
+        // 結果が0件の場合は原因を調査
+        if (filteredResults.length === 0) {
+          console.log('結果が0件になった原因を調査:');
+          console.log('- 取得した衛星データ数:', satelliteData.length);
+          console.log('- 可視性チェック後の衛星数:', filteredData.length);
+          console.log('- 変換後の衛星数:', satellites.length);
+          console.log('- パス計算後の衛星数:', results.length);
+          console.log('- パスがある衛星数:', results.filter(s => s.passes.length > 0).length);
+          console.log('- 可視パスがある衛星数:', results.filter(s => s.passes.some(p => p.maxElevation >= params.minElevation)).length);
+        }
+
         return filteredResults;
 
       } catch (error) {
