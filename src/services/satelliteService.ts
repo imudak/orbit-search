@@ -242,13 +242,14 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             const orbitalElements = visibilityService.extractOrbitalElements(data.TLE_LINE2);
             const isVisible = visibilityService.isInVisibilityRange(observerLat, observerLng, orbitalElements);
 
-            if (isVisible) {
-              console.log('Satellite visible:', {
-                name: data.OBJECT_NAME,
-                noradId: data.NORAD_CAT_ID,
-                elements: orbitalElements
-              });
-            }
+            // ログ出力を削減
+            // if (isVisible) {
+            //   console.log('Satellite visible:', {
+            //     name: data.OBJECT_NAME,
+            //     noradId: data.NORAD_CAT_ID,
+            //     elements: orbitalElements
+            //   });
+            // }
 
             return isVisible;
           } catch (error) {
@@ -296,18 +297,26 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             }
 
             try {
+              // ログ出力を削減（最初の5件のみ詳細ログを出力）
+              if (index < 5) {
+                console.log(`Calculating passes for satellite ${satellite.name} (${satellite.noradId})`);
+              }
               const passes = await orbitService.calculatePasses(
                 satellite.tle,
                 loc,
                 params
               );
+              // パスがある場合のみログを出力
+              if (passes.length > 0) {
+                console.log(`Calculated ${passes.length} passes for satellite ${satellite.name} (${satellite.noradId})`);
+              }
 
               return {
                 ...satellite,
                 passes
               };
             } catch (error) {
-              console.error(`Failed to calculate passes for satellite ${satellite.noradId}:`, error);
+              console.error(`Failed to calculate passes for satellite ${satellite.name} (${satellite.noradId}):`, error);
               return {
                 ...satellite,
                 passes: []
@@ -323,17 +332,19 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
           location: loc
         });
 
-        // 詳細なデバッグ情報
-        console.log('All satellites with passes:', results.map(s => ({
-          name: s.name,
-          noradId: s.noradId,
-          passCount: s.passes.length,
-          passes: s.passes.map(p => ({
-            startTime: p.startTime,
-            endTime: p.endTime,
-            maxElevation: p.maxElevation
-          }))
-        })));
+        // 詳細なデバッグ情報（結果が0件の場合のみ出力）
+        if (results.filter(s => s.passes.length > 0).length === 0) {
+          console.log('All satellites with passes:', results.map(s => ({
+            name: s.name,
+            noradId: s.noradId,
+            passCount: s.passes.length,
+            passes: s.passes.map(p => ({
+              startTime: p.startTime,
+              endTime: p.endTime,
+              maxElevation: p.maxElevation
+            }))
+          })));
+        }
 
         // パスフィルタリングと並び替え
         const filteredResults = results
@@ -348,14 +359,17 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             const maxElevation = Math.max(...satellite.passes.map(p => p.maxElevation));
             const hasVisiblePasses = satellite.passes.some(pass => pass.maxElevation >= params.minElevation);
 
-            console.log('Satellite passes:', {
-              name: satellite.name,
-              noradId: satellite.noradId,
-              passCount: satellite.passes.length,
-              maxElevation,
-              hasVisiblePasses,
-              minElevation: params.minElevation
-            });
+            // ログ出力を削減（可視パスがない場合のみ出力）
+            if (!hasVisiblePasses) {
+              console.log('Satellite passes:', {
+                name: satellite.name,
+                noradId: satellite.noradId,
+                passCount: satellite.passes.length,
+                maxElevation,
+                hasVisiblePasses,
+                minElevation: params.minElevation
+              });
+            }
 
             // 可視パスがある場合のみ保持
             if (!hasVisiblePasses) {
