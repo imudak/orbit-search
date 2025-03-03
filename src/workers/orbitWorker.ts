@@ -184,6 +184,8 @@ function calculatePasses(
         azimuth,
         range: rangeSat,
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
+        lat: satelliteLat,
+        lng: satelliteLon
       };
 
       // 可視判定のデバッグ情報（仰角が閾値付近の場合のみ出力）

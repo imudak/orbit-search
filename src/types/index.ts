@@ -53,6 +53,8 @@ export interface PassPoint {
   elevation: number;
   range: number;
   isDaylight: boolean;
+  lat?: number; // 衛星の緯度
+  lng?: number; // 衛星の経度
 }
 
 // 軌道データの型

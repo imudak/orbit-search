@@ -1,13 +1,14 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Map from '@/components/Map';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
-import type { Location, SearchFilters, Satellite } from '@/types';
+import type { Location, SearchFilters, Satellite, OrbitPath, LatLng } from '@/types';
 import { useAppStore } from '@/store';
 import { tleService } from '@/services/tleService';
 import { searchSatellites } from '@/services/satelliteService';
+import { orbitService } from '@/services/orbitService';
 
 const Root = styled(Box)({
   height: '100vh',
@@ -33,6 +34,9 @@ const StyledPaper = styled(Paper)({
 });
 
 const App = () => {
+  // 軌道パスの状態
+  const [orbitPaths, setOrbitPaths] = useState<OrbitPath[]>([]);
+
   const {
     selectedLocation,
     searchFilters,
@@ -86,8 +90,54 @@ const App = () => {
   };
 
   // 衛星選択時のハンドラー
-  const handleSatelliteSelect = (satellite: Satellite) => {
+  const handleSatelliteSelect = async (satellite: Satellite) => {
     setSelectedSatellite(satellite);
+
+    // 選択された衛星の軌道データを計算
+    if (satellite && selectedLocation && searchFilters) {
+      try {
+        // 衛星の可視パスを計算
+        const passes = await orbitService.calculatePasses(
+          satellite.tle,
+          selectedLocation,
+          searchFilters
+        );
+
+        if (passes.length > 0) {
+          // 軌道パスのポイントを作成
+          const orbitPoints: LatLng[] = [];
+
+          // すべてのパスのポイントを結合
+          passes.forEach(pass => {
+            pass.points.forEach(point => {
+              if (point.lat !== undefined && point.lng !== undefined) {
+                orbitPoints.push({
+                  lat: point.lat,
+                  lng: point.lng
+                });
+              }
+            });
+          });
+
+          // 軌道パスを設定
+          setOrbitPaths([{
+            satelliteId: satellite.id,
+            points: orbitPoints,
+            timestamp: new Date().toISOString()
+          }]);
+
+          console.log(`Calculated orbit path with ${orbitPoints.length} points for satellite ${satellite.name}`);
+        } else {
+          console.log(`No visible passes found for satellite ${satellite.name}`);
+          setOrbitPaths([]);
+        }
+      } catch (error) {
+        console.error('Failed to calculate orbit path:', error);
+        setOrbitPaths([]);
+      }
+    } else {
+      setOrbitPaths([]);
+    }
   };
 
   // TLEデータのダウンロードハンドラー
@@ -140,13 +190,7 @@ const App = () => {
               <Map
                 center={selectedLocation}
                 onLocationSelect={handleLocationSelect}
-                orbitPaths={selectedSatellite ? [
-                  {
-                    satelliteId: selectedSatellite.id,
-                    points: [],
-                    timestamp: new Date().toISOString()
-                  }
-                ] : []}
+                orbitPaths={orbitPaths}
               />
               <SearchPanel
                 filters={searchFilters}
