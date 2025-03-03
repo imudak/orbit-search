@@ -135,7 +135,21 @@ function calculatePasses(
       // 衛星の地理座標を計算
       const satelliteGd = satellite.eciToGeodetic(positionEci, gmst);
       const satelliteLat = satellite.degreesLat(satelliteGd.latitude);
-      const satelliteLon = satellite.degreesLong(satelliteGd.longitude);
+      let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
+
+      // 前のポイントとの経度の連続性を保つ
+      if (orbitPoints.length > 0) {
+        const prevPoint = orbitPoints[orbitPoints.length - 1];
+        const prevLon = prevPoint.lng!; // ポイントが存在する場合、lngは必ず存在する
+        const diff = satelliteLon - prevLon;
+
+        // 経度の差が180度を超える場合、360度を加減して調整
+        if (diff > 180) {
+          satelliteLon -= 360;
+        } else if (diff < -180) {
+          satelliteLon += 360;
+        }
+      }
 
       // ポイントを追加
       orbitPoints.push({
