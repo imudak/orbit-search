@@ -84,46 +84,59 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
     if (!paths.length) return;
 
     // 軌道パスの描画
-    const lines = paths.map((path, index) => {
+    const lines = paths.flatMap((path, pathIndex) => {
       // 各セグメントのパスを作成
-      const lines: L.Polyline[] = [];
+      return path.segments.flatMap((segment, segmentIndex) => {
+        const lines: L.Polyline[] = [];
 
-      for (let i = 0; i < path.points.length - 1; i++) {
-        const elevation = path.elevations[i];
-        const segmentPoints = [
-          new LatLng(path.points[i].lat, path.points[i].lng),
-          new LatLng(path.points[i + 1].lat, path.points[i + 1].lng)
-        ];
+        // セグメント内の各ポイント間に線を引く
+        for (let i = 0; i < segment.points.length - 1; i++) {
+          const point1 = segment.points[i];
+          const point2 = segment.points[i + 1];
+          const effectiveAngle = segment.effectiveAngles[i];
 
-        // 仰角に基づいてスタイルを設定
-        const weight = elevation >= 60 ? 4 : // 高仰角（60度以上）
-                      elevation >= 30 ? 3 : // 中仰角（30-60度）
-                      2; // 低仰角（30度未満）
-        const opacity = elevation >= 60 ? 1.0 : // 高仰角
-                       elevation >= 30 ? 0.8 : // 中仰角
-                       0.4; // 低仰角
+          // セグメントのポイントを作成
+          const segmentPoints = [
+            new LatLng(point1.lat, point1.lng),
+            new LatLng(point2.lat, point2.lng)
+          ];
 
-        // セグメントのパスを作成
-        const line = L.polyline(segmentPoints, {
-          color: getPathColor(index),
-          weight,
-          opacity,
-          bubblingMouseEvents: true,
-        }).addTo(map);
+          // 実効的な角度に基づいてスタイルを設定
+          const weight = effectiveAngle >= 60 ? 4 : // 高角度（60度以上）
+                        effectiveAngle >= 30 ? 3 : // 中角度（30-60度）
+                        2; // 低角度（30度未満）
+          const opacity = effectiveAngle >= 60 ? 1.0 : // 高角度
+                         effectiveAngle >= 30 ? 0.8 : // 中角度
+                         0.4; // 低角度
 
-        // マウスオーバー時に仰角を表示
-        line.bindTooltip(`仰角: ${elevation.toFixed(1)}°`);
-        lines.push(line);
-      }
+          // ラインを作成
+          const line = L.polyline(segmentPoints, {
+            color: getPathColor(pathIndex),
+            weight,
+            opacity,
+            bubblingMouseEvents: true,
+          }).addTo(map);
 
-      return lines;
+          // マウスオーバー時に実効的な角度を表示
+          line.bindTooltip(
+            `実効的な角度: ${effectiveAngle.toFixed(1)}°`
+          );
+          lines.push(line);
+        }
+
+        return lines;
+      });
     });
 
-    // すべてのパスが表示されるようにビューを調整
-    if (paths.length > 0 && paths[0].points.length > 0) {
-      const allPoints = paths.flatMap(path => path.points);
-      const bounds = L.latLngBounds(allPoints.map(p => new LatLng(p.lat, p.lng)));
-      map.fitBounds(bounds, { padding: [50, 50] });
+    // すべてのセグメントのポイントを取得してビューを調整
+    if (paths.length > 0) {
+      const allPoints = paths.flatMap(path =>
+        path.segments.flatMap(segment => segment.points)
+      );
+      if (allPoints.length > 0) {
+        const bounds = L.latLngBounds(allPoints.map(p => new LatLng(p.lat, p.lng)));
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
     }
 
     // 配列が入れ子になっているので、平坦化して一つの配列にする
