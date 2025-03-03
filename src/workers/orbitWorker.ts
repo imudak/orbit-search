@@ -6,6 +6,7 @@ const ctx: Worker = self as any;
 
 interface CalculatePassesMessage {
   type: 'calculatePasses';
+  requestId: number; // リクエストID
   tle: TLEData;
   location: Location;
   filters: SearchFilters;
@@ -15,8 +16,8 @@ interface CalculatePassesMessage {
 ctx.addEventListener('message', (event: MessageEvent<CalculatePassesMessage>) => {
   if (event.data.type === 'calculatePasses') {
     try {
-      const { tle, location, filters } = event.data;
-      console.log('Processing TLE:', {
+      const { tle, location, filters, requestId } = event.data;
+      console.log(`Processing TLE (requestId: ${requestId}):`, {
         line1: tle.line1,
         line2: tle.line2,
         location,
@@ -25,22 +26,27 @@ ctx.addEventListener('message', (event: MessageEvent<CalculatePassesMessage>) =>
 
       // TLEデータの検証
       if (!validateTLE(tle)) {
-        console.error('TLE validation failed:', { tle });
+        console.error(`TLE validation failed (requestId: ${requestId}):`, { tle });
         throw new Error('Invalid TLE data format');
       }
 
       const passes = calculatePasses(tle, location, filters);
-      console.log('Calculated passes:', {
+      console.log(`Calculated passes (requestId: ${requestId}):`, {
         count: passes.length,
         firstPass: passes[0] || null,
         filters
       });
 
-      ctx.postMessage({ type: 'passes', data: passes });
+      // リクエストIDを含めてレスポンスを返す
+      ctx.postMessage({ type: 'passes', requestId, data: passes });
     } catch (error) {
       console.error('Orbit calculation error:', error);
-      // エラー時は空のパス配列を返す
-      ctx.postMessage({ type: 'passes', data: [] });
+      // エラー時は空のパス配列を返す（リクエストIDも含める）
+      ctx.postMessage({
+        type: 'passes',
+        requestId: event.data.requestId,
+        data: []
+      });
     }
   }
 });

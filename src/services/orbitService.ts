@@ -31,6 +31,11 @@ class OrbitService {
     }
   }
 
+  // リクエストIDのカウンター
+  private requestCounter = 0;
+  // リクエストIDとそのハンドラーのマップ
+  private requestHandlers = new Map<number, { resolve: (data: Pass[]) => void, reject: (error: any) => void }>();
+
   /**
    * 衛星の可視パスを計算
    */
@@ -49,34 +54,61 @@ class OrbitService {
       throw new Error('Orbit worker is not initialized');
     }
 
-    return new Promise((resolve, reject) => {
-      if (!this.worker) {
-        reject(new Error('Orbit worker is not initialized'));
-        return;
-      }
+    // グローバルメッセージハンドラーが設定されていなければ設定
+    if (!this.isGlobalHandlerSet) {
+      this.setupGlobalHandlers();
+    }
 
-      const messageHandler = (event: MessageEvent) => {
-        if (event.data.type === 'passes') {
-          this.worker?.removeEventListener('message', messageHandler);
-          resolve(event.data.data);
-        }
-      };
+    return new Promise<Pass[]>((resolve, reject) => {
+      // リクエストIDを生成
+      const requestId = this.requestCounter++;
 
-      const errorHandler = (error: ErrorEvent) => {
-        this.worker?.removeEventListener('error', errorHandler);
-        reject(error);
-      };
+      // リクエストハンドラーを保存
+      this.requestHandlers.set(requestId, { resolve, reject });
 
-      this.worker.addEventListener('message', messageHandler);
-      this.worker.addEventListener('error', errorHandler);
-
-      this.worker.postMessage({
+      // リクエストを送信
+      this.worker!.postMessage({
         type: 'calculatePasses',
+        requestId,
         tle,
         location,
         filters,
       });
     });
+  }
+
+  // グローバルハンドラーが設定済みかどうか
+  private isGlobalHandlerSet = false;
+
+  // グローバルメッセージハンドラーを設定
+  private setupGlobalHandlers() {
+    if (!this.worker) return;
+
+    // メッセージハンドラー
+    this.worker.addEventListener('message', (event: MessageEvent) => {
+      if (event.data.type === 'passes' && typeof event.data.requestId === 'number') {
+        const requestId = event.data.requestId;
+        const handler = this.requestHandlers.get(requestId);
+
+        if (handler) {
+          // ハンドラーを実行して削除
+          handler.resolve(event.data.data);
+          this.requestHandlers.delete(requestId);
+        }
+      }
+    });
+
+    // エラーハンドラー
+    this.worker.addEventListener('error', (error: ErrorEvent) => {
+      console.error('Worker error:', error);
+      // すべてのリクエストを拒否
+      for (const [requestId, handler] of this.requestHandlers.entries()) {
+        handler.reject(error);
+        this.requestHandlers.delete(requestId);
+      }
+    });
+
+    this.isGlobalHandlerSet = true;
   }
 
   /**
