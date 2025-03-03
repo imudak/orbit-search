@@ -27,9 +27,7 @@ describe('tleService Integration Tests', () => {
   describe('TLEデータの取得と検証', () => {
     it('CelesTrakプロキシから実際のデータを取得できる', async () => {
       // APIリクエストの実行
-      console.log('Fetching TLE data for ISS...');
       const result = await tleService.getTLE(TEST_NORAD_ID);
-      console.log('Received TLE data:', result);
 
       // レスポンスの構造を検証
       expect(result).toHaveProperty('line1');
@@ -90,23 +88,15 @@ describe('tleService Integration Tests', () => {
           timeSinceStartMsec: requestEndMsec - startTimeMsec
         });
 
-        console.log(`Request ${i + 1}/${requestCount} completed in ${requestEndMsec - requestStartMsec}ms`);
       }
 
       const endTimeMsec = Date.now();
       const totalTimeMsec = endTimeMsec - startTimeMsec;
 
-      console.log('Request timings:', timings);
-      console.log(`All requests completed in ${totalTimeMsec}ms`);
-
       // すべてのリクエストが成功していることを確認
-      results.forEach((result, index) => {
+      results.forEach((result) => {
         expect(result).toHaveProperty('line1');
         expect(result).toHaveProperty('line2');
-        console.log(`Request ${index + 1} succeeded:`, {
-          hasLine1: !!result.line1,
-          hasLine2: !!result.line2
-        });
       });
 
       // レート制限による遅延を確認

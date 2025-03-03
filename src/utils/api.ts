@@ -43,7 +43,6 @@ class RateLimiter {
 
         // インターバルが経過していれば、カウントをリセット
         if (elapsedMsec >= API_CONFIG.RATE_LIMIT.INTERVAL_MSEC) {
-          console.log(`Rate limit: Resetting count after ${elapsedMsec}ms`);
           this.requestCount = 0;
           this.lastRequestTimeMsec = nowMsec;
         }
@@ -51,7 +50,6 @@ class RateLimiter {
         // 最小待機時間を確保
         const minDelayMsec = Math.max(0, API_CONFIG.RATE_LIMIT.MIN_DELAY_MSEC - elapsedMsec);
         if (minDelayMsec > 0) {
-          console.log(`Rate limit: Enforcing minimum delay of ${minDelayMsec}ms`);
           await new Promise(wait => setTimeout(wait, minDelayMsec));
         }
 
@@ -59,7 +57,6 @@ class RateLimiter {
         if (this.requestCount >= API_CONFIG.RATE_LIMIT.REQUESTS_PER_SEC) {
           const waitMsec = API_CONFIG.RATE_LIMIT.INTERVAL_MSEC - (Date.now() - this.lastRequestTimeMsec);
           if (waitMsec > 0) {
-            console.log(`Rate limit: Waiting ${waitMsec}ms for next interval`);
             await new Promise(wait => setTimeout(wait, waitMsec));
           }
           this.requestCount = 0;
@@ -68,7 +65,6 @@ class RateLimiter {
 
         this.requestCount++;
         this.lastRequestTimeMsec = Date.now();
-        console.log(`Rate limit: Request ${this.requestCount} at ${this.lastRequestTimeMsec}`);
         resolve();
       });
     });
@@ -92,17 +88,10 @@ const celestrakApi = axios.create({
 // リクエストインターセプター
 celestrakApi.interceptors.request.use(
   async (config: any) => {
-    const startTimeMsec = Date.now();
     await rateLimiter.waitForNextSlot();
-    const waitTimeMsec = Date.now() - startTimeMsec;
-
-    console.log(`Rate limiting: waited ${waitTimeMsec}ms before sending request`);
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`,
-      config.params ? `with params: ${JSON.stringify(config.params)}` : '');
     return config;
   },
   (error: any) => {
-    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -110,12 +99,9 @@ celestrakApi.interceptors.request.use(
 // レスポンスインターセプター
 celestrakApi.interceptors.response.use(
   (response: any) => {
-    console.log(`API Response: ${response.status} ${response.config.url}`);
     return response;
   },
   async (error: any) => {
-    console.error('API Error:', error);
-
     if (error.config) {
       const retryCount = error.config.retryCount || 0;
 
@@ -124,8 +110,6 @@ celestrakApi.interceptors.response.use(
       )) {
         error.config.retryCount = retryCount + 1;
         const delayMsec = API_CONFIG.RETRY.DELAY_MSEC * Math.pow(2, retryCount);
-
-        console.log(`Retrying request (${error.config.retryCount}/${API_CONFIG.RETRY.MAX_RETRIES}) after ${delayMsec}ms...`);
         await new Promise(resolve => setTimeout(resolve, delayMsec));
 
         return celestrakApi(error.config);

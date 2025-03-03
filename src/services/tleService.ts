@@ -2,6 +2,7 @@ import type { TLEData } from '@/types';
 import { celestrakApi } from '@/utils/api';
 import { cacheService } from './cacheService';
 import { mockDebugData } from '../__tests__/mocks/tleService.mock';
+import { tleParserService } from './tleParserService';
 
 let lastTleCallTimestamp = 0;
 const rateLimitDelay = async (): Promise<void> => {
@@ -18,7 +19,7 @@ const rateLimitDelay = async (): Promise<void> => {
 interface CelesTrakResponse {
   OBJECT_NAME: string;
   OBJECT_ID: string;
-  NORAD_CAT_ID: number;
+  NORAD_CAT_ID: string; // 文字列型に変更
   EPOCH: string;
   MEAN_MOTION: number;
   ECCENTRICITY: number;
@@ -33,55 +34,76 @@ interface CelesTrakResponse {
   BSTAR: number;
   MEAN_MOTION_DOT: number;
   MEAN_MOTION_DDOT: number;
+  TLE_LINE1?: string; // TLEデータの行1（オプショナル）
+  TLE_LINE2?: string; // TLEデータの行2（オプショナル）
 }
 
 /**
  * CelesTrakのレスポンスからTLE形式に変換
  */
 function convertToTLE(data: CelesTrakResponse): TLEData {
-  // TLE形式のチェックサム計算
-  const calculateChecksum = (line: string): number => {
-    return line
-      .slice(0, -1)
-      .split('')
-      .reduce((sum, char) => {
-        if (char === '-') return sum + 1;
-        if (char >= '0' && char <= '9') return sum + parseInt(char);
-        return sum;
-      }, 0) % 10;
-  };
+  try {
+    // APIレスポンスにTLE_LINE1とTLE_LINE2が含まれている場合
+    if ('TLE_LINE1' in data && 'TLE_LINE2' in data && data.TLE_LINE1 && data.TLE_LINE2) {
+      const line1 = data.TLE_LINE1;
+      const line2 = data.TLE_LINE2;
 
-  // EPOCHの変換（YYDDD.DDDDDDDD形式）
-  const epochDate = new Date(data.EPOCH);
-  const year = epochDate.getUTCFullYear().toString().slice(-2);
-  const startOfYear = new Date(Date.UTC(epochDate.getUTCFullYear(), 0, 1));
-  const dayOfYear = Math.floor((epochDate.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-  const fractionalDay = (epochDate.getUTCHours() * 3600 + epochDate.getUTCMinutes() * 60 + epochDate.getUTCSeconds()) / (24 * 3600);
-  const epoch = `${year}${dayOfYear.toString().padStart(3, '0')}.${Math.floor(fractionalDay * 100000000).toString().padStart(8, '0')}`;
+      const result: TLEData = {
+        line1,
+        line2,
+        timestamp: new Date().toISOString()
+      };
 
-  // 1行目の生成
-  const line1 = `1 ${data.NORAD_CAT_ID.toString().padStart(5, '0')}${data.CLASSIFICATION_TYPE} ${
-    data.OBJECT_ID.padEnd(8, ' ')
-  }${epoch} ${data.MEAN_MOTION_DOT.toFixed(8)} ${data.MEAN_MOTION_DDOT.toExponential(5)} ${
-    data.BSTAR.toExponential(5)
-  } 0 ${data.ELEMENT_SET_NO}`;
+      // バリデーション
+      if (!tleParserService.isValidTLE(line1, line2)) {
+        console.warn('TLE data from API failed validation');
+        throw new Error('TLE data from API failed validation');
+      }
 
-  // 2行目の生成
-  const line2 = `2 ${data.NORAD_CAT_ID.toString().padStart(5, '0')} ${data.INCLINATION.toFixed(4)} ${
-    data.RA_OF_ASC_NODE.toFixed(4)
-  } ${data.ECCENTRICITY.toString().replace('0.', '')} ${data.ARG_OF_PERICENTER.toFixed(4)} ${
-    data.MEAN_ANOMALY.toFixed(4)
-  } ${data.MEAN_MOTION.toFixed(8)}${data.REV_AT_EPOCH.toString().padStart(5, '0')}`;
+      return result;
+    }
 
-  // チェックサムの追加
-  const line1WithChecksum = `${line1}${calculateChecksum(line1)}`;
-  const line2WithChecksum = `${line2}${calculateChecksum(line2)}`;
+    // APIレスポンスにTLE_LINE1とTLE_LINE2が含まれていない場合は、
+    // 軌道要素からTLEデータを生成する
 
-  return {
-    line1: line1WithChecksum,
-    line2: line2WithChecksum,
-    timestamp: new Date().toISOString()
-  };
+    // GPDataItem形式に変換してtleParserServiceを利用
+    const gpDataItem = {
+      NORAD_CAT_ID: data.NORAD_CAT_ID,
+      OBJECT_ID: data.OBJECT_ID,
+      OBJECT_NAME: data.OBJECT_NAME,
+      EPOCH: data.EPOCH,
+      MEAN_MOTION: data.MEAN_MOTION,
+      ECCENTRICITY: data.ECCENTRICITY,
+      INCLINATION: data.INCLINATION,
+      RA_OF_ASC_NODE: data.RA_OF_ASC_NODE,
+      ARG_OF_PERICENTER: data.ARG_OF_PERICENTER,
+      MEAN_ANOMALY: data.MEAN_ANOMALY,
+      MEAN_MOTION_DOT: data.MEAN_MOTION_DOT,
+      MEAN_MOTION_DDOT: data.MEAN_MOTION_DDOT,
+      BSTAR: data.BSTAR,
+      ELEMENT_SET_NO: data.ELEMENT_SET_NO
+    };
+
+    // tleParserServiceを使用してTLEデータを生成
+    const tleLines = tleParserService.generateTLEFromJSON(gpDataItem);
+
+    // バリデーション
+    if (!tleParserService.isValidTLE(tleLines.TLE_LINE1, tleLines.TLE_LINE2)) {
+      console.warn('Generated TLE data failed validation');
+      throw new Error('Generated TLE data failed validation');
+    }
+
+    const result = {
+      line1: tleLines.TLE_LINE1,
+      line2: tleLines.TLE_LINE2,
+      timestamp: new Date().toISOString()
+    };
+
+    return result;
+  } catch (error) {
+    console.error('Failed to convert CelesTrak response to TLE');
+    throw new Error(`TLE conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /**
@@ -111,6 +133,7 @@ export const tleService = {
       if (bypassCache) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
+
       // CelesTrak APIからデータを取得
       const response = await celestrakApi.get<CelesTrakResponse[]>('', {
         params: {
@@ -121,30 +144,25 @@ export const tleService = {
 
       // レスポンスデータをチェック
       if (!response.data || response.data.length === 0) {
-        throw new Error('No satellite data received from API');
+        console.error(`No satellite data received from API for NORAD ID: ${noradId}`);
+        throw new Error(`No satellite data received from API for NORAD ID: ${noradId}`);
       }
 
       const satellite = response.data[0];
       if (!satellite.OBJECT_ID || !satellite.EPOCH) {
-        throw new Error('Invalid satellite data received from API');
+        console.error(`Invalid satellite data received from API for NORAD ID: ${noradId}`, satellite);
+        throw new Error(`Invalid satellite data received from API for NORAD ID: ${noradId}`);
       }
 
       // TLEデータに変換
       const tleData = convertToTLE(satellite);
-
-      // デバッグ情報を出力
-      console.debug('Generated TLE data:', {
-        OBJECT_NAME: satellite.OBJECT_NAME,
-        NORAD_CAT_ID: satellite.NORAD_CAT_ID,
-        data: tleData
-      });
 
       // データをキャッシュに保存（24時間）
       await cacheService.cacheTLE(noradId, tleData);
 
       return tleData;
     } catch (error) {
-      console.error('Failed to get TLE data:', error);
+      console.error(`Failed to get TLE data for NORAD ID: ${noradId}:`, error);
 
       // モックデータをフォールバックとして使用（開発用）
       if (process.env.VITE_DEBUG === 'true') {
