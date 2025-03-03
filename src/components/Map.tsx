@@ -56,6 +56,26 @@ const MapClickHandler: React.FC<{ onLocationSelect: (location: Location) => void
   return null;
 };
 
+// 軌道パスの色を生成する関数
+const getPathColor = (index: number): string => {
+  // 複数のパスを異なる色で表示するための色の配列
+  const colors = [
+    '#FF4081', // ピンク
+    '#2196F3', // 青
+    '#4CAF50', // 緑
+    '#FFC107', // 黄色
+    '#9C27B0', // 紫
+    '#FF5722', // オレンジ
+    '#607D8B', // 青灰色
+    '#E91E63', // 赤紫
+    '#3F51B5', // インディゴ
+    '#009688', // ティール
+  ];
+
+  // インデックスを色の配列の長さで割った余りを使用して色を選択
+  return colors[index % colors.length];
+};
+
 // 軌道表示レイヤー
 const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
   const map = useMap();
@@ -64,14 +84,25 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
     if (!paths.length) return;
 
     // 軌道パスの描画
-    const lines = paths.map(path => {
+    const lines = paths.map((path, index) => {
       const latLngs = path.points.map(point => new LatLng(point.lat, point.lng));
+
+      // 各パスに異なる色を設定
       return L.polyline(latLngs, {
-        color: '#FF4081',
-        weight: 2,
-        opacity: 0.7,
-      }).addTo(map);
+        color: getPathColor(index),
+        weight: 3,
+        opacity: 0.8,
+        // パスの情報をポップアップで表示
+        bubblingMouseEvents: true,
+      }).addTo(map).bindPopup(`パス ${index + 1}`);
     });
+
+    // すべてのパスが表示されるようにビューを調整
+    if (paths.length > 0 && paths[0].points.length > 0) {
+      const allPoints = paths.flatMap(path => path.points);
+      const bounds = L.latLngBounds(allPoints.map(p => new LatLng(p.lat, p.lng)));
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
 
     return () => {
       // クリーンアップ時に軌道パスを削除

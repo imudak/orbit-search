@@ -104,29 +104,27 @@ const App = () => {
         );
 
         if (passes.length > 0) {
-          // 軌道パスのポイントを作成
-          const orbitPoints: LatLng[] = [];
+          // 各パスを個別の軌道として扱う
+          const newOrbitPaths: OrbitPath[] = passes.map((pass, index) => {
+            // パスのポイントから緯度経度のみを抽出
+            const pathPoints: LatLng[] = pass.points
+              .filter(point => point.lat !== undefined && point.lng !== undefined)
+              .map(point => ({
+                lat: point.lat!,
+                lng: point.lng!
+              }));
 
-          // すべてのパスのポイントを結合
-          passes.forEach(pass => {
-            pass.points.forEach(point => {
-              if (point.lat !== undefined && point.lng !== undefined) {
-                orbitPoints.push({
-                  lat: point.lat,
-                  lng: point.lng
-                });
-              }
-            });
+            return {
+              satelliteId: `${satellite.id}_pass_${index}`,
+              points: pathPoints,
+              timestamp: new Date().toISOString()
+            };
           });
 
           // 軌道パスを設定
-          setOrbitPaths([{
-            satelliteId: satellite.id,
-            points: orbitPoints,
-            timestamp: new Date().toISOString()
-          }]);
+          setOrbitPaths(newOrbitPaths);
 
-          console.log(`Calculated orbit path with ${orbitPoints.length} points for satellite ${satellite.name}`);
+          console.log(`Calculated ${newOrbitPaths.length} orbit paths for satellite ${satellite.name}`);
         } else {
           console.log(`No visible passes found for satellite ${satellite.name}`);
           setOrbitPaths([]);
