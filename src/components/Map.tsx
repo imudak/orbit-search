@@ -85,25 +85,38 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
 
     // 軌道パスの描画
     const lines = paths.map((path, index) => {
-      const latLngs = path.points.map(point => new LatLng(point.lat, point.lng));
+      // 各セグメントのパスを作成
+      const lines: L.Polyline[] = [];
 
-      // 最大仰角に基づいてスタイルを設定
-      const maxElevation = path.maxElevation;
-      const weight = maxElevation >= 60 ? 4 : // 高仰角（60度以上）
-                    maxElevation >= 30 ? 3 : // 中仰角（30-60度）
-                    2; // 低仰角（30度未満）
-      const opacity = maxElevation >= 60 ? 1.0 : // 高仰角
-                     maxElevation >= 30 ? 0.8 : // 中仰角
-                     0.4; // 低仰角
+      for (let i = 0; i < path.points.length - 1; i++) {
+        const elevation = path.elevations[i];
+        const segmentPoints = [
+          new LatLng(path.points[i].lat, path.points[i].lng),
+          new LatLng(path.points[i + 1].lat, path.points[i + 1].lng)
+        ];
 
-      // 各パスに色と太さ、不透明度を設定
-      return L.polyline(latLngs, {
-        color: getPathColor(index),
-        weight,
-        opacity,
-        // パスの情報をポップアップで表示
-        bubblingMouseEvents: true,
-      }).addTo(map).bindPopup(`パス ${index + 1} (最大仰角: ${maxElevation.toFixed(1)}°)`);
+        // 仰角に基づいてスタイルを設定
+        const weight = elevation >= 60 ? 4 : // 高仰角（60度以上）
+                      elevation >= 30 ? 3 : // 中仰角（30-60度）
+                      2; // 低仰角（30度未満）
+        const opacity = elevation >= 60 ? 1.0 : // 高仰角
+                       elevation >= 30 ? 0.8 : // 中仰角
+                       0.4; // 低仰角
+
+        // セグメントのパスを作成
+        const line = L.polyline(segmentPoints, {
+          color: getPathColor(index),
+          weight,
+          opacity,
+          bubblingMouseEvents: true,
+        }).addTo(map);
+
+        // マウスオーバー時に仰角を表示
+        line.bindTooltip(`仰角: ${elevation.toFixed(1)}°`);
+        lines.push(line);
+      }
+
+      return lines;
     });
 
     // すべてのパスが表示されるようにビューを調整
@@ -113,9 +126,12 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
       map.fitBounds(bounds, { padding: [50, 50] });
     }
 
+    // 配列が入れ子になっているので、平坦化して一つの配列にする
+    const allLines = lines.flat();
+
     return () => {
       // クリーンアップ時に軌道パスを削除
-      lines.forEach(line => line.remove());
+      allLines.forEach(line => line.remove());
     };
   }, [paths, map]);
 

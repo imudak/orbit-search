@@ -61,6 +61,7 @@ export interface PassPoint {
 export interface OrbitPath {
   satelliteId: string;
   points: LatLng[];
+  elevations: number[]; // 各ポイントの仰角
   timestamp: string;
   maxElevation: number; // パスの最大仰角
 }

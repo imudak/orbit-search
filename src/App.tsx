@@ -104,26 +104,35 @@ const App = () => {
         );
 
         if (passes.length > 0) {
-          // 各パスを個別の軌道として扱う
-          const newOrbitPaths: OrbitPath[] = passes.map((pass, index) => {
-            // パスのポイントから緯度経度のみを抽出
-            const pathPoints: LatLng[] = pass.points
+          // すべてのパスのポイントを時系列順に結合
+          const allPoints: Array<{
+            point: LatLng;
+            elevation: number;
+            time: Date;
+          }> = passes.flatMap(pass =>
+            pass.points
               .filter(point => point.lat !== undefined && point.lng !== undefined)
               .map(point => ({
-                lat: point.lat!,
-                lng: point.lng!
-              }));
+                point: {
+                  lat: point.lat!,
+                  lng: point.lng!
+                },
+                elevation: point.elevation,
+                time: point.time
+              }))
+          );
 
-            return {
-              satelliteId: `${satellite.id}_pass_${index}`,
-              points: pathPoints,
-              timestamp: new Date().toISOString(),
-              maxElevation: pass.maxElevation
-            };
-          });
+          // 時系列順にソート
+          allPoints.sort((a, b) => a.time.getTime() - b.time.getTime());
 
-          // 最大仰角でソートして、高仰角のパスが上に表示されるようにする
-          newOrbitPaths.sort((a, b) => a.maxElevation - b.maxElevation);
+          // 一つの軌道パスとして設定
+          const newOrbitPaths: OrbitPath[] = [{
+            satelliteId: satellite.id,
+            points: allPoints.map(p => p.point),
+            elevations: allPoints.map(p => p.elevation),
+            timestamp: new Date().toISOString(),
+            maxElevation: Math.max(...passes.map(p => p.maxElevation))
+          }];
 
           // 軌道パスを設定
           setOrbitPaths(newOrbitPaths);
