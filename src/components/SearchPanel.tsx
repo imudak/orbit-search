@@ -78,12 +78,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
     setSliderValue(value as number);
   };
 
-  const handleDaylightChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onFiltersChange({
-      ...filters,
-      considerDaylight: event.target.checked,
-    });
-  };
+  // 昼夜の考慮は削除
 
   return (
     <Card variant="outlined">
@@ -139,27 +134,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
             />
           </Box>
 
-          {/* 昼夜の考慮 */}
-          <FormControl component="fieldset">
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={filters.considerDaylight ?? false}
-                  onChange={handleDaylightChange}
-                />
-              }
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  昼夜を考慮する
-                  <Tooltip title="チェックすると、衛星が太陽光を反射して見える時間帯（夜間）のパスのみを表示します。">
-                    <IconButton size="small" sx={{ ml: 1 }}>
-                      <HelpOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              }
-            />
-          </FormControl>
+          {/* 昼夜の考慮は削除 */}
 
           {/* 現在の観測地点情報 */}
           {filters.location && (
