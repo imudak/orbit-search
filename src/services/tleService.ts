@@ -161,11 +161,36 @@ export const tleService = {
       await cacheService.cacheTLE(noradId, tleData);
 
       return tleData;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to get TLE data for NORAD ID: ${noradId}:`, error);
+
+      // エラーの詳細を出力
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+
+      // Axiosエラーの場合は詳細を出力
+      if (error && error.response && error.config) {
+        console.error('Axios error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            params: error.config?.params,
+            baseURL: error.config?.baseURL
+          }
+        });
+      }
 
       // モックデータをフォールバックとして使用（開発用）
       if (process.env.VITE_DEBUG === 'true') {
+        console.warn(`Using mock data for NORAD ID: ${noradId} due to API error`);
         const mockResponse = mockDebugData[noradId];
         if (mockResponse) {
           return mockResponse;

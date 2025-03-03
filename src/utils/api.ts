@@ -1,5 +1,31 @@
 import axios from 'axios';
 
+// 環境変数からAPIのURLを取得
+// デフォルトのAPIエンドポイント
+const DEFAULT_API_URL = 'https://celestrak-proxy.imudak.workers.dev';
+
+// 環境変数の取得を試みる
+let CELESTRAK_API_BASE_URL = DEFAULT_API_URL;
+
+// ブラウザ環境（Vite）
+try {
+  // @ts-ignore - import.meta.envはTypeScriptの型定義に含まれていない場合がある
+  if (typeof window !== 'undefined' && window.__VITE_ENV__ && window.__VITE_ENV__.VITE_CELESTRAK_API_BASE_URL) {
+    // @ts-ignore
+    CELESTRAK_API_BASE_URL = window.__VITE_ENV__.VITE_CELESTRAK_API_BASE_URL;
+  }
+} catch (e) {
+  // ブラウザ環境でない場合は無視
+}
+
+// Node.js環境（Jest）
+if (typeof process !== 'undefined' && process.env && process.env.VITE_CELESTRAK_API_BASE_URL) {
+  CELESTRAK_API_BASE_URL = process.env.VITE_CELESTRAK_API_BASE_URL;
+}
+
+// baseURLはAPIのベースURLのみを設定し、エンドポイントは各リクエストで指定する
+const CELESTRAK_API_ENDPOINT = CELESTRAK_API_BASE_URL;
+
 // API設定
 const API_CONFIG = {
   TIMEOUT: {
@@ -12,7 +38,7 @@ const API_CONFIG = {
     METHODS: ['get'] as const
   },
   CELESTRAK: {
-    BASE_URL: 'https://celestrak-proxy.imudak.workers.dev/NORAD/elements/gp.php',
+    BASE_URL: CELESTRAK_API_ENDPOINT,
     DEFAULT_FORMAT: 'json'
   },
   RATE_LIMIT: {
@@ -21,6 +47,8 @@ const API_CONFIG = {
     MIN_DELAY_MSEC: 500       // リクエスト間の最小待機時間（ミリ秒単位、0.5秒）
   }
 } as const;
+
+console.log('Using CelesTrak API URL:', API_CONFIG.CELESTRAK.BASE_URL);
 
 // レート制限の状態管理
 class RateLimiter {
