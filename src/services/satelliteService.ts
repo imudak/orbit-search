@@ -323,18 +323,46 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
           location: loc
         });
 
+        // 詳細なデバッグ情報
+        console.log('All satellites with passes:', results.map(s => ({
+          name: s.name,
+          noradId: s.noradId,
+          passCount: s.passes.length,
+          passes: s.passes.map(p => ({
+            startTime: p.startTime,
+            endTime: p.endTime,
+            maxElevation: p.maxElevation
+          }))
+        })));
+
         // パスフィルタリングと並び替え
         const filteredResults = results
           .filter(satellite => {
-            const hasPasses = satellite.passes.length > 0;
+            // パスがある場合のみ処理
+            if (satellite.passes.length === 0) {
+              console.log(`Satellite ${satellite.name} (${satellite.noradId}) has no passes`);
+              return false;
+            }
+
+            // 最大仰角を計算
+            const maxElevation = Math.max(...satellite.passes.map(p => p.maxElevation));
             const hasVisiblePasses = satellite.passes.some(pass => pass.maxElevation >= params.minElevation);
+
             console.log('Satellite passes:', {
               name: satellite.name,
               noradId: satellite.noradId,
               passCount: satellite.passes.length,
-              maxElevation: Math.max(...satellite.passes.map(p => p.maxElevation))
+              maxElevation,
+              hasVisiblePasses,
+              minElevation: params.minElevation
             });
-            return hasPasses && hasVisiblePasses;
+
+            // 可視パスがある場合のみ保持
+            if (!hasVisiblePasses) {
+              console.log(`Satellite ${satellite.name} (${satellite.noradId}) has no visible passes (max elevation: ${maxElevation}, min required: ${params.minElevation})`);
+            }
+
+            return hasVisiblePasses;
           })
           .sort((a, b) => {
             const maxElevA = Math.max(...a.passes.map(p => p.maxElevation));
