@@ -64,35 +64,69 @@ const getCachedSatellite = async (noradId: string): Promise<Satellite | null> =>
  * CelesTrakのGPデータを内部の衛星型に変換してキャッシュ
  */
 const convertGPDataToSatellite = async (gpData: CelesTrakGPData): Promise<Satellite | null> => {
-  if (!tleParserService.isValidTLE(gpData.TLE_LINE1, gpData.TLE_LINE2)) {
-    console.warn(`Invalid TLE data for satellite ${gpData.NORAD_CAT_ID}`);
+  try {
+    console.log(`Converting GP data to satellite for NORAD ID: ${gpData.NORAD_CAT_ID}`);
+
+    if (!tleParserService.isValidTLE(gpData.TLE_LINE1, gpData.TLE_LINE2)) {
+      console.warn(`Invalid TLE data for satellite ${gpData.NORAD_CAT_ID}:`, {
+        line1: gpData.TLE_LINE1,
+        line2: gpData.TLE_LINE2
+      });
+      return null;
+    }
+
+    const tle = {
+      line1: gpData.TLE_LINE1,
+      line2: gpData.TLE_LINE2,
+      timestamp: new Date().toISOString()
+    };
+
+    // TLEデータをキャッシュ
+    console.log(`Caching TLE data for NORAD ID: ${gpData.NORAD_CAT_ID}`);
+    await cacheService.cacheTLE(gpData.NORAD_CAT_ID, tle);
+
+    const satellite = {
+      id: gpData.OBJECT_ID,
+      name: gpData.OBJECT_NAME,
+      noradId: gpData.NORAD_CAT_ID,
+      type: gpData.OBJECT_TYPE,
+      operationalStatus: gpData.OPERATIONAL_STATUS,
+      tle
+    };
+
+    console.log(`Successfully converted GP data to satellite:`, {
+      name: satellite.name,
+      noradId: satellite.noradId
+    });
+
+    return satellite;
+  } catch (error) {
+    console.error(`Failed to convert GP data to satellite for NORAD ID: ${gpData.NORAD_CAT_ID}:`, error);
     return null;
   }
-
-  const tle = {
-    line1: gpData.TLE_LINE1,
-    line2: gpData.TLE_LINE2,
-    timestamp: new Date().toISOString()
-  };
-
-  // TLEデータをキャッシュ
-  await cacheService.cacheTLE(gpData.NORAD_CAT_ID, tle);
-
-  return {
-    id: gpData.OBJECT_ID,
-    name: gpData.OBJECT_NAME,
-    noradId: gpData.NORAD_CAT_ID,
-    type: gpData.OBJECT_TYPE,
-    operationalStatus: gpData.OPERATIONAL_STATUS,
-    tle
-  };
 };
 
 /**
  * オフラインモードかどうかを判定
  */
 const isOfflineMode = (): boolean => {
-  return import.meta.env.VITE_USE_MOCK_DATA === 'true' || import.meta.env.VITE_OFFLINE_MODE === 'true';
+  // テスト環境ではNode.jsのprocess.envを使用し、ブラウザ環境ではimport.meta.envを使用
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env.VITE_USE_MOCK_DATA === 'true' || process.env.VITE_OFFLINE_MODE === 'true';
+  }
+
+  // ブラウザ環境
+  try {
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.__VITE_ENV__) {
+      // @ts-ignore
+      return window.__VITE_ENV__.VITE_USE_MOCK_DATA === 'true' || window.__VITE_ENV__.VITE_OFFLINE_MODE === 'true';
+    }
+  } catch (e) {
+    // エラーが発生した場合はオフラインモードではない
+  }
+
+  return false;
 };
 
 /**
@@ -126,10 +160,8 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             FORMAT: 'json',
             _: Date.now() // キャッシュ回避用のタイムスタンプ
           },
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
+          // CORSの問題を回避するためにヘッダーを削除
+          headers: {}
         };
 
         console.log(`Requesting data from ${endpoint.url}`, requestConfig);
@@ -210,13 +242,14 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             const orbitalElements = visibilityService.extractOrbitalElements(data.TLE_LINE2);
             const isVisible = visibilityService.isInVisibilityRange(observerLat, observerLng, orbitalElements);
 
-            if (isVisible) {
-              console.log('Satellite visible:', {
-                name: data.OBJECT_NAME,
-                noradId: data.NORAD_CAT_ID,
-                elements: orbitalElements
-              });
-            }
+            // ログ出力を削減
+            // if (isVisible) {
+            //   console.log('Satellite visible:', {
+            //     name: data.OBJECT_NAME,
+            //     noradId: data.NORAD_CAT_ID,
+            //     elements: orbitalElements
+            //   });
+            // }
 
             return isVisible;
           } catch (error) {
@@ -264,18 +297,26 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             }
 
             try {
+              // ログ出力を削減（最初の5件のみ詳細ログを出力）
+              if (index < 5) {
+                console.log(`Calculating passes for satellite ${satellite.name} (${satellite.noradId})`);
+              }
               const passes = await orbitService.calculatePasses(
                 satellite.tle,
                 loc,
                 params
               );
+              // パスがある場合のみログを出力
+              if (passes.length > 0) {
+                console.log(`Calculated ${passes.length} passes for satellite ${satellite.name} (${satellite.noradId})`);
+              }
 
               return {
                 ...satellite,
                 passes
               };
             } catch (error) {
-              console.error(`Failed to calculate passes for satellite ${satellite.noradId}:`, error);
+              console.error(`Failed to calculate passes for satellite ${satellite.name} (${satellite.noradId}):`, error);
               return {
                 ...satellite,
                 passes: []
@@ -291,18 +332,51 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
           location: loc
         });
 
+        // 詳細なデバッグ情報（結果が0件の場合のみ出力）
+        if (results.filter(s => s.passes.length > 0).length === 0) {
+          console.log('All satellites with passes:', results.map(s => ({
+            name: s.name,
+            noradId: s.noradId,
+            passCount: s.passes.length,
+            passes: s.passes.map(p => ({
+              startTime: p.startTime,
+              endTime: p.endTime,
+              maxElevation: p.maxElevation
+            }))
+          })));
+        }
+
         // パスフィルタリングと並び替え
         const filteredResults = results
           .filter(satellite => {
-            const hasPasses = satellite.passes.length > 0;
+            // パスがある場合のみ処理
+            if (satellite.passes.length === 0) {
+              console.log(`Satellite ${satellite.name} (${satellite.noradId}) has no passes`);
+              return false;
+            }
+
+            // 最大仰角を計算
+            const maxElevation = Math.max(...satellite.passes.map(p => p.maxElevation));
             const hasVisiblePasses = satellite.passes.some(pass => pass.maxElevation >= params.minElevation);
-            console.log('Satellite passes:', {
-              name: satellite.name,
-              noradId: satellite.noradId,
-              passCount: satellite.passes.length,
-              maxElevation: Math.max(...satellite.passes.map(p => p.maxElevation))
-            });
-            return hasPasses && hasVisiblePasses;
+
+            // ログ出力を削減（可視パスがない場合のみ出力）
+            if (!hasVisiblePasses) {
+              console.log('Satellite passes:', {
+                name: satellite.name,
+                noradId: satellite.noradId,
+                passCount: satellite.passes.length,
+                maxElevation,
+                hasVisiblePasses,
+                minElevation: params.minElevation
+              });
+            }
+
+            // 可視パスがある場合のみ保持
+            if (!hasVisiblePasses) {
+              console.log(`Satellite ${satellite.name} (${satellite.noradId}) has no visible passes (max elevation: ${maxElevation}, min required: ${params.minElevation})`);
+            }
+
+            return hasVisiblePasses;
           })
           .sort((a, b) => {
             const maxElevA = Math.max(...a.passes.map(p => p.maxElevation));
@@ -318,6 +392,20 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             passCount: s.passes.length
           }))
         });
+
+        // 最終的なリスト件数を強調表示
+        console.log(`%c最終的な衛星リスト: ${filteredResults.length}件`, 'color: red; font-size: 16px; font-weight: bold;');
+
+        // 結果が0件の場合は原因を調査
+        if (filteredResults.length === 0) {
+          console.log('結果が0件になった原因を調査:');
+          console.log('- 取得した衛星データ数:', satelliteData.length);
+          console.log('- 可視性チェック後の衛星数:', filteredData.length);
+          console.log('- 変換後の衛星数:', satellites.length);
+          console.log('- パス計算後の衛星数:', results.length);
+          console.log('- パスがある衛星数:', results.filter(s => s.passes.length > 0).length);
+          console.log('- 可視パスがある衛星数:', results.filter(s => s.passes.some(p => p.maxElevation >= params.minElevation)).length);
+        }
 
         return filteredResults;
 

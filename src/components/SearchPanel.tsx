@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -9,7 +9,10 @@ import {
   Typography,
   Box,
   TextField,
+  Tooltip,
+  IconButton,
 } from '@mui/material';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import type { SearchFilters } from '@/types';
 
@@ -18,7 +21,40 @@ interface SearchPanelProps {
   onFiltersChange: (filters: SearchFilters) => void;
 }
 
+// デバウンス処理のためのカスタムフック
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) => {
+  // スライダーの内部状態
+  const [sliderValue, setSliderValue] = useState<number>(filters.minElevation);
+
+  // デバウンスされた値
+  const debouncedSliderValue = useDebounce<number>(sliderValue, 500); // 500ms遅延
+
+  // デバウンスされた値が変更されたときに親コンポーネントに通知
+  useEffect(() => {
+    if (debouncedSliderValue !== filters.minElevation) {
+      onFiltersChange({
+        ...filters,
+        minElevation: debouncedSliderValue,
+      });
+    }
+  }, [debouncedSliderValue, filters, onFiltersChange]);
+
   const handleStartDateChange = (value: unknown) => {
     if (value instanceof Date && !isNaN(value.getTime())) {
       onFiltersChange({
@@ -37,19 +73,12 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
     }
   };
 
+  // スライダーの値が変更されたときは内部状態のみ更新
   const handleMinElevationChange = (_: Event, value: number | number[]) => {
-    onFiltersChange({
-      ...filters,
-      minElevation: value as number,
-    });
+    setSliderValue(value as number);
   };
 
-  const handleDaylightChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onFiltersChange({
-      ...filters,
-      considerDaylight: event.target.checked,
-    });
-  };
+  // 昼夜の考慮は削除
 
   return (
     <Card variant="outlined">
@@ -82,10 +111,15 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
           {/* 最低仰角設定 */}
           <Box>
             <Typography gutterBottom>
-              最低仰角: {filters.minElevation}°
+              最低仰角: {sliderValue}°
+              <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
+                <IconButton size="small" sx={{ ml: 1 }}>
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             </Typography>
             <Slider
-              value={filters.minElevation}
+              value={sliderValue}
               onChange={handleMinElevationChange}
               min={0}
               max={90}
@@ -100,18 +134,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
             />
           </Box>
 
-          {/* 昼夜の考慮 */}
-          <FormControl component="fieldset">
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={filters.considerDaylight ?? false}
-                  onChange={handleDaylightChange}
-                />
-              }
-              label="昼夜を考慮する"
-            />
-          </FormControl>
+          {/* 昼夜の考慮は削除 */}
 
           {/* 現在の観測地点情報 */}
           {filters.location && (

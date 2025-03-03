@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { Box, Container, Grid, Paper } from '@mui/material';
+import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Map from '@/components/Map';
 import SearchPanel from '@/components/SearchPanel';
@@ -121,6 +121,17 @@ const App = () => {
 
   return (
     <Root>
+      {/* アプリのヘッダー */}
+      <AppBar position="static" color="primary">
+        <Toolbar>
+          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
+            Orbit Search - 衛星軌道検索
+          </Typography>
+          <Typography variant="body2" color="inherit">
+            地図上の位置をクリックして、その場所から見える衛星を検索します
+          </Typography>
+        </Toolbar>
+      </AppBar>
       <Main maxWidth="xl">
         <Grid container spacing={2} sx={{ height: '100%' }}>
           {/* 左側エリア - 地図と検索パネル */}

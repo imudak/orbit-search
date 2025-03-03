@@ -23,7 +23,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
     startDate: new Date(),
     endDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
     location: { lat: 35.6812, lng: 139.7671 },
-    minElevation: 30,
+    minElevation: 10,
     considerDaylight: false,
   },
   satellites: [],

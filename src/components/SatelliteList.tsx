@@ -79,10 +79,33 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
   };
 
   return (
-    <Card variant="outlined">
-      <CardContent sx={{ p: 0 }}>
+    <Card
+      variant="outlined"
+      sx={{
+        maxHeight: 'calc(100vh - 200px)', // 画面の高さから余白を引いた値
+        overflow: 'auto' // コンテンツがはみ出した場合にスクロールバーを表示
+      }}
+    >
+      <CardContent sx={{ p: 1 }}>
+        {/* リストのタイトルと総数を表示 */}
+        <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" component="h2">
+            可視衛星リスト
+          </Typography>
+          <Chip
+            label={`合計: ${satellites.length}件`}
+            color="primary"
+            size="small"
+          />
+        </Box>
+
+        {/* パス数の説明 */}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          ※パス数：今後24時間以内に観測地点から見える衛星の通過回数
+        </Typography>
+
         <List disablePadding>
-          {satellites.map((satellite) => (
+          {satellites.map((satellite, index) => (
             <ListItem
               key={satellite.id}
               disablePadding
@@ -108,6 +131,9 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                 <ListItemText
                   primary={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography component="span" sx={{ minWidth: '30px', fontWeight: 'bold' }}>
+                        {index + 1}.
+                      </Typography>
                       {satellite.name}
                       <Chip
                         size="small"
