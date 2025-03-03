@@ -1,6 +1,10 @@
 import * as satellite from 'satellite.js';
 import type { TLEData, Location, SearchFilters, Pass, PassPoint } from '@/types';
 
+// 定数
+const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
+
 // Web Workerのコンテキスト型定義
 const ctx: Worker = self as any;
 
@@ -150,9 +154,28 @@ function calculatePasses(
         }
       }
 
-      // 観測地点からの実効的な角度を計算
-      // 仰角から直接使用（方位角は考慮しない）
-      const effectiveAngle = elevation;
+      // 観測地点から衛星までの大圏距離を計算（ラジアン）
+      const observerLat = satellite.degreesToRadians(location.lat);
+      const observerLng = satellite.degreesToRadians(location.lng);
+      const satLat = satellite.degreesToRadians(satelliteLat);
+      const satLng = satellite.degreesToRadians(satelliteLon);
+
+      // Haversine formulaによる大圏距離の計算
+      const dlat = satLat - observerLat;
+      const dlng = satLng - observerLng;
+      const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+                Math.cos(observerLat) * Math.cos(satLat) *
+                Math.sin(dlng/2) * Math.sin(dlng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      // 大圏距離を度に変換（0-180度の範囲）
+      const greatCircleDistance = c * RAD_TO_DEG;
+
+      // 大圏距離に基づく減衰係数を計算（距離が大きいほど小さくなる）
+      const distanceFactor = Math.max(0, 1 - greatCircleDistance / 90);
+
+      // 仰角と距離の両方を考慮した実効的な角度を計算
+      const effectiveAngle = elevation * distanceFactor;
 
       // 新しいセグメントの開始点として追加
       orbitPoints.push({
