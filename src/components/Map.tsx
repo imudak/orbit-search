@@ -106,24 +106,24 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
           let weight: number;
           let opacity: number;
 
-          if (effectiveAngle >= 60) {
-            // 高角度: 赤系
-            color = '#FF4081';
+          if (effectiveAngle >= 45) {
+            // 高仰角: 赤系（最も見やすく）
+            color = '#FF0000';
             weight = 4;
             opacity = 1.0;
-          } else if (effectiveAngle >= 30) {
-            // 中角度: 黄系
-            color = '#FFC107';
+          } else if (effectiveAngle >= 20) {
+            // 中仰角: オレンジ系
+            color = '#FFA500';
             weight = 3;
             opacity = 0.8;
           } else if (effectiveAngle >= 10) {
-            // 低角度: 青系（薄め）
-            color = '#2196F3';
+            // 低仰角: 青系
+            color = '#0000FF';
             weight = 2;
-            opacity = 0.6;
+            opacity = 0.5;
           } else {
-            // 極低角度: 青系（さらに薄く）
-            color = '#64B5F6';
+            // 極低仰角: グレー系
+            color = '#808080';
             weight = 1;
             opacity = 0.3;
           }

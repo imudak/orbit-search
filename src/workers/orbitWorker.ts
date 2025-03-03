@@ -151,10 +151,8 @@ function calculatePasses(
       }
 
       // 観測地点からの実効的な角度を計算
-      const effectiveAngle = 90 - Math.acos(
-        Math.cos(satellite.degreesToRadians(90 - elevation)) *
-        Math.cos(satellite.degreesToRadians(azimuth))
-      ) * 180 / Math.PI;
+      // 仰角から直接使用（方位角は考慮しない）
+      const effectiveAngle = elevation;
 
       // 新しいセグメントの開始点として追加
       orbitPoints.push({
