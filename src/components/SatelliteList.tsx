@@ -79,7 +79,13 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
   };
 
   return (
-    <Card variant="outlined">
+    <Card
+      variant="outlined"
+      sx={{
+        maxHeight: 'calc(100vh - 200px)', // 画面の高さから余白を引いた値
+        overflow: 'auto' // コンテンツがはみ出した場合にスクロールバーを表示
+      }}
+    >
       <CardContent sx={{ p: 0 }}>
         <List disablePadding>
           {satellites.map((satellite) => (
