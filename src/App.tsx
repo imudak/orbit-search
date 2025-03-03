@@ -4,7 +4,7 @@ import { styled } from '@mui/material/styles';
 import Map from '@/components/Map';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
-import type { Location, SearchFilters, Satellite, OrbitPath, LatLng } from '@/types';
+import type { Location, SearchFilters, Satellite, OrbitPath, OrbitSegment, LatLng } from '@/types';
 import { useAppStore } from '@/store';
 import { tleService } from '@/services/tleService';
 import { searchSatellites } from '@/services/satelliteService';
@@ -111,26 +111,53 @@ const App = () => {
           return;
         }
 
-        // パスのポイントから軌道を作成
+        // パスのポイントからセグメントを作成
+        const points = passes[0].points
+          .filter(point => point.lat !== undefined && point.lng !== undefined);
+
+        // セグメントに分割
+        const segments: OrbitSegment[] = [];
+        let currentSegment: {
+          points: LatLng[];
+          effectiveAngles: number[];
+        } = {
+          points: [],
+          effectiveAngles: []
+        };
+
+        points.forEach(point => {
+          if (point.isNewSegment && currentSegment.points.length > 0) {
+            segments.push({ ...currentSegment });
+            currentSegment = {
+              points: [],
+              effectiveAngles: []
+            };
+          }
+          currentSegment.points.push({
+            lat: point.lat!,
+            lng: point.lng!
+          });
+          currentSegment.effectiveAngles.push(point.effectiveAngle || 0);
+        });
+
+        // 最後のセグメントを追加
+        if (currentSegment.points.length > 0) {
+          segments.push(currentSegment);
+        }
+
+        // 軌道パスを作成
         const orbitPath: OrbitPath = {
           satelliteId: satellite.id,
-          points: passes[0].points
-            .filter(point => point.lat !== undefined && point.lng !== undefined)
-            .map(point => ({
-              lat: point.lat!,
-              lng: point.lng!
-            })),
-          elevations: passes[0].points
-            .filter(point => point.lat !== undefined && point.lng !== undefined)
-            .map(point => point.elevation),
+          segments,
           timestamp: new Date().toISOString(),
           maxElevation: passes[0].maxElevation
         };
 
         // 軌道パスを設定
         setOrbitPaths([orbitPath]);
-        console.log(`Calculated orbit path with ${orbitPath.points.length} points for satellite ${satellite.name}`);
 
+        const totalPoints = orbitPath.segments.reduce((total, seg) => total + seg.points.length, 0);
+        console.log(`Calculated orbit path with ${totalPoints} points in ${orbitPath.segments.length} segments for satellite ${satellite.name}`);
       } catch (error) {
         console.error('Failed to calculate orbit path:', error);
       }
