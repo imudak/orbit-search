@@ -117,9 +117,13 @@ const App = () => {
             return {
               satelliteId: `${satellite.id}_pass_${index}`,
               points: pathPoints,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              maxElevation: pass.maxElevation
             };
           });
+
+          // 最大仰角でソートして、高仰角のパスが上に表示されるようにする
+          newOrbitPaths.sort((a, b) => a.maxElevation - b.maxElevation);
 
           // 軌道パスを設定
           setOrbitPaths(newOrbitPaths);

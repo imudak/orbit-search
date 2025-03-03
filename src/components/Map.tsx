@@ -87,14 +87,23 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
     const lines = paths.map((path, index) => {
       const latLngs = path.points.map(point => new LatLng(point.lat, point.lng));
 
-      // 各パスに異なる色を設定
+      // 最大仰角に基づいてスタイルを設定
+      const maxElevation = path.maxElevation;
+      const weight = maxElevation >= 60 ? 4 : // 高仰角（60度以上）
+                    maxElevation >= 30 ? 3 : // 中仰角（30-60度）
+                    2; // 低仰角（30度未満）
+      const opacity = maxElevation >= 60 ? 1.0 : // 高仰角
+                     maxElevation >= 30 ? 0.8 : // 中仰角
+                     0.4; // 低仰角
+
+      // 各パスに色と太さ、不透明度を設定
       return L.polyline(latLngs, {
         color: getPathColor(index),
-        weight: 3,
-        opacity: 0.8,
+        weight,
+        opacity,
         // パスの情報をポップアップで表示
         bubblingMouseEvents: true,
-      }).addTo(map).bindPopup(`パス ${index + 1}`);
+      }).addTo(map).bindPopup(`パス ${index + 1} (最大仰角: ${maxElevation.toFixed(1)}°)`);
     });
 
     // すべてのパスが表示されるようにビューを調整

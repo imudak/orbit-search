@@ -62,6 +62,7 @@ export interface OrbitPath {
   satelliteId: string;
   points: LatLng[];
   timestamp: string;
+  maxElevation: number; // パスの最大仰角
 }
 
 // CelesTrak APIのレスポンス型
