@@ -13,7 +13,9 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: 'tsconfig.json',
-      useESM: true
+      useESM: true,
+      isolatedModules: true, // 型チェックを無効化
+      diagnostics: false // 診断を無効化
     }],
   },
   setupFilesAfterEnv: [

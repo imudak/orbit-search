@@ -64,35 +64,69 @@ const getCachedSatellite = async (noradId: string): Promise<Satellite | null> =>
  * CelesTrakのGPデータを内部の衛星型に変換してキャッシュ
  */
 const convertGPDataToSatellite = async (gpData: CelesTrakGPData): Promise<Satellite | null> => {
-  if (!tleParserService.isValidTLE(gpData.TLE_LINE1, gpData.TLE_LINE2)) {
-    console.warn(`Invalid TLE data for satellite ${gpData.NORAD_CAT_ID}`);
+  try {
+    console.log(`Converting GP data to satellite for NORAD ID: ${gpData.NORAD_CAT_ID}`);
+
+    if (!tleParserService.isValidTLE(gpData.TLE_LINE1, gpData.TLE_LINE2)) {
+      console.warn(`Invalid TLE data for satellite ${gpData.NORAD_CAT_ID}:`, {
+        line1: gpData.TLE_LINE1,
+        line2: gpData.TLE_LINE2
+      });
+      return null;
+    }
+
+    const tle = {
+      line1: gpData.TLE_LINE1,
+      line2: gpData.TLE_LINE2,
+      timestamp: new Date().toISOString()
+    };
+
+    // TLEデータをキャッシュ
+    console.log(`Caching TLE data for NORAD ID: ${gpData.NORAD_CAT_ID}`);
+    await cacheService.cacheTLE(gpData.NORAD_CAT_ID, tle);
+
+    const satellite = {
+      id: gpData.OBJECT_ID,
+      name: gpData.OBJECT_NAME,
+      noradId: gpData.NORAD_CAT_ID,
+      type: gpData.OBJECT_TYPE,
+      operationalStatus: gpData.OPERATIONAL_STATUS,
+      tle
+    };
+
+    console.log(`Successfully converted GP data to satellite:`, {
+      name: satellite.name,
+      noradId: satellite.noradId
+    });
+
+    return satellite;
+  } catch (error) {
+    console.error(`Failed to convert GP data to satellite for NORAD ID: ${gpData.NORAD_CAT_ID}:`, error);
     return null;
   }
-
-  const tle = {
-    line1: gpData.TLE_LINE1,
-    line2: gpData.TLE_LINE2,
-    timestamp: new Date().toISOString()
-  };
-
-  // TLEデータをキャッシュ
-  await cacheService.cacheTLE(gpData.NORAD_CAT_ID, tle);
-
-  return {
-    id: gpData.OBJECT_ID,
-    name: gpData.OBJECT_NAME,
-    noradId: gpData.NORAD_CAT_ID,
-    type: gpData.OBJECT_TYPE,
-    operationalStatus: gpData.OPERATIONAL_STATUS,
-    tle
-  };
 };
 
 /**
  * オフラインモードかどうかを判定
  */
 const isOfflineMode = (): boolean => {
-  return import.meta.env.VITE_USE_MOCK_DATA === 'true' || import.meta.env.VITE_OFFLINE_MODE === 'true';
+  // テスト環境ではNode.jsのprocess.envを使用し、ブラウザ環境ではimport.meta.envを使用
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env.VITE_USE_MOCK_DATA === 'true' || process.env.VITE_OFFLINE_MODE === 'true';
+  }
+
+  // ブラウザ環境
+  try {
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.__VITE_ENV__) {
+      // @ts-ignore
+      return window.__VITE_ENV__.VITE_USE_MOCK_DATA === 'true' || window.__VITE_ENV__.VITE_OFFLINE_MODE === 'true';
+    }
+  } catch (e) {
+    // エラーが発生した場合はオフラインモードではない
+  }
+
+  return false;
 };
 
 /**
@@ -126,10 +160,8 @@ export const searchSatellites = async (params: SearchSatellitesParams): Promise<
             FORMAT: 'json',
             _: Date.now() // キャッシュ回避用のタイムスタンプ
           },
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
+          // CORSの問題を回避するためにヘッダーを削除
+          headers: {}
         };
 
         console.log(`Requesting data from ${endpoint.url}`, requestConfig);
