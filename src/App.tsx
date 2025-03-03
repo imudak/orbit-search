@@ -93,61 +93,47 @@ const App = () => {
   const handleSatelliteSelect = async (satellite: Satellite) => {
     setSelectedSatellite(satellite);
 
+    // 既存のパスをクリア
+    setOrbitPaths([]);
+
     // 選択された衛星の軌道データを計算
     if (satellite && selectedLocation && searchFilters) {
       try {
-        // 衛星の可視パスを計算
+        // 衛星の軌道を計算（観測地点からの可視性を含む）
         const passes = await orbitService.calculatePasses(
           satellite.tle,
           selectedLocation,
           searchFilters
         );
 
-        if (passes.length > 0) {
-          // すべてのパスのポイントを時系列順に結合
-          const allPoints: Array<{
-            point: LatLng;
-            elevation: number;
-            time: Date;
-          }> = passes.flatMap(pass =>
-            pass.points
-              .filter(point => point.lat !== undefined && point.lng !== undefined)
-              .map(point => ({
-                point: {
-                  lat: point.lat!,
-                  lng: point.lng!
-                },
-                elevation: point.elevation,
-                time: point.time
-              }))
-          );
-
-          // 時系列順にソート
-          allPoints.sort((a, b) => a.time.getTime() - b.time.getTime());
-
-          // 一つの軌道パスとして設定
-          const newOrbitPaths: OrbitPath[] = [{
-            satelliteId: satellite.id,
-            points: allPoints.map(p => p.point),
-            elevations: allPoints.map(p => p.elevation),
-            timestamp: new Date().toISOString(),
-            maxElevation: Math.max(...passes.map(p => p.maxElevation))
-          }];
-
-          // 軌道パスを設定
-          setOrbitPaths(newOrbitPaths);
-
-          console.log(`Calculated ${newOrbitPaths.length} orbit paths for satellite ${satellite.name}`);
-        } else {
-          console.log(`No visible passes found for satellite ${satellite.name}`);
-          setOrbitPaths([]);
+        if (passes.length === 0) {
+          console.log(`No orbit path found for satellite ${satellite.name}`);
+          return;
         }
+
+        // パスのポイントから軌道を作成
+        const orbitPath: OrbitPath = {
+          satelliteId: satellite.id,
+          points: passes[0].points
+            .filter(point => point.lat !== undefined && point.lng !== undefined)
+            .map(point => ({
+              lat: point.lat!,
+              lng: point.lng!
+            })),
+          elevations: passes[0].points
+            .filter(point => point.lat !== undefined && point.lng !== undefined)
+            .map(point => point.elevation),
+          timestamp: new Date().toISOString(),
+          maxElevation: passes[0].maxElevation
+        };
+
+        // 軌道パスを設定
+        setOrbitPaths([orbitPath]);
+        console.log(`Calculated orbit path with ${orbitPath.points.length} points for satellite ${satellite.name}`);
+
       } catch (error) {
         console.error('Failed to calculate orbit path:', error);
-        setOrbitPaths([]);
       }
-    } else {
-      setOrbitPaths([]);
     }
   };
 
