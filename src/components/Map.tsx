@@ -102,16 +102,35 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
           ];
 
           // 実効的な角度に基づいてスタイルを設定
-          const weight = effectiveAngle >= 60 ? 4 : // 高角度（60度以上）
-                        effectiveAngle >= 30 ? 3 : // 中角度（30-60度）
-                        2; // 低角度（30度未満）
-          const opacity = effectiveAngle >= 60 ? 1.0 : // 高角度
-                         effectiveAngle >= 30 ? 0.8 : // 中角度
-                         0.4; // 低角度
+          let color: string;
+          let weight: number;
+          let opacity: number;
+
+          if (effectiveAngle >= 60) {
+            // 高角度: 赤系
+            color = '#FF4081';
+            weight = 4;
+            opacity = 1.0;
+          } else if (effectiveAngle >= 30) {
+            // 中角度: 黄系
+            color = '#FFC107';
+            weight = 3;
+            opacity = 0.8;
+          } else if (effectiveAngle >= 10) {
+            // 低角度: 青系（薄め）
+            color = '#2196F3';
+            weight = 2;
+            opacity = 0.6;
+          } else {
+            // 極低角度: 青系（さらに薄く）
+            color = '#64B5F6';
+            weight = 1;
+            opacity = 0.3;
+          }
 
           // ラインを作成
           const line = L.polyline(segmentPoints, {
-            color: getPathColor(pathIndex),
+            color,
             weight,
             opacity,
             bubblingMouseEvents: true,

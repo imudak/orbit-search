@@ -137,21 +137,26 @@ function calculatePasses(
       const satelliteLat = satellite.degreesLat(satelliteGd.latitude);
       let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
 
-      // 前のポイントとの経度の連続性を保つ
+      // 前のポイントとの経度の連続性を確認
+      let isDiscontinuous = false;
       if (orbitPoints.length > 0) {
         const prevPoint = orbitPoints[orbitPoints.length - 1];
-        const prevLon = prevPoint.lng!; // ポイントが存在する場合、lngは必ず存在する
-        const diff = satelliteLon - prevLon;
+        const prevLon = prevPoint.lng!;
+        const diff = Math.abs(satelliteLon - prevLon);
 
-        // 経度の差が180度を超える場合、360度を加減して調整
+        // 経度の差が180度を超える場合は不連続点とする
         if (diff > 180) {
-          satelliteLon -= 360;
-        } else if (diff < -180) {
-          satelliteLon += 360;
+          isDiscontinuous = true;
         }
       }
 
-      // ポイントを追加
+      // 観測地点からの実効的な角度を計算
+      const effectiveAngle = 90 - Math.acos(
+        Math.cos(satellite.degreesToRadians(90 - elevation)) *
+        Math.cos(satellite.degreesToRadians(azimuth))
+      ) * 180 / Math.PI;
+
+      // 新しいセグメントの開始点として追加
       orbitPoints.push({
         time: date,
         elevation,
@@ -159,7 +164,9 @@ function calculatePasses(
         range: rangeSat,
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
         lat: satelliteLat,
-        lng: satelliteLon
+        lng: satelliteLon,
+        isNewSegment: isDiscontinuous, // 不連続点かどうかを記録
+        effectiveAngle // 観測地点からの実効的な角度
       });
 
       // 最大仰角を更新
