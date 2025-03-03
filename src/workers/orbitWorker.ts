@@ -215,13 +215,27 @@ function calculatePasses(
       } else if (isVisible) {
         isVisible = false;
         if (currentPass && currentPass.points.length > 0) {
-          passes.push({
-            startTime: currentPass.startTime!,
-            endTime: date,
-            maxElevation: currentPass.maxElevation,
-            isDaylight: currentPass.points.some(p => p.isDaylight),
-            points: currentPass.points,
-          });
+          // パスの最大仰角が閾値以上であれば保持
+          if (currentPass.maxElevation >= minElevation) {
+            console.log('Pass completed with max elevation:', {
+              maxElevation: currentPass.maxElevation,
+              minElevation,
+              points: currentPass.points.length
+            });
+            passes.push({
+              startTime: currentPass.startTime!,
+              endTime: date,
+              maxElevation: currentPass.maxElevation,
+              isDaylight: currentPass.points.some(p => p.isDaylight),
+              points: currentPass.points,
+            });
+          } else {
+            console.log('Pass discarded due to low max elevation:', {
+              maxElevation: currentPass.maxElevation,
+              minElevation,
+              points: currentPass.points.length
+            });
+          }
         }
         currentPass = null;
       }
@@ -235,13 +249,27 @@ function calculatePasses(
 
   // 最後のパスが終了していない場合の処理
   if (isVisible && currentPass && currentPass.points.length > 0) {
-    passes.push({
-      startTime: currentPass.startTime!,
-      endTime: new Date(currentTime),
-      maxElevation: currentPass.maxElevation,
-      isDaylight: currentPass.points.some(p => p.isDaylight),
-      points: currentPass.points,
-    });
+    // パスの最大仰角が閾値以上であれば保持
+    if (currentPass.maxElevation >= minElevation) {
+      console.log('Final pass completed with max elevation:', {
+        maxElevation: currentPass.maxElevation,
+        minElevation,
+        points: currentPass.points.length
+      });
+      passes.push({
+        startTime: currentPass.startTime!,
+        endTime: new Date(currentTime),
+        maxElevation: currentPass.maxElevation,
+        isDaylight: currentPass.points.some(p => p.isDaylight),
+        points: currentPass.points,
+      });
+    } else {
+      console.log('Final pass discarded due to low max elevation:', {
+        maxElevation: currentPass.maxElevation,
+        minElevation,
+        points: currentPass.points.length
+      });
+    }
   }
 
   return passes;
