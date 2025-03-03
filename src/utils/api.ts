@@ -1,159 +1,139 @@
 import axios from 'axios';
 
-interface ApiError {
-  status?: number;
-  data?: unknown;
-  message?: string;
-  code?: string;
-  url?: string;
-}
-
 // API設定
 const API_CONFIG = {
   TIMEOUT: {
-    DEFAULT: 10000,    // 10秒
-    CELESTRAK: 30000   // 30秒
+    DEFAULT_MSEC: 10000,    // 10秒（ミリ秒単位）
+    CELESTRAK_MSEC: 30000   // 30秒（ミリ秒単位）
   },
   RETRY: {
     MAX_RETRIES: 3,
-    DELAY: 1000, // 初期遅延（ミリ秒）
+    DELAY_MSEC: 1000, // 1秒（ミリ秒単位）
     METHODS: ['get'] as const
   },
   CELESTRAK: {
-    BASE_URL: 'https://celestrak.org',  // .comから.orgに変更
+    BASE_URL: 'https://celestrak-proxy.imudak.workers.dev/NORAD/elements/gp.php',
     DEFAULT_FORMAT: 'json'
+  },
+  RATE_LIMIT: {
+    REQUESTS_PER_SEC: 2,      // 1秒あたりの最大リクエスト数
+    INTERVAL_MSEC: 1000,      // レート制限の間隔（ミリ秒単位、1秒）
+    MIN_DELAY_MSEC: 500       // リクエスト間の最小待機時間（ミリ秒単位、0.5秒）
   }
 } as const;
 
-/**
- * 指数バックオフ遅延を計算
- */
-const calculateDelay = (retryCount: number): number => {
-  return Math.min(
-    API_CONFIG.RETRY.DELAY * Math.pow(2, retryCount),
-    10000 // 最大10秒
-  );
-};
+// レート制限の状態管理
+class RateLimiter {
+  private lastRequestTimeMsec: number;
+  private requestCount: number;
+  private waitQueuePromise: Promise<void>;
 
-/**
- * リトライ可能なエラーかどうかを判定
- */
-const isRetryableError = (error: any): boolean => {
-  if (!error.isAxiosError) return false;
-
-  // ネットワークエラー
-  if (error.code === 'ECONNABORTED' || !error.response) return true;
-
-  // 特定のステータスコードの場合
-  const status = error.response.status;
-  return status >= 500 || status === 429;
-};
-
-/**
- * 共通APIクライアントの設定
- */
-const api = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  timeout: API_CONFIG.TIMEOUT.DEFAULT
-});
-
-/**
- * CelesTrak APIクライアントの設定
- */
-const celestrakApi = axios.create({
-  baseURL: '/celestrak',
-  headers: {
-    'Accept': 'text/plain, application/json'
-  },
-  timeout: API_CONFIG.TIMEOUT.CELESTRAK
-});
-
-/**
- * エラー情報の抽出
- */
-const extractErrorInfo = (error: any): ApiError => {
-  if (error.isAxiosError) {
-    if (error.response) {
-      return {
-        status: error.response.status,
-        data: error.response.data,
-        url: error.config?.url
-      };
-    }
-    if (error.request) {
-      return {
-        message: error.message,
-        code: error.code,
-        url: error.config?.url
-      };
-    }
+  constructor() {
+    this.lastRequestTimeMsec = 0;
+    this.requestCount = 0;
+    this.waitQueuePromise = Promise.resolve();
   }
 
-  return {
-    message: String(error)
-  };
-};
+  async waitForNextSlot(): Promise<void> {
+    // 既存のキューに追加してシリアル化
+    return new Promise<void>((resolve) => {
+      this.waitQueuePromise = this.waitQueuePromise.then(async () => {
+        const nowMsec = Date.now();
+        const elapsedMsec = nowMsec - this.lastRequestTimeMsec;
+
+        // インターバルが経過していれば、カウントをリセット
+        if (elapsedMsec >= API_CONFIG.RATE_LIMIT.INTERVAL_MSEC) {
+          console.log(`Rate limit: Resetting count after ${elapsedMsec}ms`);
+          this.requestCount = 0;
+          this.lastRequestTimeMsec = nowMsec;
+        }
+
+        // 最小待機時間を確保
+        const minDelayMsec = Math.max(0, API_CONFIG.RATE_LIMIT.MIN_DELAY_MSEC - elapsedMsec);
+        if (minDelayMsec > 0) {
+          console.log(`Rate limit: Enforcing minimum delay of ${minDelayMsec}ms`);
+          await new Promise(wait => setTimeout(wait, minDelayMsec));
+        }
+
+        // リクエスト数が制限に達している場合は待機
+        if (this.requestCount >= API_CONFIG.RATE_LIMIT.REQUESTS_PER_SEC) {
+          const waitMsec = API_CONFIG.RATE_LIMIT.INTERVAL_MSEC - (Date.now() - this.lastRequestTimeMsec);
+          if (waitMsec > 0) {
+            console.log(`Rate limit: Waiting ${waitMsec}ms for next interval`);
+            await new Promise(wait => setTimeout(wait, waitMsec));
+          }
+          this.requestCount = 0;
+          this.lastRequestTimeMsec = Date.now();
+        }
+
+        this.requestCount++;
+        this.lastRequestTimeMsec = Date.now();
+        console.log(`Rate limit: Request ${this.requestCount} at ${this.lastRequestTimeMsec}`);
+        resolve();
+      });
+    });
+  }
+}
+
+const rateLimiter = new RateLimiter();
+
+// CelesTrak APIクライアントの設定
+const celestrakApi = axios.create({
+  baseURL: API_CONFIG.CELESTRAK.BASE_URL,
+  headers: {
+    'Accept': 'application/json'
+  },
+  timeout: API_CONFIG.TIMEOUT.CELESTRAK_MSEC,
+  params: {
+    FORMAT: API_CONFIG.CELESTRAK.DEFAULT_FORMAT
+  }
+});
+
+// リクエストインターセプター
+celestrakApi.interceptors.request.use(
+  async (config: any) => {
+    const startTimeMsec = Date.now();
+    await rateLimiter.waitForNextSlot();
+    const waitTimeMsec = Date.now() - startTimeMsec;
+
+    console.log(`Rate limiting: waited ${waitTimeMsec}ms before sending request`);
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`,
+      config.params ? `with params: ${JSON.stringify(config.params)}` : '');
+    return config;
+  },
+  (error: any) => {
+    console.error('API Request Error:', error);
+    return Promise.reject(error);
+  }
+);
 
 // レスポンスインターセプター
-const setupInterceptors = (instance: ReturnType<typeof axios.create>) => {
-  // リクエストインターセプター
-  instance.interceptors.request.use(
-    config => {
-      // リクエストログ
-      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`,
-        config.params ? `with params: ${JSON.stringify(config.params)}` : '');
-      return config;
-    },
-    error => {
-      const errorInfo = extractErrorInfo(error);
-      console.error('API Request Error:', errorInfo);
-      return Promise.reject(error);
-    }
-  );
+celestrakApi.interceptors.response.use(
+  (response: any) => {
+    console.log(`API Response: ${response.status} ${response.config.url}`);
+    return response;
+  },
+  async (error: any) => {
+    console.error('API Error:', error);
 
-  // レスポンスインターセプター
-  instance.interceptors.response.use(
-    response => {
-      // レスポンスログ
-      console.log(`API Response: ${response.status} ${response.config.url}`);
-      if (response.data) {
-        console.log('Response data sample:',
-          Array.isArray(response.data)
-            ? `Array with ${response.data.length} items`
-            : typeof response.data);
+    if (error.config) {
+      const retryCount = error.config.retryCount || 0;
+
+      if (retryCount < API_CONFIG.RETRY.MAX_RETRIES && (
+        !error.response || error.response.status >= 500 || error.response.status === 429
+      )) {
+        error.config.retryCount = retryCount + 1;
+        const delayMsec = API_CONFIG.RETRY.DELAY_MSEC * Math.pow(2, retryCount);
+
+        console.log(`Retrying request (${error.config.retryCount}/${API_CONFIG.RETRY.MAX_RETRIES}) after ${delayMsec}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMsec));
+
+        return celestrakApi(error.config);
       }
-      return response;
-    },
-    async error => {
-      const errorInfo = extractErrorInfo(error);
-      console.error('API Error:', errorInfo);
-
-      // リトライ処理
-      const config = error.config;
-      if (!config) return Promise.reject(error);
-
-      // リトライカウントの初期化
-      config.retryCount = config.retryCount || 0;
-
-      if (config.retryCount < API_CONFIG.RETRY.MAX_RETRIES && isRetryableError(error)) {
-        config.retryCount += 1;
-        const delay = calculateDelay(config.retryCount);
-
-        console.log(`Retrying request (${config.retryCount}/${API_CONFIG.RETRY.MAX_RETRIES}) after ${delay}ms...`);
-
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return instance(config);
-      }
-
-      return Promise.reject(error);
     }
-  );
-};
 
-setupInterceptors(api);
-setupInterceptors(celestrakApi);
+    return Promise.reject(error);
+  }
+);
 
-export { api, celestrakApi };
+export { celestrakApi };

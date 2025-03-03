@@ -1,0 +1,5 @@
+name = "celestrak-proxy"
+account_id = "f8545c577e8a190ed19466e1d8394941"
+main = "celestrak-proxy.js"
+compatibility_date = "2024-02-25"
+workers_dev = true

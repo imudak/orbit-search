@@ -16,11 +16,26 @@ ctx.addEventListener('message', (event: MessageEvent<CalculatePassesMessage>) =>
   if (event.data.type === 'calculatePasses') {
     try {
       const { tle, location, filters } = event.data;
+      console.log('Processing TLE:', {
+        line1: tle.line1,
+        line2: tle.line2,
+        location,
+        filters
+      });
+
       // TLEデータの検証
       if (!validateTLE(tle)) {
+        console.error('TLE validation failed:', { tle });
         throw new Error('Invalid TLE data format');
       }
+
       const passes = calculatePasses(tle, location, filters);
+      console.log('Calculated passes:', {
+        count: passes.length,
+        firstPass: passes[0] || null,
+        filters
+      });
+
       ctx.postMessage({ type: 'passes', data: passes });
     } catch (error) {
       console.error('Orbit calculation error:', error);
@@ -57,10 +72,39 @@ function calculatePasses(
   location: Location,
   filters: SearchFilters
 ): Pass[] {
+  // パス計算の詳細設定をログ出力
+  console.log('Pass calculation settings:', {
+    rawFilters: filters,
+    location: {
+      lat: location.lat.toFixed(4),
+      lng: location.lng.toFixed(4)
+    },
+    startDate: filters.startDate?.toISOString(),
+    endDate: filters.endDate?.toISOString(),
+  });
+
   const passes: Pass[] = [];
-  const startTime = filters.startDate.getTime();
-  const endTime = filters.endDate.getTime();
+  const startTime = (filters.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000)).getTime();
+  const endTime = (filters.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).getTime();
+  const minElevation = filters.minElevation || 0;
   const stepSize = 30 * 1000; // 30秒ごとに計算（精度向上）
+
+  // 計算パラメータの詳細をログ出力
+  console.log('Calculation details:', {
+    timeRange: {
+      start: new Date(startTime).toISOString(),
+      end: new Date(endTime).toISOString(),
+      durationHours: (endTime - startTime) / (1000 * 60 * 60)
+    },
+    elevationSettings: {
+      minElevation,
+      useDefaultValue: !filters.minElevation
+    },
+    observerPosition: {
+      lat: location.lat.toFixed(4),
+      lng: location.lng.toFixed(4)
+    }
+  });
 
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
   if (!satrec) {
@@ -89,8 +133,24 @@ function calculatePasses(
       // 衛星の位置と速度を計算
       const positionAndVelocity = satellite.propagate(satrec, date);
       if (!positionAndVelocity.position || typeof positionAndVelocity.position === 'boolean') {
+        console.warn('Invalid position at:', {
+          time: date.toISOString(),
+          position: positionAndVelocity.position
+        });
         currentTime += stepSize;
         continue;
+      }
+
+      // 計算進捗のログ（30分ごと）
+      const PROGRESS_INTERVAL = 30 * 60 * 1000; // 30分
+      if (currentTime % PROGRESS_INTERVAL === 0) {
+        const progress = (currentTime - startTime) / (endTime - startTime) * 100;
+        console.log('Calculation progress:', {
+          time: date.toISOString(),
+          progress: `${progress.toFixed(1)}%`,
+          passCount: passes.length,
+          timeRemaining: `${((endTime - currentTime) / 1000 / 60).toFixed(1)} minutes`
+        });
       }
 
       // グリニッジ恒星時を計算
@@ -120,7 +180,18 @@ function calculatePasses(
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
       };
 
-      if (elevation >= filters.minElevation) {
+      // 可視判定のデバッグ情報（仰角が閾値付近の場合のみ出力）
+      if (Math.abs(elevation - minElevation) < 1) {
+        console.log('Visibility check near threshold:', {
+          time: date.toISOString(),
+          elevation,
+          minElevation,
+          isVisible,
+          currentPassPoints: currentPass?.points.length || 0
+        });
+      }
+
+      if (elevation >= minElevation) {
         if (!isVisible) {
           isVisible = true;
           currentPass = {
@@ -128,6 +199,11 @@ function calculatePasses(
             maxElevation: elevation,
             startTime: date,
           };
+          console.log('New pass started:', {
+            time: date.toISOString(),
+            elevation,
+            azimuth
+          });
         } else {
           if (currentPass) {
             currentPass.points.push(pointData);
