@@ -141,10 +141,10 @@ const VisibilityCircle: React.FC<{
 
 // マップコントロールボタン
 const MapControls: React.FC<{
-  defaultCenter: Location;
+  currentCenter: Location;
   defaultZoom: number;
 }> = ({
-  defaultCenter,
+  currentCenter,
   defaultZoom
 }) => {
   const map = useMap();
@@ -175,7 +175,8 @@ const MapControls: React.FC<{
 
   // 元の縮尺に戻すボタンのクリックハンドラー
   const handleResetView = () => {
-    map.setView([defaultCenter.lat, defaultCenter.lng], defaultZoom);
+    // 現在の観測地点を中心に、デフォルトのズームレベルに戻す
+    map.setView([currentCenter.lat, currentCenter.lng], defaultZoom);
   };
 
   // ズームインボタンのクリックハンドラー
@@ -373,7 +374,7 @@ const Map: React.FC<MapProps> = ({
         <MapClickHandler onLocationSelect={onLocationSelect} />
         {/* 地図コントロールボタン */}
         <MapControls
-          defaultCenter={center}
+          currentCenter={center}
           defaultZoom={defaultZoom}
         />
         {center && (
