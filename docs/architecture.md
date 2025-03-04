@@ -7,6 +7,7 @@
 - クライアントサイドレンダリング
 - サーバーレスアーキテクチャ
 - ローカルファーストな設計
+- マルチAPIソース対応
 
 ### 1.2 主要コンポーネント
 ```mermaid
@@ -23,6 +24,7 @@ graph TB
 - React コンポーネント
 - Material-UI ウィジェット
 - Leaflet 地図コンポーネント
+- レスポンシブデザイン対応
 
 ### 2.2 状態管理層
 ```typescript
@@ -32,6 +34,7 @@ interface AppState {
   dateRange: DateRange;
   satellites: Satellite[];
   visibilityFilters: VisibilityFilters;
+  apiSource: 'celestrak' | 'n2yo' | 'auto'; // 新しいAPIソース選択機能
 }
 ```
 
@@ -39,11 +42,13 @@ interface AppState {
 - 衛星軌道計算
 - 可視性判定
 - データ変換処理
+- マルチAPIデータ整合性検証
 
 ### 2.4 データアクセス層
 - TLEデータ取得
 - ローカルストレージ管理
 - キャッシュ制御
+- APIフォールバックメカニズム
 
 ## 3. TLEデータ検索と処理フロー
 
@@ -62,6 +67,7 @@ graph TB
         cache["Cache Service"]
         orbit["Orbit Service"]
         db[(Local Cache)]
+        fallback["API Fallback Manager"]
     end
 
     ui -->|1. 検索条件| sat
@@ -70,8 +76,10 @@ graph TB
     cache -->|4. データ取得| db
     tle -->|5a. TLE取得| celestrak
     tle -->|5b. TLE取得| n2yo
+    tle -->|5c. フォールバック| fallback
     celestrak -->|6a. TLEデータ| tle
     n2yo -->|6b. TLEデータ| tle
+    fallback -->|6c. 代替データ| tle
     tle -->|7. キャッシュ更新| cache
     sat -->|8. 軌道計算| orbit
     orbit -->|9. 可視パス| ui
@@ -80,181 +88,131 @@ graph TB
     style App fill:#fff,stroke:#333,stroke-width:2px
 ```
 
-### 3.2 TLEデータ検索フロー
-```mermaid
-sequenceDiagram
-    actor User
-    participant UI as UI Layer
-    participant Sat as Satellite Service
-    participant TLE as TLE Service
-    participant Cache as Cache Service
-    participant API as External APIs
+### 3.2 APIフォールバック戦略
+```typescript
+class APIFallbackManager {
+  private apis: APISource[] = [
+    { name: 'celestrak', priority: 1 },
+    { name: 'n2yo', priority: 2 }
+  ];
 
-    User->>UI: 1. 地図上で位置を選択
-    UI->>Sat: 2. 検索条件を送信
-    Sat->>TLE: 3. TLEデータ要求
-    TLE->>Cache: 4. キャッシュ確認
+  async fetchTLEData(satelliteId: string): Promise<TLEData> {
+    for (const api of this.apis) {
+      try {
+        const data = await this.fetchFromAPI(api.name, satelliteId);
+        if (this.validateTLEData(data)) {
+          return data;
+        }
+      } catch (error) {
+        // APIごとの特定のエラーハンドリング
+        this.logAPIError(api.name, error);
+      }
+    }
+    throw new Error('すべてのAPIソースからのデータ取得に失敗');
+  }
 
-    alt キャッシュヒット
-        Cache-->>TLE: 4a. キャッシュデータ返却
-    else キャッシュミス
-        TLE->>API: 4b. API呼び出し
-        API-->>TLE: 4c. TLEデータ
-        TLE->>Cache: 4d. キャッシュ更新
-    end
-
-    TLE-->>Sat: 5. TLEデータ
-    Sat-->>UI: 6. 検索結果表示
-    UI-->>User: 7. UI更新
+  private validateTLEData(data: TLEData): boolean {
+    // データの整合性を検証
+    return data && data.line1 && data.line2;
+  }
+}
 ```
 
-### 3.3 データフローの詳細説明
-
-#### 検索開始フェーズ
-1. ユーザーが地図上で位置を選択
-2. UIレイヤーが選択された位置情報を元に検索条件を作成
-3. Satellite Serviceが検索条件を受け取り、処理を開始
-
-#### TLEデータ取得フェーズ
-4. TLE Serviceがキャッシュを確認
-5. キャッシュミスの場合、外部APIに接続
-   - 主にCelestrakを使用
-   - 必要に応じてN2YO APIをフォールバックとして使用
-6. 取得したデータをキャッシュに保存
-
-#### 軌道計算フェーズ
-7. 取得したTLEデータを使用して軌道計算を実行
-8. 計算結果から可視パスを生成
-9. UIに結果を返却して表示
-
-### 3.4 キャッシュ戦略
+### 3.3 エラーハンドリング戦略の詳細
 ```typescript
-interface CacheStrategy {
-  // キャッシュの有効期間（分）
-  ttl: number;
+enum ErrorType {
+  API_CONNECTION,
+  RATE_LIMIT,
+  DATA_VALIDATION,
+  CALCULATION_ERROR
+}
 
-  // キャッシュするデータの種類
-  cacheTypes: {
-    tle: boolean;      // TLEデータ
-    orbits: boolean;   // 軌道計算結果
-    searches: boolean; // 検索結果
+class ErrorHandler {
+  static handle(error: Error, type: ErrorType): ErrorNotification {
+    switch (type) {
+      case ErrorType.API_CONNECTION:
+        return {
+          type: 'API_CONNECTION',
+          message: 'APIへの接続に失敗しました。代替APIを使用します。',
+          severity: 'warning'
+        };
+      case ErrorType.RATE_LIMIT:
+        return {
+          type: 'RATE_LIMIT',
+          message: 'APIリクエスト制限に達しました。しばらく待ってから再試行します。',
+          severity: 'info'
+        };
+      // 他のエラータイプも同様に定義
+    }
+  }
+}
+```
+
+## 4. セキュリティ強化
+
+### 4.1 データ保護の具体的な実装
+```typescript
+class SecurityManager {
+  // APIキーの暗号化
+  private encryptAPIKey(key: string): string {
+    // 実際の暗号化ロジック
+    return btoa(key); // Base64エンコーディングの例
+  }
+
+  // 入力バリデーション
+  validateCoordinates(lat: number, lng: number): boolean {
+    return (
+      lat >= -90 && lat <= 90 &&
+      lng >= -180 && lng <= 180
+    );
+  }
+
+  // TLEデータ形式チェック
+  validateTLEFormat(line1: string, line2: string): boolean {
+    const tleRegex = /^1 \d{5}[A-Z] \d{5}[A-Z]{3} \d{14}\.\d{8} [\-+]\.\d{8} \d{5}[\-+]?\d \d{4}[\-+]?\d \d{7} \d{4}$/;
+    return tleRegex.test(line1) && tleRegex.test(line2);
+  }
+}
+```
+
+## 5. モニタリングと最適化
+
+### 5.1 パフォーマンス監視の高度な実装
+```typescript
+class PerformanceMonitor {
+  private metrics: PerformanceMetrics = {
+    calculationTime: [],
+    memoryUsage: [],
+    renderTime: []
   };
 
-  // キャッシュサイズの制限（MB）
-  maxSize: number;
+  trackCalculationPerformance(callback: () => void) {
+    const start = performance.now();
+    callback();
+    const end = performance.now();
+    this.metrics.calculationTime.push(end - start);
+  }
+
+  generatePerformanceReport() {
+    return {
+      averageCalculationTime: this.calculateAverage(this.metrics.calculationTime),
+      peakMemoryUsage: Math.max(...this.metrics.memoryUsage),
+      // 他のメトリクス
+    };
+  }
 }
 ```
 
-### 3.5 エラーハンドリング戦略
-```mermaid
-graph TD
-    A[API呼び出し] -->|失敗| B{エラー種別}
-    B -->|接続エラー| C[代替APIに切り替え]
-    B -->|レート制限| D[待機して再試行]
-    B -->|データなし| E[キャッシュ検索]
-    C --> F[ユーザーに通知]
-    D --> F
-    E --> F
-```
+## 6. 更新履歴
 
-## 4. コンポーネント設計
+### 2025/2/21
+- 初期アーキテクチャ設計の文書化
+- 基本的なコンポーネント構造の定義
+- 状態管理戦略の概要
 
-### 4.1 Mapコンポーネント
-```typescript
-interface MapProps {
-  center: LatLng;
-  zoom: number;
-  onLocationSelect: (location: LatLng) => void;
-  satellites?: Satellite[];
-  orbitPaths?: OrbitPath[];
-}
-```
-
-### 4.2 SatelliteSearchコンポーネント
-```typescript
-interface SearchFilters {
-  minElevation: number;
-  dateRange: DateRange;
-  location: LatLng;
-}
-```
-
-### 4.3 OrbitDisplayコンポーネント
-```typescript
-interface OrbitProps {
-  satellite: Satellite;
-  timeRange: DateRange;
-  groundTrack: GroundTrack[];
-}
-```
-
-## 5. 状態管理
-
-### 5.1 グローバル状態
-```typescript
-interface GlobalState {
-  selectedSatellites: string[];
-  location: Location;
-  dateRange: DateRange;
-  filters: FilterOptions;
-}
-```
-
-### 5.2 ローカル状態
-- コンポーネント固有の一時的な状態
-- フォーム入力値
-- UI表示状態
-
-## 6. エラーハンドリング
-
-### 6.1 エラー種別
-- APIエラー
-- 計算エラー
-- バリデーションエラー
-
-### 6.2 エラー通知
-```typescript
-interface ErrorNotification {
-  type: ErrorType;
-  message: string;
-  severity: 'error' | 'warning' | 'info';
-}
-```
-
-## 7. パフォーマンス最適化
-
-### 7.1 メモ化戦略
-- React.memo
-- useMemo
-- useCallback
-
-### 7.2 遅延読み込み
-```typescript
-const OrbitDisplay = React.lazy(() =>
-  import('./components/OrbitDisplay')
-);
-```
-
-## 8. セキュリティ対策
-
-### 8.1 データ保護
-- APIキーの管理
-- ユーザーデータの暗号化
-- XSS対策
-
-### 8.2 入力バリデーション
-- 座標範囲チェック
-- 日時形式チェック
-- TLEデータ形式チェック
-
-## 9. モニタリング
-
-### 9.1 パフォーマンスメトリクス
-- 計算時間
-- メモリ使用量
-- レンダリング時間
-
-### 9.2 エラー追跡
-- エラーログ収集
-- パフォーマンスボトルネック検出
-- ユーザー行動分析
+### 2025/3/4
+- APIフォールバック戦略の詳細化
+- エラーハンドリングの具体的な実装例の追加
+- セキュリティ対策の具体的な実装方法を記述
+- モニタリング戦略の高度な実装例を追加
+- マルチAPIソース対応の設計を強化
