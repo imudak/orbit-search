@@ -36,7 +36,7 @@ jobs:
       - name: Build project
         run: npm run build
         env:
-          VITE_CELESTRAK_API_BASE_URL: 'https://www.celestrak.org'
+          VITE_CELESTRAK_API_BASE_URL: 'https://celestrak-proxy.imudak.workers.dev'
           VITE_USE_MOCK_DATA: 'false'
           VITE_OFFLINE_MODE: 'false'
 
