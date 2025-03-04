@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar } from '@mui/material';
+import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import InfoIcon from '@mui/icons-material/Info';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import ja from 'date-fns/locale/ja';
 import Map from '@/components/Map';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
@@ -11,10 +15,9 @@ import { searchSatellites } from '@/services/satelliteService';
 import { orbitService } from '@/services/orbitService';
 
 const Root = styled(Box)({
-  height: '100vh',
+  minHeight: '100vh',
   display: 'flex',
-  flexDirection: 'column',
-  overflow: 'hidden'
+  flexDirection: 'column'
 });
 
 const Main = styled(Container)({
@@ -22,16 +25,36 @@ const Main = styled(Container)({
   display: 'flex',
   flexDirection: 'column',
   padding: '24px',
-  overflow: 'hidden'
+  overflow: 'auto'  // スクロール可能に
 });
 
-const StyledPaper = styled(Paper)({
-  height: '100%',
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  backgroundColor: theme.palette.background.default,
   display: 'flex',
   flexDirection: 'column',
-  padding: '16px',
-  gap: '16px'
-});
+  boxSizing: 'border-box'  // パディングを含めたサイズ計算
+}));
+
+const MapInfoBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(1),
+  backgroundColor: theme.palette.primary.light,
+  color: theme.palette.primary.contrastText,
+  borderRadius: theme.shape.borderRadius,
+  marginBottom: theme.spacing(1),
+  boxShadow: theme.shadows[1]
+}));
+
+const Footer = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(1, 2),
+  backgroundColor: theme.palette.grey[100],
+  borderTop: `1px solid ${theme.palette.divider}`,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center'
+}));
 
 const App = () => {
   // 軌道パスの状態
@@ -194,38 +217,88 @@ const App = () => {
   };
 
   return (
-    <Root>
-      {/* アプリのヘッダー */}
+    <LocalizationProvider dateAdapter={AdapterDateFns} locale={ja}>
+      <Root>
+        {/* アプリのヘッダー */}
       <AppBar position="static" color="primary">
         <Toolbar>
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
             Orbit Search - 衛星軌道検索
           </Typography>
-          <Typography variant="body2" color="inherit">
-            地図上の位置をクリックして、その場所から見える衛星を検索します
-          </Typography>
         </Toolbar>
       </AppBar>
       <Main maxWidth="xl">
+        {/* 説明エリア */}
+        <MapInfoBox sx={{ mb: 2 }}>
+          <InfoIcon sx={{ mr: 1 }} />
+          <Typography variant="body2">
+            地図上の位置をクリックして、その場所から見える衛星を検索します
+          </Typography>
+        </MapInfoBox>
+
         <Grid container spacing={2} sx={{ height: '100%' }}>
           {/* 左側エリア - 地図と検索パネル */}
-          <Grid item xs={12} md={8}>
-            <StyledPaper elevation={0} variant="outlined">
-              <Map
-                center={selectedLocation}
-                onLocationSelect={handleLocationSelect}
-                orbitPaths={orbitPaths}
-                filters={searchFilters}
-              />
+          <Grid item xs={12} lg={8}>
+            {/* 地図コンテナ */}
+            <StyledPaper
+              elevation={0}
+              variant="outlined"
+              sx={{
+                mb: 3,  // 下部マージンを増加
+                overflow: 'visible',  // コンテンツが見切れないように
+                height: { xs: '400px', md: '550px' }  // 地図の高さをさらに増加
+              }}
+            >
+              <Box
+                sx={{
+                  height: '100%',
+                  width: '100%',
+                  position: 'relative',
+                  '& .leaflet-container': {
+                    height: '100% !important',
+                    width: '100% !important'
+                  },
+                  '& .leaflet-bottom': {
+                    bottom: '10px'  // 凡例の位置を下から少し上に
+                  }
+                }}
+              >
+                <Map
+                  center={selectedLocation}
+                  onLocationSelect={handleLocationSelect}
+                  orbitPaths={orbitPaths}
+                  filters={searchFilters}
+                />
+              </Box>
+            </StyledPaper>
+
+            {/* 検索パネルを別のPaperに分離 */}
+            <StyledPaper
+              elevation={0}
+              variant="outlined"
+              sx={{
+                mb: { xs: 2, md: 0 },
+                height: 'auto'
+              }}
+            >
               <SearchPanel
                 filters={searchFilters}
                 onFiltersChange={handleFiltersChange}
               />
             </StyledPaper>
           </Grid>
+
           {/* 右側エリア - 衛星リスト */}
-          <Grid item xs={12} md={4}>
-            <StyledPaper elevation={0} variant="outlined">
+          <Grid item xs={12} lg={4} sx={{ height: { xs: 'auto', md: '100%' } }}>
+            <StyledPaper
+              elevation={0}
+              variant="outlined"
+              sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
               <SatelliteList
                 satellites={satellites}
                 onTLEDownload={handleTLEDownload}
@@ -237,7 +310,17 @@ const App = () => {
           </Grid>
         </Grid>
       </Main>
+      {/* フッター */}
+      <Footer>
+        <Typography variant="body2" color="text.secondary">
+          © {new Date().getFullYear()} Kazumi OKANO
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Version 1.0.0
+        </Typography>
+      </Footer>
     </Root>
+  </LocalizationProvider>
   );
 };
 

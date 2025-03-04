@@ -81,9 +81,19 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
   // 昼夜の考慮は削除
 
   return (
-    <Card variant="outlined">
+    <Card
+      variant="outlined"
+      sx={{
+        backgroundColor: 'white',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      }}
+    >
       <CardContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+        }}>
           {/* 期間選択 */}
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Box sx={{ flex: 1 }}>
@@ -91,7 +101,19 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                 label="開始日時"
                 value={filters.startDate}
                 onChange={handleStartDateChange}
-                renderInput={(props) => <TextField {...props} fullWidth />}
+                renderInput={(props) => (
+                  <TextField
+                    {...props}
+                    fullWidth
+                    size="small"
+                    sx={{
+                      backgroundColor: 'white',
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '4px'
+                      }
+                    }}
+                  />
+                )}
                 inputFormat="yyyy/MM/dd HH:mm"
                 ampm={false}
               />
@@ -101,55 +123,67 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                 label="終了日時"
                 value={filters.endDate}
                 onChange={handleEndDateChange}
-                renderInput={(props) => <TextField {...props} fullWidth />}
+                renderInput={(props) => (
+                  <TextField
+                    {...props}
+                    fullWidth
+                    size="small"
+                    sx={{
+                      backgroundColor: 'white',
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '4px'
+                      }
+                    }}
+                  />
+                )}
                 inputFormat="yyyy/MM/dd HH:mm"
                 ampm={false}
               />
             </Box>
           </Box>
 
-          {/* 最低仰角設定 */}
-          <Box>
-            <Typography gutterBottom>
-              最低仰角: {sliderValue}°
-              <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
-                <IconButton size="small" sx={{ ml: 1 }}>
-                  <HelpOutlineIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Typography>
-            <Slider
-              value={sliderValue}
-              onChange={handleMinElevationChange}
-              min={0}
-              max={90}
-              step={1}
-              marks={[
-                { value: 0, label: '0°' },
-                { value: 30, label: '30°' },
-                { value: 60, label: '60°' },
-                { value: 90, label: '90°' },
-              ]}
-              valueLabelDisplay="auto"
-            />
-          </Box>
-
-          {/* 昼夜の考慮は削除 */}
-
-          {/* 現在の観測地点情報 */}
-          {filters.location && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                観測地点
+          {/* 最低仰角と観測地点を横並びに */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {/* 最低仰角設定 */}
+            <Box sx={{ flex: 1 }}>
+              <Typography gutterBottom>
+                最低仰角: {sliderValue}°
+                <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
+                  <IconButton size="small" sx={{ ml: 1 }}>
+                    <HelpOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={`緯度: ${filters.location.lat.toFixed(4)}, 経度: ${filters.location.lng.toFixed(4)}`}
-                InputProps={{ readOnly: true }}
+              <Slider
+                value={sliderValue}
+                onChange={handleMinElevationChange}
+                min={0}
+                max={90}
+                step={1}
+                marks={[
+                  { value: 0, label: '0°' },
+                  { value: 45, label: '45°' },
+                  { value: 90, label: '90°' },
+                ]}
+                valueLabelDisplay="auto"
               />
             </Box>
-          )}
+
+            {/* 現在の観測地点情報 */}
+            {filters.location && (
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  観測地点
+                </Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={`緯度: ${filters.location.lat.toFixed(4)}, 経度: ${filters.location.lng.toFixed(4)}`}
+                  InputProps={{ readOnly: true }}
+                />
+              </Box>
+            )}
+          </Box>
         </Box>
       </CardContent>
     </Card>
