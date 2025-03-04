@@ -15,10 +15,9 @@ import { searchSatellites } from '@/services/satelliteService';
 import { orbitService } from '@/services/orbitService';
 
 const Root = styled(Box)({
-  height: '100vh',
+  minHeight: '100vh',
   display: 'flex',
-  flexDirection: 'column',
-  overflow: 'hidden'
+  flexDirection: 'column'
 });
 
 const Main = styled(Container)({
@@ -26,25 +25,25 @@ const Main = styled(Container)({
   display: 'flex',
   flexDirection: 'column',
   padding: '24px',
-  overflow: 'hidden'
+  overflow: 'auto'  // スクロール可能に
 });
 
-const StyledPaper = styled(Paper)({
-  height: '100%',
-  display: 'flex',
-  flexDirection: 'column',
+const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: '16px',
-  gap: '16px'
-});
+  backgroundColor: theme.palette.background.default,
+  overflow: 'visible', // コンテンツが見切れないように
+  height: 'auto',
+  minHeight: 'min-content'
+}));
 
 const MapInfoBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  padding: theme.spacing(1, 2),
+  padding: theme.spacing(1),
   backgroundColor: theme.palette.primary.light,
   color: theme.palette.primary.contrastText,
   borderRadius: theme.shape.borderRadius,
-  marginBottom: theme.spacing(2),
+  marginBottom: theme.spacing(1),
   boxShadow: theme.shadows[1]
 }));
 
@@ -231,15 +230,14 @@ const App = () => {
       <Main maxWidth="xl">
         <Grid container spacing={2} sx={{ height: '100%' }}>
           {/* 左側エリア - 地図と検索パネル */}
-          <Grid item xs={12} lg={8} sx={{ display: 'flex', flexDirection: 'column', height: { xs: 'auto', md: '100%' } }}>
+          <Grid item xs={12} lg={8}>
             <StyledPaper
               elevation={0}
               variant="outlined"
               sx={{
                 mb: { xs: 2, md: 0 },
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column'
+                minHeight: 'min-content',
+                height: 'auto'
               }}
             >
               {/* 地図の上に説明テキストを配置 */}
@@ -250,20 +248,18 @@ const App = () => {
                 </Typography>
               </MapInfoBox>
 
-              <Box sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
-                gap: 2
-              }}>
-                {/* 検索パネルを先に配置 */}
-                <SearchPanel
-                  filters={searchFilters}
-                  onFiltersChange={handleFiltersChange}
-                />
-
-                {/* 地図を後に配置（残りのスペースを使用） */}
-                <Box sx={{ flex: 1, minHeight: { xs: '400px', md: '0' } }}>
+              <Box>
+                {/* 地図を先に配置 */}
+                <Box
+                  sx={{
+                    height: { xs: '400px', md: '500px' },  // 高さを少し小さく
+                    mb: 0.5,  // 余白を縮小
+                    '& .leaflet-container': {
+                      height: '100% !important',
+                      width: '100%'
+                    }
+                  }}
+                >
                   <Map
                     center={selectedLocation}
                     onLocationSelect={handleLocationSelect}
@@ -271,6 +267,12 @@ const App = () => {
                     filters={searchFilters}
                   />
                 </Box>
+
+                {/* 検索パネルを後に配置 */}
+                <SearchPanel
+                  filters={searchFilters}
+                  onFiltersChange={handleFiltersChange}
+                />
               </Box>
             </StyledPaper>
           </Grid>
