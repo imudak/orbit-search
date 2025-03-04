@@ -433,27 +433,14 @@ const Map: React.FC<MapProps> = ({
               </Popup>
             </Marker>
             {/* 各軌道種類ごとの可視範囲を表示（高度の高い順に表示） */}
-            {[...ORBIT_TYPES].reverse().map((orbitType, index) => {
-              // デバッグ用：可視範囲の半径を計算して表示
-              const radiusKm = calculateVisibleRadius(minElevation, orbitType.height);
-              console.log(`${orbitType.name} 高度: ${orbitType.height}km, 最低仰角: ${minElevation}度, 可視範囲半径: ${radiusKm.toFixed(0)}km`);
-
-              // 異なる仰角での計算結果をログに出力（デバッグ用）
-              const testElevations = [10, 30, 60, 80, 89];
-              testElevations.forEach(elev => {
-                const radius = calculateVisibleRadius(elev, orbitType.height);
-                console.log(`  - 仰角${elev}度の場合: ${radius.toFixed(0)}km`);
-              });
-
-              return (
-                <VisibilityCircle
-                  key={orbitType.name}
-                  center={center}
-                  minElevation={minElevation}
-                  orbitType={orbitType}
-                />
-              );
-            })}
+            {[...ORBIT_TYPES].reverse().map((orbitType, index) => (
+              <VisibilityCircle
+                key={orbitType.name}
+                center={center}
+                minElevation={minElevation}
+                orbitType={orbitType}
+              />
+            ))}
           </>
         )}
         {orbitPaths.length > 0 && <OrbitLayer paths={orbitPaths} />}
