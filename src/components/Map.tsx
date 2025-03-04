@@ -2,6 +2,11 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
 import { styled } from '@mui/material/styles';
+import { Button, ButtonGroup, Box } from '@mui/material';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import HomeIcon from '@mui/icons-material/Home';
 import type { Location, OrbitPath, SearchFilters } from '@/types';
 import 'leaflet/dist/leaflet.css';
 
@@ -134,6 +139,86 @@ const VisibilityCircle: React.FC<{
   );
 };
 
+// マップコントロールボタン
+const MapControls: React.FC<{
+  defaultCenter: Location;
+  defaultZoom: number;
+}> = ({
+  defaultCenter,
+  defaultZoom
+}) => {
+  const map = useMap();
+
+  // 全体表示ボタンのクリックハンドラー
+  const handleFullView = () => {
+    // 軌道パスのすべてのポイントを取得
+    const allPolylines = document.querySelectorAll('.leaflet-interactive');
+    if (allPolylines.length === 0) return;
+
+    try {
+      // 地図上のすべての要素を含む境界を計算
+      // 観測地点を中心に、大きめの範囲を表示
+      const center = map.getCenter();
+      const bounds = L.latLngBounds(
+        L.latLng(center.lat - 20, center.lng - 40),
+        L.latLng(center.lat + 20, center.lng + 40)
+      );
+
+      // 境界が有効な場合、その範囲に合わせて表示
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
+    } catch (error) {
+      console.error('Failed to fit bounds:', error);
+    }
+  };
+
+  // 元の縮尺に戻すボタンのクリックハンドラー
+  const handleResetView = () => {
+    map.setView([defaultCenter.lat, defaultCenter.lng], defaultZoom);
+  };
+
+  // ズームインボタンのクリックハンドラー
+  const handleZoomIn = () => {
+    map.zoomIn();
+  };
+
+  // ズームアウトボタンのクリックハンドラー
+  const handleZoomOut = () => {
+    map.zoomOut();
+  };
+
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        top: '10px',
+        right: '10px',
+        zIndex: 1000,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: '4px',
+        padding: '5px',
+        boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)'
+      }}
+    >
+      <ButtonGroup orientation="vertical" size="small">
+        <Button onClick={handleZoomIn} title="ズームイン">
+          <ZoomInIcon fontSize="small" />
+        </Button>
+        <Button onClick={handleZoomOut} title="ズームアウト">
+          <ZoomOutIcon fontSize="small" />
+        </Button>
+        <Button onClick={handleFullView} title="全体表示">
+          <FullscreenIcon fontSize="small" />
+        </Button>
+        <Button onClick={handleResetView} title="元の縮尺に戻す">
+          <HomeIcon fontSize="small" />
+        </Button>
+      </ButtonGroup>
+    </Box>
+  );
+};
+
 // マップクリックハンドラーコンポーネント
 const MapClickHandler: React.FC<{ onLocationSelect: (location: Location) => void }> = ({
   onLocationSelect,
@@ -247,16 +332,8 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
       });
     });
 
-    // すべてのセグメントのポイントを取得してビューを調整
-    if (paths.length > 0) {
-      const allPoints = paths.flatMap(path =>
-        path.segments.flatMap(segment => segment.points)
-      );
-      if (allPoints.length > 0) {
-        const bounds = L.latLngBounds(allPoints.map(p => new LatLng(p.lat, p.lng)));
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
-    }
+    // 以前はここで地図の表示範囲を自動調整していたが、
+    // ユーザーからの要望により削除し、元の縮尺を維持するようにした
 
     // 配列が入れ子になっているので、平坦化して一つの配列にする
     const allLines = lines.flat();
@@ -279,11 +356,14 @@ const Map: React.FC<MapProps> = ({
   // 最低仰角の値（デフォルト10度）
   const minElevation = filters?.minElevation ?? 10;
 
+  // デフォルトのズームレベル
+  const defaultZoom = 4;
+
   return (
     <MapWrapper>
       <MapContainer
         center={[center.lat, center.lng]}
-        zoom={4} // より広い範囲を表示
+        zoom={defaultZoom} // より広い範囲を表示
         style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
@@ -291,6 +371,11 @@ const Map: React.FC<MapProps> = ({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler onLocationSelect={onLocationSelect} />
+        {/* 地図コントロールボタン */}
+        <MapControls
+          defaultCenter={center}
+          defaultZoom={defaultZoom}
+        />
         {center && (
           <>
             <Marker position={[center.lat, center.lng]}>
