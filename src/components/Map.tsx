@@ -136,16 +136,15 @@ const MapControls: React.FC<{
 
   // 全体表示ボタンのクリックハンドラー
   const handleFullView = () => {
-    // 観測地点を中心に、大きめの範囲を表示
-    const center = map.getCenter();
-    const bounds = L.latLngBounds(
-      L.latLng(center.lat - 20, center.lng - 40),
-      L.latLng(center.lat + 20, center.lng + 40)
+    // 日本全体が見えるように表示
+    const japanBounds = L.latLngBounds(
+      L.latLng(24.0, 122.0), // 南西端（沖縄付近）
+      L.latLng(46.0, 146.0)  // 北東端（北海道付近）
     );
 
     // 境界が有効な場合、その範囲に合わせて表示
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [50, 50] });
+    if (japanBounds.isValid()) {
+      map.fitBounds(japanBounds, { padding: [50, 50] });
     }
   };
 
@@ -169,9 +168,8 @@ const MapControls: React.FC<{
     <Box
       sx={{
         position: 'absolute',
-        top: '50%',
-        left: '10px',
-        transform: 'translateY(-50%)',
+        top: '10px',     // 上部に配置
+        right: '10px',   // 右側に配置
         zIndex: 1000,
         backgroundColor: 'rgba(255, 255, 255, 0.8)',
         borderRadius: '4px',
@@ -179,17 +177,17 @@ const MapControls: React.FC<{
         boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
       }}
     >
-      <ButtonGroup orientation="vertical" size="small">
+      <ButtonGroup orientation="horizontal" size="small">
         <Button onClick={handleZoomIn} title="ズームイン">
           <ZoomInIcon fontSize="small" />
         </Button>
         <Button onClick={handleZoomOut} title="ズームアウト">
           <ZoomOutIcon fontSize="small" />
         </Button>
-        <Button onClick={handleFullView} title="全体表示">
+        <Button onClick={handleFullView} title="日本全体表示">
           <FullscreenIcon fontSize="small" />
         </Button>
-        <Button onClick={handleResetView} title="元の縮尺に戻す">
+        <Button onClick={handleResetView} title="選択地点に戻る">
           <HomeIcon fontSize="small" />
         </Button>
       </ButtonGroup>
@@ -291,7 +289,8 @@ const VisibilityLegend: React.FC<{
         </Box>
       ))}
       <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-        ※円の範囲は、最低仰角{minElevation}度以上で衛星が見える地表の範囲を示しています
+        ※円は、観測地点から各軌道高度の衛星を見上げたときに、
+        地平線から{minElevation}度以上の角度で見える範囲を示しています
       </Typography>
     </Paper>
   );
@@ -383,6 +382,16 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
   return null;
 };
 
+// カスタムマーカーアイコンの設定
+const observerIcon = L.icon({
+  iconUrl: '/marker-icon.png',
+  shadowUrl: '/marker-shadow.png',
+  iconSize: [30, 45],  // 少し大きく
+  iconAnchor: [15, 45], // アイコンの中心位置
+  popupAnchor: [0, -45], // ポップアップの位置
+  shadowSize: [41, 41]
+});
+
 const Map: React.FC<MapProps> = ({
   center = { lat: 35.6812, lng: 139.7671 }, // デフォルト: 東京
   onLocationSelect,
@@ -392,8 +401,8 @@ const Map: React.FC<MapProps> = ({
   // 最低仰角の値（デフォルト10度）
   const minElevation = filters?.minElevation ?? 10;
 
-  // デフォルトのズームレベル
-  const defaultZoom = 4;
+  // デフォルトのズームレベル（日本全体が見えるレベル）
+  const defaultZoom = 5;
 
   // マップインスタンスを保持するための状態
   const [mapInstance, setMapInstance] = React.useState<L.Map | null>(null);
@@ -401,6 +410,14 @@ const Map: React.FC<MapProps> = ({
   // マップが準備できたときのコールバック
   const handleMapReady = React.useCallback((map: L.Map) => {
     setMapInstance(map);
+
+    // 地図の初期設定
+    map.attributionControl.setPosition('bottomleft');
+
+    // zoomControlが存在する場合のみ削除
+    if (map.zoomControl) {
+      map.zoomControl.remove(); // デフォルトのズームコントロールを削除（カスタムコントロールを使用）
+    }
   }, []);
 
   return (
@@ -415,21 +432,25 @@ const Map: React.FC<MapProps> = ({
       <VisibilityLegend minElevation={minElevation} />
       <MapContainer
         center={[center.lat, center.lng]}
-        zoom={defaultZoom} // より広い範囲を表示
+        zoom={defaultZoom}
         style={{ height: '100%', width: '100%' }}
+        zoomControl={false} // デフォルトのズームコントロールを無効化
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | &copy; Kazumi OKANO'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler onLocationSelect={onLocationSelect} />
         <MapController onMapReady={handleMapReady} />
         {center && (
           <>
-            <Marker position={[center.lat, center.lng]}>
+            <Marker position={[center.lat, center.lng]} icon={observerIcon}>
               <Popup>
-                緯度: {center.lat.toFixed(4)}<br />
-                経度: {center.lng.toFixed(4)}
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>観測地点</Typography>
+                <Typography variant="body2">
+                  緯度: {center.lat.toFixed(6)}<br />
+                  経度: {center.lng.toFixed(6)}
+                </Typography>
               </Popup>
             </Marker>
             {/* 各軌道種類ごとの可視範囲を表示（高度の高い順に表示） */}

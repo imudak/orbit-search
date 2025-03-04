@@ -119,21 +119,50 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
     >
       <CardContent sx={{ p: 1 }}>
         {/* リストのタイトルと総数を表示 */}
-        <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" component="h2">
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" component="h2" sx={{
+            fontWeight: 'bold',
+            color: '#1976d2',
+            display: 'flex',
+            alignItems: 'center',
+            '&::before': {
+              content: '""',
+              display: 'inline-block',
+              width: '4px',
+              height: '24px',
+              backgroundColor: '#1976d2',
+              marginRight: '8px',
+              borderRadius: '2px'
+            }
+          }}>
             可視衛星リスト
           </Typography>
           <Chip
             label={`合計: ${satellites.length}件`}
             color="primary"
             size="small"
+            sx={{ fontWeight: 'bold', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
           />
         </Box>
 
         {/* 衛星情報の説明 */}
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          ※衛星の軌道種類と最大仰角を表示しています（LEO: 低軌道、MEO: 中軌道、GEO: 静止軌道、HEO: 高楕円軌道）
-        </Typography>
+        <Box sx={{
+          mb: 2,
+          p: 1,
+          backgroundColor: 'rgba(25, 118, 210, 0.05)',
+          borderRadius: '4px',
+          border: '1px solid rgba(25, 118, 210, 0.1)'
+        }}>
+          <Typography variant="body2" color="text.secondary" component="div">
+            ※衛星の軌道種類と最大仰角を表示しています
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+            <Chip size="small" label="LEO: 低軌道" color="error" />
+            <Chip size="small" label="MEO: 中軌道" color="success" />
+            <Chip size="small" label="GEO: 静止軌道" color="primary" />
+            <Chip size="small" label="HEO: 高楕円軌道" color="warning" />
+          </Box>
+        </Box>
 
         <List disablePadding>
           {satellites.map((satellite, index) => (
@@ -158,21 +187,60 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
               <ListItemButton
                 selected={selectedSatellite?.id === satellite.id}
                 onClick={() => onSatelliteSelect(satellite)}
+                sx={{
+                  borderRadius: '4px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  },
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                    borderLeft: '4px solid #1976d2',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.2)',
+                    }
+                  }
+                }}
               >
                 <ListItemText
                   primary={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography component="span" sx={{ minWidth: '30px', fontWeight: 'bold' }}>
+                      <Typography
+                        component="span"
+                        sx={{
+                          minWidth: '30px',
+                          fontWeight: 'bold',
+                          color: selectedSatellite?.id === satellite.id ? '#1976d2' : 'inherit'
+                        }}
+                      >
                         {index + 1}.
                       </Typography>
-                      {satellite.name}
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Typography
+                        component="span"
+                        sx={{
+                          fontWeight: selectedSatellite?.id === satellite.id ? 'bold' : 'normal',
+                          color: selectedSatellite?.id === satellite.id ? '#1976d2' : 'inherit'
+                        }}
+                      >
+                        {satellite.name}
+                      </Typography>
+                    </Box>
+                  }
+                  secondary={
+                    <Typography component="div" variant="body2">
+                      <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
                         {/* TLEデータから軌道種類を判断して表示 */}
                         {satellite.tle && (
                           <Chip
                             size="small"
                             label={getOrbitType(satellite.tle)}
                             color={getOrbitTypeColor(getOrbitType(satellite.tle))}
+                            sx={{
+                              fontWeight: selectedSatellite?.id === satellite.id ? 'bold' : 'normal',
+                              boxShadow: selectedSatellite?.id === satellite.id ? '0 1px 3px rgba(0,0,0,0.2)' : 'none'
+                            }}
                           />
                         )}
                         {/* 最大仰角を表示（パスがある場合のみ） */}
@@ -181,12 +249,15 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                             size="small"
                             label={`最大仰角: ${satellite.passes[0].maxElevation.toFixed(1)}°`}
                             color="primary"
+                            sx={{
+                              fontWeight: selectedSatellite?.id === satellite.id ? 'bold' : 'normal',
+                              boxShadow: selectedSatellite?.id === satellite.id ? '0 1px 3px rgba(0,0,0,0.2)' : 'none'
+                            }}
                           />
                         )}
                       </Box>
-                    </Box>
+                    </Typography>
                   }
-
                 />
               </ListItemButton>
             </ListItem>

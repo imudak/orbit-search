@@ -81,9 +81,21 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
   // 昼夜の考慮は削除
 
   return (
-    <Card variant="outlined">
+    <Card
+      variant="outlined"
+      sx={{
+        backgroundColor: 'white',
+        position: 'relative',
+        zIndex: 2,  // 地図より上に表示
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      }}
+    >
       <CardContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+        }}>
           {/* 期間選択 */}
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Box sx={{ flex: 1 }}>
@@ -91,7 +103,19 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                 label="開始日時"
                 value={filters.startDate}
                 onChange={handleStartDateChange}
-                renderInput={(props) => <TextField {...props} fullWidth />}
+                renderInput={(props) => (
+                  <TextField
+                    {...props}
+                    fullWidth
+                    size="small"
+                    sx={{
+                      backgroundColor: 'white',
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '4px'
+                      }
+                    }}
+                  />
+                )}
                 inputFormat="yyyy/MM/dd HH:mm"
                 ampm={false}
               />
@@ -101,7 +125,19 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                 label="終了日時"
                 value={filters.endDate}
                 onChange={handleEndDateChange}
-                renderInput={(props) => <TextField {...props} fullWidth />}
+                renderInput={(props) => (
+                  <TextField
+                    {...props}
+                    fullWidth
+                    size="small"
+                    sx={{
+                      backgroundColor: 'white',
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '4px'
+                      }
+                    }}
+                  />
+                )}
                 inputFormat="yyyy/MM/dd HH:mm"
                 ampm={false}
               />

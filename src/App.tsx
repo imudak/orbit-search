@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar } from '@mui/material';
+import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import InfoIcon from '@mui/icons-material/Info';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import ja from 'date-fns/locale/ja';
 import Map from '@/components/Map';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
@@ -32,6 +36,26 @@ const StyledPaper = styled(Paper)({
   padding: '16px',
   gap: '16px'
 });
+
+const MapInfoBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(1, 2),
+  backgroundColor: theme.palette.primary.light,
+  color: theme.palette.primary.contrastText,
+  borderRadius: theme.shape.borderRadius,
+  marginBottom: theme.spacing(2),
+  boxShadow: theme.shadows[1]
+}));
+
+const Footer = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(1, 2),
+  backgroundColor: theme.palette.grey[100],
+  borderTop: `1px solid ${theme.palette.divider}`,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center'
+}));
 
 const App = () => {
   // 軌道パスの状態
@@ -194,38 +218,74 @@ const App = () => {
   };
 
   return (
-    <Root>
-      {/* アプリのヘッダー */}
+    <LocalizationProvider dateAdapter={AdapterDateFns} locale={ja}>
+      <Root>
+        {/* アプリのヘッダー */}
       <AppBar position="static" color="primary">
         <Toolbar>
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
             Orbit Search - 衛星軌道検索
-          </Typography>
-          <Typography variant="body2" color="inherit">
-            地図上の位置をクリックして、その場所から見える衛星を検索します
           </Typography>
         </Toolbar>
       </AppBar>
       <Main maxWidth="xl">
         <Grid container spacing={2} sx={{ height: '100%' }}>
           {/* 左側エリア - 地図と検索パネル */}
-          <Grid item xs={12} md={8}>
-            <StyledPaper elevation={0} variant="outlined">
-              <Map
-                center={selectedLocation}
-                onLocationSelect={handleLocationSelect}
-                orbitPaths={orbitPaths}
-                filters={searchFilters}
-              />
-              <SearchPanel
-                filters={searchFilters}
-                onFiltersChange={handleFiltersChange}
-              />
+          <Grid item xs={12} lg={8} sx={{ display: 'flex', flexDirection: 'column', height: { xs: 'auto', md: '100%' } }}>
+            <StyledPaper
+              elevation={0}
+              variant="outlined"
+              sx={{
+                mb: { xs: 2, md: 0 },
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              {/* 地図の上に説明テキストを配置 */}
+              <MapInfoBox>
+                <InfoIcon sx={{ mr: 1 }} />
+                <Typography variant="body2">
+                  地図上の位置をクリックして、その場所から見える衛星を検索します
+                </Typography>
+              </MapInfoBox>
+
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                gap: 2
+              }}>
+                {/* 検索パネルを先に配置 */}
+                <SearchPanel
+                  filters={searchFilters}
+                  onFiltersChange={handleFiltersChange}
+                />
+
+                {/* 地図を後に配置（残りのスペースを使用） */}
+                <Box sx={{ flex: 1, minHeight: { xs: '400px', md: '0' } }}>
+                  <Map
+                    center={selectedLocation}
+                    onLocationSelect={handleLocationSelect}
+                    orbitPaths={orbitPaths}
+                    filters={searchFilters}
+                  />
+                </Box>
+              </Box>
             </StyledPaper>
           </Grid>
+
           {/* 右側エリア - 衛星リスト */}
-          <Grid item xs={12} md={4}>
-            <StyledPaper elevation={0} variant="outlined">
+          <Grid item xs={12} lg={4} sx={{ height: { xs: 'auto', md: '100%' } }}>
+            <StyledPaper
+              elevation={0}
+              variant="outlined"
+              sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
               <SatelliteList
                 satellites={satellites}
                 onTLEDownload={handleTLEDownload}
@@ -237,7 +297,17 @@ const App = () => {
           </Grid>
         </Grid>
       </Main>
+      {/* フッター */}
+      <Footer>
+        <Typography variant="body2" color="text.secondary">
+          © {new Date().getFullYear()} Kazumi OKANO
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Version 1.0.0
+        </Typography>
+      </Footer>
     </Root>
+  </LocalizationProvider>
   );
 };
 
