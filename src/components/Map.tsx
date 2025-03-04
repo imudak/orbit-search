@@ -27,6 +27,7 @@ const MapWrapper = styled('div')({
   height: '500px',
   borderRadius: '8px',
   overflow: 'hidden',
+  position: 'relative', // 子要素の絶対位置指定の基準にする
 });
 
 // 地球の半径（km）
@@ -187,8 +188,9 @@ const MapControls: React.FC<{
     <Box
       sx={{
         position: 'absolute',
-        top: '10px',
-        right: '10px',
+        top: '50%',
+        left: '10px',
+        transform: 'translateY(-50%)',
         zIndex: 1000,
         backgroundColor: 'rgba(255, 255, 255, 0.8)',
         borderRadius: '4px',
