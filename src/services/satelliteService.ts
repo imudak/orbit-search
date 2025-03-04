@@ -14,8 +14,8 @@ interface SatelliteResponse extends Satellite {
   passes: Array<Pass>;
 }
 
-const MAX_SATELLITES = 100; // 一度に処理する最大衛星数
-const RATE_LIMIT_DELAY = 1000; // APIリクエスト間の遅延（ミリ秒）
+const MAX_SATELLITES = 200; // 一度に処理する最大衛星数
+const RATE_LIMIT_DELAY = 100; // APIリクエスト間の遅延（ミリ秒）
 
 // モック衛星データ（開発用）
 const mockSatellites: SatelliteResponse[] = [

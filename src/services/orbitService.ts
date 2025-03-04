@@ -17,11 +17,9 @@ class OrbitService {
     // ブラウザ環境の場合のみ実行（テスト環境でない場合）
     if (typeof window !== 'undefined') {
       try {
-        // 直接Workerを初期化（import.meta.urlを使用しない）
-        // Viteの開発サーバーでは相対パスを使用
+        // Viteのビルドプロセスで処理されるようにimport.meta.urlを使用
         console.log('Initializing orbit worker in browser environment');
-        // @ts-ignore - ブラウザ環境でのみ実行されるコード
-        this.worker = new Worker(new URL('/src/workers/orbitWorker.ts', window.location.origin), { type: 'module' });
+        this.worker = new Worker(new URL('../workers/orbitWorker.ts', import.meta.url), { type: 'module' });
         console.log('Orbit worker initialized successfully');
       } catch (error) {
         console.error('Failed to initialize orbit worker:', error);
