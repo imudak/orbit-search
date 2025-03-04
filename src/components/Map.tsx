@@ -95,22 +95,9 @@ const VisibilityCircle: React.FC<{
         dashArray: '5, 5',
         fillColor: orbitType.color,
         fillOpacity: 0.05,
-        bubblingMouseEvents: true // マウスイベントを下のレイヤーに伝播させる
+        interactive: false // インタラクションを無効化（クリックイベントを完全に無視）
       }}
-      eventHandlers={{
-        click: (e) => {
-          // クリックイベントの伝播を停止しない
-          // ポップアップを表示
-          e.target.openPopup();
-        }
-      }}
-    >
-      <Popup>
-        {orbitType.name}衛星の可視範囲（仰角{minElevation}度以上）<br />
-        高度: {orbitType.height}km<br />
-        地表での距離: {radiusKm.toFixed(0)}km
-      </Popup>
-    </Circle>
+    />
   );
 };
 
