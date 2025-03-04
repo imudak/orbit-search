@@ -139,37 +139,31 @@ const VisibilityCircle: React.FC<{
   );
 };
 
-// マップコントロールボタン
+// マップコントロールボタン（MapContainerの外に配置）
 const MapControls: React.FC<{
+  map: L.Map | null;
   currentCenter: Location;
   defaultZoom: number;
 }> = ({
+  map,
   currentCenter,
   defaultZoom
 }) => {
-  const map = useMap();
+  // マップが存在しない場合は何も表示しない
+  if (!map) return null;
 
   // 全体表示ボタンのクリックハンドラー
   const handleFullView = () => {
-    // 軌道パスのすべてのポイントを取得
-    const allPolylines = document.querySelectorAll('.leaflet-interactive');
-    if (allPolylines.length === 0) return;
+    // 観測地点を中心に、大きめの範囲を表示
+    const center = map.getCenter();
+    const bounds = L.latLngBounds(
+      L.latLng(center.lat - 20, center.lng - 40),
+      L.latLng(center.lat + 20, center.lng + 40)
+    );
 
-    try {
-      // 地図上のすべての要素を含む境界を計算
-      // 観測地点を中心に、大きめの範囲を表示
-      const center = map.getCenter();
-      const bounds = L.latLngBounds(
-        L.latLng(center.lat - 20, center.lng - 40),
-        L.latLng(center.lat + 20, center.lng + 40)
-      );
-
-      // 境界が有効な場合、その範囲に合わせて表示
-      if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
-    } catch (error) {
-      console.error('Failed to fit bounds:', error);
+    // 境界が有効な場合、その範囲に合わせて表示
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] });
     }
   };
 
@@ -199,7 +193,7 @@ const MapControls: React.FC<{
         backgroundColor: 'rgba(255, 255, 255, 0.8)',
         borderRadius: '4px',
         padding: '5px',
-        boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)'
+        boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
       }}
     >
       <ButtonGroup orientation="vertical" size="small">
@@ -218,6 +212,19 @@ const MapControls: React.FC<{
       </ButtonGroup>
     </Box>
   );
+};
+
+// MapContainerのマップインスタンスを取得するためのコンポーネント
+const MapController: React.FC<{
+  onMapReady: (map: L.Map) => void;
+}> = ({ onMapReady }) => {
+  const map = useMap();
+
+  React.useEffect(() => {
+    onMapReady(map);
+  }, [map, onMapReady]);
+
+  return null;
 };
 
 // マップクリックハンドラーコンポーネント
@@ -360,8 +367,22 @@ const Map: React.FC<MapProps> = ({
   // デフォルトのズームレベル
   const defaultZoom = 4;
 
+  // マップインスタンスを保持するための状態
+  const [mapInstance, setMapInstance] = React.useState<L.Map | null>(null);
+
+  // マップが準備できたときのコールバック
+  const handleMapReady = React.useCallback((map: L.Map) => {
+    setMapInstance(map);
+  }, []);
+
   return (
     <MapWrapper>
+      {/* MapControlsコンポーネントをMapContainerの外に配置 */}
+      <MapControls
+        map={mapInstance}
+        currentCenter={center}
+        defaultZoom={defaultZoom}
+      />
       <MapContainer
         center={[center.lat, center.lng]}
         zoom={defaultZoom} // より広い範囲を表示
@@ -372,11 +393,7 @@ const Map: React.FC<MapProps> = ({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler onLocationSelect={onLocationSelect} />
-        {/* 地図コントロールボタン */}
-        <MapControls
-          currentCenter={center}
-          defaultZoom={defaultZoom}
-        />
+        <MapController onMapReady={handleMapReady} />
         {center && (
           <>
             <Marker position={[center.lat, center.lng]}>
