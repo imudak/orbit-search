@@ -31,18 +31,17 @@ const EARTH_RADIUS = 6371;
 const calculateVisibleRadius = (elevationDeg: number): number => {
   // 地球の半径（km）
   const R = EARTH_RADIUS;
-  // 観測地点の高度（km、海抜0mと仮定）
-  const h = 0;
 
   // 仰角をラジアンに変換
-  const elevation = elevationDeg * Math.PI / 180;
+  const elevationRad = elevationDeg * Math.PI / 180;
 
-  // 地平線までの距離を計算
+  // 仰角から地平線までの距離を計算
   // 参考: https://en.wikipedia.org/wiki/Horizon#Distance_to_the_horizon
-  const horizonDistance = Math.sqrt((R + h) * (R + h) - R * R);
+  const d = Math.sqrt(2 * R * 0.001); // 観測者の高さを1mと仮定
 
-  // 仰角に基づいて可視範囲を計算（仰角が高いほど範囲は小さくなる）
-  return horizonDistance * Math.cos(elevation);
+  // 仰角に基づいて可視範囲を調整（仰角が高いほど範囲は小さくなる）
+  // 最低仰角10度の場合、約500km程度になるように調整
+  return d * (90 - elevationDeg) / 8;
 };
 
 interface MapProps {
