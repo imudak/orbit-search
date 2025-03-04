@@ -288,10 +288,6 @@ const VisibilityLegend: React.FC<{
           </Typography>
         </Box>
       ))}
-      <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-        ※円は、観測地点から各軌道高度の衛星を見上げたときに、
-        地平線から{minElevation}度以上の角度で見える範囲を示しています
-      </Typography>
     </Paper>
   );
 };
