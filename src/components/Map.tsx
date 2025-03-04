@@ -80,6 +80,9 @@ const VisibilityCircle: React.FC<{
   minElevation,
   orbitType
 }) => {
+  // Leafletのマップインスタンスを取得
+  const map = useMap();
+
   // 最低仰角と衛星高度から可視範囲の半径を計算
   const radiusKm = calculateVisibleRadius(minElevation, orbitType.height);
   // kmをmに変換
@@ -95,7 +98,37 @@ const VisibilityCircle: React.FC<{
         dashArray: '5, 5',
         fillColor: orbitType.color,
         fillOpacity: 0.05,
-        interactive: false // インタラクションを無効化（クリックイベントを完全に無視）
+        bubblingMouseEvents: true // マウスイベントを下のレイヤーに伝播させる
+      }}
+      eventHandlers={{
+        mouseover: (e) => {
+          // マウスオーバー時にツールチップを表示
+          const tooltip = L.tooltip()
+            .setLatLng(e.latlng)
+            .setContent(`
+              <div style="text-align: center; font-weight: bold; margin-bottom: 5px;">
+                ${orbitType.name}衛星の可視範囲
+              </div>
+              <div>仰角: ${minElevation}度以上</div>
+              <div>高度: ${orbitType.height}km</div>
+              <div>地表での距離: ${radiusKm.toFixed(0)}km</div>
+            `)
+            .openOn(map);
+
+          // ツールチップを一時的に保存
+          (e.target as any)._tooltip = tooltip;
+        },
+        mouseout: (e) => {
+          // マウスアウト時にツールチップを閉じる
+          if ((e.target as any)._tooltip) {
+            map.closeTooltip((e.target as any)._tooltip);
+            (e.target as any)._tooltip = null;
+          }
+        },
+        click: (e) => {
+          // クリックイベントは下のレイヤーに伝播させる
+          // 何もしない
+        }
       }}
     />
   );
