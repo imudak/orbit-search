@@ -17,6 +17,48 @@ import {
 import { Download as DownloadIcon } from '@mui/icons-material';
 import type { Satellite, Pass } from '@/types';
 
+// TLEデータから軌道種類を判断する関数
+const getOrbitType = (tle: { line1: string, line2: string }): string => {
+  try {
+    // TLEの2行目から1日あたりの周回数を取得
+    const line2 = tle.line2;
+    // 平均運動（1日あたりの周回数）は53-63文字目に格納されている
+    const meanMotion = parseFloat(line2.substring(52, 63).trim());
+
+    console.log(`Mean Motion: ${meanMotion}`); // デバッグ用
+
+    // 周回数から軌道種類を判断
+    if (meanMotion >= 11.25) {
+      return 'LEO'; // 低軌道
+    } else if (meanMotion >= 2.0) {
+      return 'MEO'; // 中軌道
+    } else if (meanMotion > 0.9 && meanMotion < 1.1) {
+      return 'GEO'; // 静止軌道
+    } else {
+      return 'HEO'; // 高楕円軌道など
+    }
+  } catch (error) {
+    console.error('TLEデータの解析エラー:', error);
+    return '不明';
+  }
+};
+
+// 軌道種類に応じた色を返す関数
+const getOrbitTypeColor = (orbitType: string): 'default' | 'error' | 'primary' | 'secondary' | 'info' | 'success' | 'warning' => {
+  switch (orbitType) {
+    case 'LEO':
+      return 'error'; // 赤
+    case 'MEO':
+      return 'success'; // 緑
+    case 'GEO':
+      return 'primary'; // 青
+    case 'HEO':
+      return 'warning'; // オレンジ
+    default:
+      return 'default'; // グレー
+  }
+};
+
 interface SatelliteListProps {
   satellites: Array<Satellite & { passes: Pass[] }>;
   onTLEDownload: (satellite: Satellite) => void;
@@ -67,15 +109,9 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
     }).format(date);
   };
 
-  const renderSecondaryText = (satellite: Satellite & { passes: Pass[] }) => {
-    if (satellite.passes.length === 0) {
-      return '可視パスなし';
-    }
-
-    return [
-      `最大仰角: ${satellite.passes[0].maxElevation.toFixed(1)}°`,
-      `次回可視: ${formatDateTime(satellite.passes[0].startTime)}`
-    ].join('\n');
+  // 衛星の運用状態を表示する関数
+  const getOperationalStatus = (satellite: Satellite) => {
+    return `運用状態: ${satellite.operationalStatus || '不明'}`;
   };
 
   return (
@@ -99,9 +135,9 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
           />
         </Box>
 
-        {/* パス数の説明 */}
+        {/* 衛星情報の説明 */}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          ※パス数：今後24時間以内に観測地点から見える衛星の通過回数
+          ※衛星の軌道種類と最大仰角を表示しています（LEO: 低軌道、MEO: 中軌道、GEO: 静止軌道、HEO: 高楕円軌道）
         </Typography>
 
         <List disablePadding>
@@ -135,14 +171,27 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                         {index + 1}.
                       </Typography>
                       {satellite.name}
-                      <Chip
-                        size="small"
-                        label={`パス数: ${satellite.passes.length}`}
-                        color="primary"
-                      />
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        {/* TLEデータから軌道種類を判断して表示 */}
+                        {satellite.tle && (
+                          <Chip
+                            size="small"
+                            label={getOrbitType(satellite.tle)}
+                            color={getOrbitTypeColor(getOrbitType(satellite.tle))}
+                          />
+                        )}
+                        {/* 最大仰角を表示（パスがある場合のみ） */}
+                        {satellite.passes.length > 0 && (
+                          <Chip
+                            size="small"
+                            label={`最大仰角: ${satellite.passes[0].maxElevation.toFixed(1)}°`}
+                            color="primary"
+                          />
+                        )}
+                      </Box>
                     </Box>
                   }
-                  secondary={renderSecondaryText(satellite)}
+                  secondary={getOperationalStatus(satellite)}
                 />
               </ListItemButton>
             </ListItem>
