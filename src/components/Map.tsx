@@ -46,7 +46,7 @@ const ORBIT_TYPES: OrbitType[] = [
   { name: 'GEO', height: 35786, color: '#0000FF' }   // 静止軌道: 青
 ];
 
-// 仰角と衛星高度から地表での可視範囲の半径を計算する関数
+// 仰角と衛星高度から地表での可視範囲の半径を計算する関数（再修正版）
 const calculateVisibleRadius = (elevationDeg: number, satelliteHeight: number): number => {
   // 地球の半径（km）
   const R = EARTH_RADIUS;
@@ -57,13 +57,20 @@ const calculateVisibleRadius = (elevationDeg: number, satelliteHeight: number): 
   // 衛星から地球中心までの距離
   const satelliteDistance = R + satelliteHeight;
 
-  // 仰角から中心角を計算（修正版）
+  // 仰角から中心角を計算（再修正版）
   // 参考: https://en.wikipedia.org/wiki/Satellite_ground_track
-  // 地平線からの仰角を天頂角に変換
-  const zenithAngle = Math.PI/2 - elevationRad;
 
-  // 衛星から見た地球の中心角を計算
-  const centralAngle = Math.acos(Math.cos(zenithAngle) * R / satelliteDistance);
+  // 仰角90度の場合は可視範囲0（真上のみ）
+  if (elevationDeg >= 90) {
+    return 0;
+  }
+
+  // 仰角から地平線までの角度を計算
+  const horizonAngle = Math.acos(R / satelliteDistance);
+
+  // 仰角から可視範囲の中心角を計算
+  // 仰角0度の場合は地平線まで、仰角90度の場合は0
+  const centralAngle = Math.max(0, horizonAngle - elevationRad);
 
   // 中心角から地表での距離を計算
   return R * centralAngle;
@@ -429,7 +436,14 @@ const Map: React.FC<MapProps> = ({
             {[...ORBIT_TYPES].reverse().map((orbitType, index) => {
               // デバッグ用：可視範囲の半径を計算して表示
               const radiusKm = calculateVisibleRadius(minElevation, orbitType.height);
-              console.log(`${orbitType.name} 高度: ${orbitType.height}km, 可視範囲半径: ${radiusKm.toFixed(0)}km`);
+              console.log(`${orbitType.name} 高度: ${orbitType.height}km, 最低仰角: ${minElevation}度, 可視範囲半径: ${radiusKm.toFixed(0)}km`);
+
+              // 異なる仰角での計算結果をログに出力（デバッグ用）
+              const testElevations = [10, 30, 60, 80, 89];
+              testElevations.forEach(elev => {
+                const radius = calculateVisibleRadius(elev, orbitType.height);
+                console.log(`  - 仰角${elev}度の場合: ${radius.toFixed(0)}km`);
+              });
 
               return (
                 <VisibilityCircle
