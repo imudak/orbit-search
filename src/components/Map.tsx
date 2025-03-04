@@ -2,7 +2,7 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
 import { styled } from '@mui/material/styles';
-import { Button, ButtonGroup, Box } from '@mui/material';
+import { Button, ButtonGroup, Box, Typography, Paper } from '@mui/material';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
@@ -57,12 +57,16 @@ const calculateVisibleRadius = (elevationDeg: number, satelliteHeight: number): 
   // 衛星から地球中心までの距離
   const satelliteDistance = R + satelliteHeight;
 
-  // 仰角から中心角を計算
+  // 仰角から中心角を計算（修正版）
   // 参考: https://en.wikipedia.org/wiki/Satellite_ground_track
-  const centralAngle = Math.asin(R / satelliteDistance * Math.cos(elevationRad)) - elevationRad;
+  // 地平線からの仰角を天頂角に変換
+  const zenithAngle = Math.PI/2 - elevationRad;
+
+  // 衛星から見た地球の中心角を計算
+  const centralAngle = Math.acos(Math.cos(zenithAngle) * R / satelliteDistance);
 
   // 中心角から地表での距離を計算
-  return R * Math.abs(centralAngle);
+  return R * centralAngle;
 };
 
 interface MapProps {
@@ -105,36 +109,6 @@ const VisibilityCircle: React.FC<{
         fillColor: orbitType.color,
         fillOpacity: 0.05,
         bubblingMouseEvents: true // マウスイベントを下のレイヤーに伝播させる
-      }}
-      eventHandlers={{
-        mouseover: (e) => {
-          // マウスオーバー時にツールチップを表示
-          const tooltip = L.tooltip()
-            .setLatLng(e.latlng)
-            .setContent(`
-              <div style="text-align: center; font-weight: bold; margin-bottom: 5px;">
-                ${orbitType.name}衛星の可視範囲
-              </div>
-              <div>仰角: ${minElevation}度以上</div>
-              <div>高度: ${orbitType.height}km</div>
-              <div>地表での距離: ${radiusKm.toFixed(0)}km</div>
-            `)
-            .openOn(map);
-
-          // ツールチップを一時的に保存
-          (e.target as any)._tooltip = tooltip;
-        },
-        mouseout: (e) => {
-          // マウスアウト時にツールチップを閉じる
-          if ((e.target as any)._tooltip) {
-            map.closeTooltip((e.target as any)._tooltip);
-            (e.target as any)._tooltip = null;
-          }
-        },
-        click: (e) => {
-          // クリックイベントは下のレイヤーに伝播させる
-          // 何もしない
-        }
       }}
     />
   );
@@ -271,6 +245,51 @@ const getPathColor = (index: number): string => {
   return colors[index % colors.length];
 };
 
+// 可視範囲の凡例を表示するコンポーネント
+const VisibilityLegend: React.FC<{
+  minElevation: number;
+}> = ({ minElevation }) => {
+  return (
+    <Paper
+      sx={{
+        position: 'absolute',
+        bottom: '10px',
+        right: '10px',
+        zIndex: 1000,
+        padding: '8px',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: '4px',
+        boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
+        maxWidth: '250px',
+      }}
+    >
+      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+        衛星軌道種類別の可視範囲
+      </Typography>
+      {ORBIT_TYPES.map((orbitType) => (
+        <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <Box
+            sx={{
+              width: '16px',
+              height: '16px',
+              backgroundColor: orbitType.color,
+              opacity: 0.7,
+              mr: 1,
+              border: '1px solid rgba(0, 0, 0, 0.3)',
+            }}
+          />
+          <Typography variant="body2">
+            {orbitType.name}（{orbitType.name === 'LEO' ? '低軌道' : orbitType.name === 'MEO' ? '中軌道' : '静止軌道'}）: {orbitType.height.toLocaleString()}km
+          </Typography>
+        </Box>
+      ))}
+      <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+        ※円の範囲は、最低仰角{minElevation}度以上で衛星が見える地表の範囲を示しています
+      </Typography>
+    </Paper>
+  );
+};
+
 // 軌道表示レイヤー
 const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
   const map = useMap();
@@ -385,6 +404,8 @@ const Map: React.FC<MapProps> = ({
         currentCenter={center}
         defaultZoom={defaultZoom}
       />
+      {/* 可視範囲の凡例を表示 */}
+      <VisibilityLegend minElevation={minElevation} />
       <MapContainer
         center={[center.lat, center.lng]}
         zoom={defaultZoom} // より広い範囲を表示
@@ -404,15 +425,21 @@ const Map: React.FC<MapProps> = ({
                 経度: {center.lng.toFixed(4)}
               </Popup>
             </Marker>
-            {/* 各軌道種類ごとの可視範囲を表示 */}
-            {ORBIT_TYPES.map((orbitType, index) => (
-              <VisibilityCircle
-                key={orbitType.name}
-                center={center}
-                minElevation={minElevation}
-                orbitType={orbitType}
-              />
-            ))}
+            {/* 各軌道種類ごとの可視範囲を表示（高度の高い順に表示） */}
+            {[...ORBIT_TYPES].reverse().map((orbitType, index) => {
+              // デバッグ用：可視範囲の半径を計算して表示
+              const radiusKm = calculateVisibleRadius(minElevation, orbitType.height);
+              console.log(`${orbitType.name} 高度: ${orbitType.height}km, 可視範囲半径: ${radiusKm.toFixed(0)}km`);
+
+              return (
+                <VisibilityCircle
+                  key={orbitType.name}
+                  center={center}
+                  minElevation={minElevation}
+                  orbitType={orbitType}
+                />
+              );
+            })}
           </>
         )}
         {orbitPaths.length > 0 && <OrbitLayer paths={orbitPaths} />}
