@@ -30,6 +30,8 @@ const mockSatellites: SatelliteResponse[] = [
       line2: '2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537',
       timestamp: new Date().toISOString()
     },
+    orbitHeight: 420, // 国際宇宙ステーションの平均軌道高度
+    orbitType: 'LEO', // 低軌道
     passes: [
       {
         startTime: new Date(),
@@ -50,13 +52,22 @@ const getCachedSatellite = async (noradId: string): Promise<Satellite | null> =>
   if (!cachedTLE) {
     return null;
   }
+
+  // TLEデータから軌道高度を計算
+  const orbitHeight = tleParserService.calculateOrbitHeight(cachedTLE);
+
+  // 軌道高度から軌道種類を判定
+  const orbitType = tleParserService.getOrbitTypeFromHeight(orbitHeight);
+
   return {
     id: noradId,
     name: `NORAD ID: ${noradId}`,
     noradId,
     type: 'UNKNOWN',
     operationalStatus: 'UNKNOWN',
-    tle: cachedTLE
+    tle: cachedTLE,
+    orbitHeight,
+    orbitType
   };
 };
 
@@ -85,18 +96,33 @@ const convertGPDataToSatellite = async (gpData: CelesTrakGPData): Promise<Satell
     console.log(`Caching TLE data for NORAD ID: ${gpData.NORAD_CAT_ID}`);
     await cacheService.cacheTLE(gpData.NORAD_CAT_ID, tle);
 
+    // TLEデータから軌道高度を計算
+    const orbitHeight = tleParserService.calculateOrbitHeight({
+      line1: gpData.TLE_LINE1,
+      line2: gpData.TLE_LINE2
+    });
+
+    // 軌道高度から軌道種類を判定
+    const orbitType = tleParserService.getOrbitTypeFromHeight(orbitHeight);
+
+    console.log(`Calculated orbit height for ${gpData.OBJECT_NAME}: ${orbitHeight.toFixed(2)} km (${orbitType})`);
+
     const satellite = {
       id: gpData.OBJECT_ID,
       name: gpData.OBJECT_NAME,
       noradId: gpData.NORAD_CAT_ID,
       type: gpData.OBJECT_TYPE,
       operationalStatus: gpData.OPERATIONAL_STATUS,
-      tle
+      tle,
+      orbitHeight,
+      orbitType
     };
 
     console.log(`Successfully converted GP data to satellite:`, {
       name: satellite.name,
-      noradId: satellite.noradId
+      noradId: satellite.noradId,
+      orbitHeight: orbitHeight.toFixed(2),
+      orbitType
     });
 
     return satellite;

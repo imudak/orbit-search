@@ -40,11 +40,23 @@ interface OrbitType {
   color: string;
 }
 
-const ORBIT_TYPES: OrbitType[] = [
+// デフォルトの軌道種類と高度
+const DEFAULT_ORBIT_TYPES: OrbitType[] = [
   { name: 'LEO', height: 800, color: '#FF0000' },    // 低軌道: 赤
   { name: 'MEO', height: 20000, color: '#00FF00' },  // 中軌道: 緑
   { name: 'GEO', height: 35786, color: '#0000FF' }   // 静止軌道: 青
 ];
+
+// 軌道種類から色を取得する関数
+const getOrbitTypeColor = (orbitType: string): string => {
+  switch (orbitType) {
+    case 'LEO': return '#FF0000'; // 赤
+    case 'MEO': return '#00FF00'; // 緑
+    case 'GEO': return '#0000FF'; // 青
+    case 'HEO': return '#FFA500'; // オレンジ
+    default: return '#808080';    // グレー
+  }
+};
 
 // 仰角と衛星高度から地表での可視範囲の半径を計算する関数（再修正版）
 const calculateVisibleRadius = (elevationDeg: number, satelliteHeight: number): number => {
@@ -81,6 +93,10 @@ interface MapProps {
   onLocationSelect: (location: Location) => void;
   orbitPaths?: OrbitPath[];
   filters?: SearchFilters;
+  satellites?: Array<{
+    orbitHeight?: number;
+    orbitType?: string;
+  }>;
 }
 
 interface OrbitLayerProps {
@@ -253,7 +269,8 @@ const getPathColor = (index: number): string => {
 // 可視範囲と軌道の凡例を表示するコンポーネント
 const VisibilityLegend: React.FC<{
   minElevation: number;
-}> = ({ minElevation }) => {
+  orbitTypes?: OrbitType[];
+}> = ({ minElevation, orbitTypes = DEFAULT_ORBIT_TYPES }) => {
   return (
     <Paper
       sx={{
@@ -280,7 +297,7 @@ const VisibilityLegend: React.FC<{
       <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}>
         各高度の衛星が最低仰角{minElevation}°以上で見える範囲
       </Typography>
-      {ORBIT_TYPES.map((orbitType) => (
+      {orbitTypes.map((orbitType) => (
         <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
           <Box
             sx={{
@@ -425,11 +442,46 @@ const observerIcon = L.icon({
   shadowSize: [41, 41]
 });
 
+// 衛星データから軌道種類ごとの高度を集計する関数
+const aggregateOrbitHeights = (satellites: Array<{ orbitHeight?: number; orbitType?: string; }> = []): OrbitType[] => {
+  // 軌道種類ごとの高度の合計と数を記録
+  const orbitTypeData: Record<string, { totalHeight: number; count: number }> = {};
+
+  // 有効な軌道高度と軌道種類を持つ衛星のみを処理
+  satellites.forEach(satellite => {
+    if (satellite.orbitHeight && satellite.orbitHeight > 0 && satellite.orbitType) {
+      const orbitType = satellite.orbitType;
+      if (!orbitTypeData[orbitType]) {
+        orbitTypeData[orbitType] = { totalHeight: 0, count: 0 };
+      }
+      orbitTypeData[orbitType].totalHeight += satellite.orbitHeight;
+      orbitTypeData[orbitType].count += 1;
+    }
+  });
+
+  // 軌道種類ごとの平均高度を計算
+  const result: OrbitType[] = [];
+  Object.entries(orbitTypeData).forEach(([type, data]) => {
+    if (data.count > 0) {
+      const avgHeight = Math.round(data.totalHeight / data.count);
+      result.push({
+        name: type,
+        height: avgHeight,
+        color: getOrbitTypeColor(type)
+      });
+    }
+  });
+
+  // 高度の高い順にソート
+  return result.sort((a, b) => b.height - a.height);
+};
+
 const Map: React.FC<MapProps> = ({
   center = { lat: 35.6812, lng: 139.7671 }, // デフォルト: 東京
   onLocationSelect,
   orbitPaths = [],
   filters,
+  satellites = [],
 }) => {
   // 最低仰角の値（デフォルト10度）
   const minElevation = filters?.minElevation ?? 10;
@@ -439,6 +491,13 @@ const Map: React.FC<MapProps> = ({
 
   // マップインスタンスを保持するための状態
   const [mapInstance, setMapInstance] = React.useState<L.Map | null>(null);
+
+  // 衛星データから軌道種類ごとの高度を集計
+  const orbitTypes = React.useMemo(() => {
+    const aggregated = aggregateOrbitHeights(satellites);
+    // 集計結果がない場合はデフォルト値を使用
+    return aggregated.length > 0 ? aggregated : DEFAULT_ORBIT_TYPES;
+  }, [satellites]);
 
   // マップが準備できたときのコールバック
   const handleMapReady = React.useCallback((map: L.Map) => {
@@ -462,7 +521,7 @@ const Map: React.FC<MapProps> = ({
         defaultZoom={defaultZoom}
       />
       {/* 可視範囲の凡例を表示 */}
-      <VisibilityLegend minElevation={minElevation} />
+      <VisibilityLegend minElevation={minElevation} orbitTypes={orbitTypes} />
       <MapContainer
         center={[center.lat, center.lng]}
         zoom={defaultZoom}
@@ -487,7 +546,7 @@ const Map: React.FC<MapProps> = ({
               </Popup>
             </Marker>
             {/* 各軌道種類ごとの可視範囲を表示（高度の高い順に表示） */}
-            {[...ORBIT_TYPES].reverse().map((orbitType, index) => (
+            {orbitTypes.map((orbitType, index) => (
               <VisibilityCircle
                 key={orbitType.name}
                 center={center}

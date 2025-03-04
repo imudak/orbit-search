@@ -6,6 +6,8 @@ export interface Satellite {
   type: string;
   operationalStatus: string;
   tle: TLEData;
+  orbitHeight?: number; // 軌道高度（km）
+  orbitType?: string;   // 軌道種類（LEO, MEO, GEO, HEO）
 }
 
 // TLEデータの型

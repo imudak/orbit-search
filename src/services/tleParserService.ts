@@ -127,8 +127,81 @@ const generateTLEFromJSON = (data: GPDataItem): Pick<CelesTrakGPData, 'TLE_LINE1
   }
 };
 
+/**
+ * TLEデータから衛星の軌道高度を計算
+ * @param tle TLEデータ
+ * @returns 軌道高度（km）、計算できない場合は-1
+ */
+const calculateOrbitHeight = (tle: { line1: string, line2: string }): number => {
+  try {
+    // TLEの2行目から必要なパラメータを抽出
+    const line2 = tle.line2;
+
+    // 平均運動（1日あたりの周回数）を取得（53-63文字目）
+    const meanMotion = parseFloat(line2.substring(52, 63).trim());
+    if (isNaN(meanMotion) || meanMotion <= 0) {
+      console.warn('Invalid mean motion value:', meanMotion);
+      return -1;
+    }
+
+    // 離心率を取得（26-33文字目）- 先頭に小数点を追加
+    const eccentricity = parseFloat(`0.${line2.substring(26, 33).trim()}`);
+    if (isNaN(eccentricity) || eccentricity < 0 || eccentricity >= 1) {
+      console.warn('Invalid eccentricity value:', eccentricity);
+      return -1;
+    }
+
+    // 地球の重力定数（km^3/s^2）
+    const GM = 398600.4418;
+
+    // 地球の半径（km）
+    const EARTH_RADIUS = 6371.0;
+
+    // 平均運動から軌道周期を計算（秒）
+    const period = (24 * 60 * 60) / meanMotion;
+
+    // ケプラーの第三法則から半長軸を計算（km）
+    const semiMajorAxis = Math.cbrt((GM * Math.pow(period, 2)) / (4 * Math.pow(Math.PI, 2)));
+
+    // 近地点距離（km）
+    const perigee = semiMajorAxis * (1 - eccentricity) - EARTH_RADIUS;
+
+    // 遠地点距離（km）
+    const apogee = semiMajorAxis * (1 + eccentricity) - EARTH_RADIUS;
+
+    // 平均軌道高度を計算（km）
+    const meanHeight = (perigee + apogee) / 2;
+
+    // 高度が負の値になる場合は計算エラー
+    if (meanHeight < 0) {
+      console.warn('Calculated negative orbit height:', meanHeight);
+      return -1;
+    }
+
+    return meanHeight;
+  } catch (error) {
+    console.error('Error calculating orbit height:', error);
+    return -1;
+  }
+};
+
+/**
+ * 軌道高度から軌道種類を判定
+ * @param height 軌道高度（km）
+ * @returns 軌道種類（LEO, MEO, GEO, HEO）
+ */
+const getOrbitTypeFromHeight = (height: number): string => {
+  if (height < 0) return 'UNKNOWN';
+  if (height < 2000) return 'LEO';  // 低軌道
+  if (height < 35000) return 'MEO'; // 中軌道
+  if (height >= 35000 && height <= 36000) return 'GEO'; // 静止軌道
+  return 'HEO'; // 高楕円軌道など
+};
+
 export const tleParserService = {
   isValidTLE,
   parseTLEText,
-  generateTLEFromJSON
+  generateTLEFromJSON,
+  calculateOrbitHeight,
+  getOrbitTypeFromHeight
 };
