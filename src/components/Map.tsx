@@ -7,6 +7,7 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import HomeIcon from '@mui/icons-material/Home';
+import LegendToggleIcon from '@mui/icons-material/LegendToggle';
 import type { Location, OrbitPath, SearchFilters } from '@/types';
 import 'leaflet/dist/leaflet.css';
 
@@ -142,10 +143,14 @@ const MapControls: React.FC<{
   map: L.Map | null;
   currentCenter: Location;
   defaultZoom: number;
+  showLegend: boolean;
+  onToggleLegend: () => void;
 }> = ({
   map,
   currentCenter,
-  defaultZoom
+  defaultZoom,
+  showLegend,
+  onToggleLegend
 }) => {
   // マップが存在しない場合は何も表示しない
   if (!map) return null;
@@ -205,6 +210,13 @@ const MapControls: React.FC<{
         </Button>
         <Button onClick={handleResetView} title="選択地点に戻る">
           <HomeIcon fontSize="small" />
+        </Button>
+        <Button
+          onClick={onToggleLegend}
+          title={showLegend ? "凡例を非表示" : "凡例を表示"}
+          color={showLegend ? "primary" : "inherit"}
+        >
+          <LegendToggleIcon fontSize="small" />
         </Button>
       </ButtonGroup>
     </Box>
@@ -492,6 +504,14 @@ const Map: React.FC<MapProps> = ({
   // マップインスタンスを保持するための状態
   const [mapInstance, setMapInstance] = React.useState<L.Map | null>(null);
 
+  // 凡例の表示/非表示を管理する状態
+  const [showLegend, setShowLegend] = React.useState(true);
+
+  // 凡例の表示/非表示を切り替えるハンドラー
+  const handleToggleLegend = React.useCallback(() => {
+    setShowLegend(prev => !prev);
+  }, []);
+
   // 衛星データから軌道種類ごとの高度を集計
   const orbitTypes = React.useMemo(() => {
     const aggregated = aggregateOrbitHeights(satellites);
@@ -519,9 +539,11 @@ const Map: React.FC<MapProps> = ({
         map={mapInstance}
         currentCenter={center}
         defaultZoom={defaultZoom}
+        showLegend={showLegend}
+        onToggleLegend={handleToggleLegend}
       />
-      {/* 可視範囲の凡例を表示 */}
-      <VisibilityLegend minElevation={minElevation} orbitTypes={orbitTypes} />
+      {/* 可視範囲の凡例を表示（showLegendがtrueの場合のみ） */}
+      {showLegend && <VisibilityLegend minElevation={minElevation} orbitTypes={orbitTypes} />}
       <MapContainer
         center={[center.lat, center.lng]}
         zoom={defaultZoom}
