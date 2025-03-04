@@ -215,6 +215,7 @@ const App = () => {
                 center={selectedLocation}
                 onLocationSelect={handleLocationSelect}
                 orbitPaths={orbitPaths}
+                filters={searchFilters}
               />
               <SearchPanel
                 filters={searchFilters}
