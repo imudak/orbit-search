@@ -53,13 +53,24 @@ export interface PassPoint {
   elevation: number;
   range: number;
   isDaylight: boolean;
+  lat?: number; // 衛星の緯度
+  lng?: number; // 衛星の経度
+  isNewSegment?: boolean; // 経度の不連続点かどうか
+  effectiveAngle?: number; // 観測地点からの実効的な角度
+}
+
+// 軌道セグメントの型
+export interface OrbitSegment {
+  points: LatLng[];
+  effectiveAngles: number[]; // 各ポイントの実効的な角度
 }
 
 // 軌道データの型
 export interface OrbitPath {
   satelliteId: string;
-  points: LatLng[];
+  segments: OrbitSegment[]; // 複数のセグメントに分割
   timestamp: string;
+  maxElevation: number; // パスの最大仰角
 }
 
 // CelesTrak APIのレスポンス型

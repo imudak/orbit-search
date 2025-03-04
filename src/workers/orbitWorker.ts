@@ -1,6 +1,10 @@
 import * as satellite from 'satellite.js';
 import type { TLEData, Location, SearchFilters, Pass, PassPoint } from '@/types';
 
+// 定数
+const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
+
 // Web Workerのコンテキスト型定義
 const ctx: Worker = self as any;
 
@@ -71,16 +75,14 @@ function validateTLE(tle: TLEData): boolean {
 }
 
 /**
- * 衛星の可視パスを計算
+ * 衛星の軌道を計算
  */
 function calculatePasses(
   tle: TLEData,
   location: Location,
   filters: SearchFilters
 ): Pass[] {
-  // パス計算の詳細設定をログ出力
-  console.log('Pass calculation settings:', {
-    rawFilters: filters,
+  console.log('Orbit calculation settings:', {
     location: {
       lat: location.lat.toFixed(4),
       lng: location.lng.toFixed(4)
@@ -89,28 +91,10 @@ function calculatePasses(
     endDate: filters.endDate?.toISOString(),
   });
 
-  const passes: Pass[] = [];
   const startTime = (filters.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000)).getTime();
   const endTime = (filters.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).getTime();
   const minElevation = filters.minElevation || 0;
-  const stepSize = 30 * 1000; // 30秒ごとに計算（精度向上）
-
-  // 計算パラメータの詳細をログ出力
-  console.log('Calculation details:', {
-    timeRange: {
-      start: new Date(startTime).toISOString(),
-      end: new Date(endTime).toISOString(),
-      durationHours: (endTime - startTime) / (1000 * 60 * 60)
-    },
-    elevationSettings: {
-      minElevation,
-      useDefaultValue: !filters.minElevation
-    },
-    observerPosition: {
-      lat: location.lat.toFixed(4),
-      lng: location.lng.toFixed(4)
-    }
-  });
+  const stepSize = 30 * 1000; // 30秒ごとに計算
 
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
   if (!satrec) {
@@ -124,13 +108,10 @@ function calculatePasses(
     height: 0.0 // 地上高（km）
   };
 
+  // 軌道の全ポイントを計算
+  const orbitPoints: PassPoint[] = [];
   let currentTime = startTime;
-  let isVisible = false;
-  let currentPass: {
-    points: PassPoint[];
-    maxElevation: number;
-    startTime?: Date;
-  } | null = null;
+  let maxElevation = -90;
 
   while (currentTime <= endTime) {
     try {
@@ -139,24 +120,8 @@ function calculatePasses(
       // 衛星の位置と速度を計算
       const positionAndVelocity = satellite.propagate(satrec, date);
       if (!positionAndVelocity.position || typeof positionAndVelocity.position === 'boolean') {
-        console.warn('Invalid position at:', {
-          time: date.toISOString(),
-          position: positionAndVelocity.position
-        });
         currentTime += stepSize;
         continue;
-      }
-
-      // 計算進捗のログ（30分ごと）
-      const PROGRESS_INTERVAL = 30 * 60 * 1000; // 30分
-      if (currentTime % PROGRESS_INTERVAL === 0) {
-        const progress = (currentTime - startTime) / (endTime - startTime) * 100;
-        console.log('Calculation progress:', {
-          time: date.toISOString(),
-          progress: `${progress.toFixed(1)}%`,
-          passCount: passes.length,
-          timeRemaining: `${((endTime - currentTime) / 1000 / 60).toFixed(1)} minutes`
-        });
       }
 
       // グリニッジ恒星時を計算
@@ -164,121 +129,85 @@ function calculatePasses(
 
       // 観測地点からの衛星の見かけの位置を計算
       const positionEci = positionAndVelocity.position;
-      const observerEci = satellite.geodeticToEcf(observerGd);
       const lookAngles = satellite.ecfToLookAngles(observerGd, positionEci);
 
       // 地平座標系での位置を取得
       const elevation = satellite.degreesLat(lookAngles.elevation);
-      // 方位角は0-360度の範囲なので、radiansToDegreesを使用
       const azimuth = (lookAngles.azimuth * 180 / Math.PI + 360) % 360;
       const rangeSat = lookAngles.rangeSat;
 
-      // 衛星の地理座標を計算（昼夜判定用）
+      // 衛星の地理座標を計算
       const satelliteGd = satellite.eciToGeodetic(positionEci, gmst);
       const satelliteLat = satellite.degreesLat(satelliteGd.latitude);
-      const satelliteLon = satellite.degreesLong(satelliteGd.longitude);
+      let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
 
-      const pointData: PassPoint = {
+      // 前のポイントとの経度の連続性を確認
+      let isDiscontinuous = false;
+      if (orbitPoints.length > 0) {
+        const prevPoint = orbitPoints[orbitPoints.length - 1];
+        const prevLon = prevPoint.lng!;
+        const diff = Math.abs(satelliteLon - prevLon);
+
+        // 経度の差が180度を超える場合は不連続点とする
+        if (diff > 180) {
+          isDiscontinuous = true;
+        }
+      }
+
+      // 観測地点から衛星までの大圏距離を計算（ラジアン）
+      const observerLat = satellite.degreesToRadians(location.lat);
+      const observerLng = satellite.degreesToRadians(location.lng);
+      const satLat = satellite.degreesToRadians(satelliteLat);
+      const satLng = satellite.degreesToRadians(satelliteLon);
+
+      // Haversine formulaによる大圏距離の計算
+      const dlat = satLat - observerLat;
+      const dlng = satLng - observerLng;
+      const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+                Math.cos(observerLat) * Math.cos(satLat) *
+                Math.sin(dlng/2) * Math.sin(dlng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      // 大圏距離を度に変換（0-180度の範囲）
+      const greatCircleDistance = c * RAD_TO_DEG;
+
+      // 大圏距離に基づく減衰係数を計算（距離が大きいほど小さくなる）
+      const distanceFactor = Math.max(0, 1 - greatCircleDistance / 90);
+
+      // 仰角と距離の両方を考慮した実効的な角度を計算
+      const effectiveAngle = elevation * distanceFactor;
+
+      // 新しいセグメントの開始点として追加
+      orbitPoints.push({
         time: date,
         elevation,
         azimuth,
         range: rangeSat,
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
-      };
+        lat: satelliteLat,
+        lng: satelliteLon,
+        isNewSegment: isDiscontinuous, // 不連続点かどうかを記録
+        effectiveAngle // 観測地点からの実効的な角度
+      });
 
-      // 可視判定のデバッグ情報（仰角が閾値付近の場合のみ出力）
-      if (Math.abs(elevation - minElevation) < 1) {
-        console.log('Visibility check near threshold:', {
-          time: date.toISOString(),
-          elevation,
-          minElevation,
-          isVisible,
-          currentPassPoints: currentPass?.points.length || 0
-        });
-      }
+      // 最大仰角を更新
+      maxElevation = Math.max(maxElevation, elevation);
 
-      if (elevation >= minElevation) {
-        if (!isVisible) {
-          isVisible = true;
-          currentPass = {
-            points: [pointData],
-            maxElevation: elevation,
-            startTime: date,
-          };
-          console.log('New pass started:', {
-            time: date.toISOString(),
-            elevation,
-            azimuth
-          });
-        } else {
-          if (currentPass) {
-            currentPass.points.push(pointData);
-            if (elevation > currentPass.maxElevation) {
-              currentPass.maxElevation = elevation;
-            }
-          }
-        }
-      } else if (isVisible) {
-        isVisible = false;
-        if (currentPass && currentPass.points.length > 0) {
-          // パスの最大仰角が閾値以上であれば保持
-          if (currentPass.maxElevation >= minElevation) {
-            console.log('Pass completed with max elevation:', {
-              maxElevation: currentPass.maxElevation,
-              minElevation,
-              points: currentPass.points.length
-            });
-            passes.push({
-              startTime: currentPass.startTime!,
-              endTime: date,
-              maxElevation: currentPass.maxElevation,
-              isDaylight: currentPass.points.some(p => p.isDaylight),
-              points: currentPass.points,
-            });
-          } else {
-            console.log('Pass discarded due to low max elevation:', {
-              maxElevation: currentPass.maxElevation,
-              minElevation,
-              points: currentPass.points.length
-            });
-          }
-        }
-        currentPass = null;
-      }
     } catch (error) {
-      console.warn('Error during pass calculation:', error);
-      // エラーが発生しても続行
+      console.warn('Error during orbit calculation:', error);
     }
 
     currentTime += stepSize;
   }
 
-  // 最後のパスが終了していない場合の処理
-  if (isVisible && currentPass && currentPass.points.length > 0) {
-    // パスの最大仰角が閾値以上であれば保持
-    if (currentPass.maxElevation >= minElevation) {
-      console.log('Final pass completed with max elevation:', {
-        maxElevation: currentPass.maxElevation,
-        minElevation,
-        points: currentPass.points.length
-      });
-      passes.push({
-        startTime: currentPass.startTime!,
-        endTime: new Date(currentTime),
-        maxElevation: currentPass.maxElevation,
-        isDaylight: currentPass.points.some(p => p.isDaylight),
-        points: currentPass.points,
-      });
-    } else {
-      console.log('Final pass discarded due to low max elevation:', {
-        maxElevation: currentPass.maxElevation,
-        minElevation,
-        points: currentPass.points.length
-      });
-    }
-  }
-
-  return passes;
+  // 一つの軌道パスとして返す
+  return [{
+    startTime: new Date(startTime),
+    endTime: new Date(endTime),
+    maxElevation,
+    isDaylight: orbitPoints.some(p => p.isDaylight),
+    points: orbitPoints
+  }];
 }
 
 /**
