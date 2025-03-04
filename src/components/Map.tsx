@@ -12,8 +12,8 @@ import 'leaflet/dist/leaflet.css';
 
 // デフォルトアイコンの設定
 const defaultIcon = L.icon({
-  iconUrl: '/marker-icon.png',
-  shadowUrl: '/marker-shadow.png',
+  iconUrl: `${import.meta.env.BASE_URL}marker-icon.png`,
+  shadowUrl: `${import.meta.env.BASE_URL}marker-shadow.png`,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -434,8 +434,8 @@ const OrbitLayer: React.FC<OrbitLayerProps> = ({ paths }) => {
 
 // カスタムマーカーアイコンの設定
 const observerIcon = L.icon({
-  iconUrl: '/marker-icon.png',
-  shadowUrl: '/marker-shadow.png',
+  iconUrl: `${import.meta.env.BASE_URL}marker-icon.png`,
+  shadowUrl: `${import.meta.env.BASE_URL}marker-shadow.png`,
   iconSize: [30, 45],  // 少し大きく
   iconAnchor: [15, 45], // アイコンの中心位置
   popupAnchor: [0, -45], // ポップアップの位置
