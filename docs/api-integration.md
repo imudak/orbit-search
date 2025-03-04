@@ -73,7 +73,7 @@ export default defineConfig({
 })
 ```
 
-### APIリクエストのエラー
+### APIリクエストのエラーハンドリング
 
 1. ネットワーク接続を確認
 2. `VITE_DEBUG=true`に設定してモックデータでテスト
@@ -81,6 +81,56 @@ export default defineConfig({
 4. コンソールでエラーメッセージを確認：
 ```
 API Error: Failed to get TLE data
+```
+
+#### エラーハンドリングの詳細な実装
+
+```typescript
+async function fetchTLEData(satelliteId: string) {
+  try {
+    const response = await axios.get(`/celestrak?CATNR=${satelliteId}&FORMAT=json`, {
+      timeout: API_CONFIG.TIMEOUT.CELESTRAK,
+      retry: {
+        retries: API_CONFIG.RETRY.MAX_RETRIES,
+        retryDelay: (retryCount) => {
+          // 指数バックオフ戦略
+          return Math.min(
+            API_CONFIG.RETRY.DELAY * Math.pow(2, retryCount),
+            10000 // 最大10秒
+          );
+        }
+      }
+    });
+    return response.data;
+  } catch (error) {
+    // エラーの詳細なログと適切な例外処理
+    console.error('TLE Data Fetch Error:', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status
+    });
+
+    // エラー種別に応じた適切な処理
+    if (error.code === 'ECONNABORTED') {
+      // タイムアウトエラー
+      throw new Error('APIリクエストがタイムアウトしました');
+    }
+
+    if (error.response) {
+      // サーバーからのエラーレスポンス
+      switch (error.response.status) {
+        case 429:
+          throw new Error('リクエスト制限を超えました');
+        case 500:
+          throw new Error('サーバー内部エラーが発生しました');
+        default:
+          throw new Error('APIリクエストに失敗しました');
+      }
+    }
+
+    throw error;
+  }
+}
 ```
 
 ### キャッシュの問題
@@ -92,14 +142,27 @@ API Error: Failed to get TLE data
 
 ## 将来の拡張：N2YO API
 
-フォールバックオプションとして、N2YO APIの統合を計画中です：
+### 統合計画
 
-1. [N2YO.com](https://www.n2yo.com/api/)でアカウント作成
-2. APIキーを取得
-3. 環境変数の追加（将来的に実装予定）：
-```bash
-VITE_N2YO_API_KEY=your_api_key_here
-```
+フォールバックオプションとして、N2YO APIの統合を具体的に計画しています：
+
+1. APIの特徴
+   - リアルタイムの衛星追跡
+   - 複数の衛星情報の同時取得
+   - 高度な軌道情報の提供
+
+2. 統合手順
+   - [N2YO.com](https://www.n2yo.com/api/)でアカウント作成
+   - APIキーを取得
+   - 環境変数の追加：
+     ```bash
+     VITE_N2YO_API_KEY=your_api_key_here
+     ```
+
+3. 実装予定の機能
+   - 複数APIソースからのデータフェッチ
+   - 自動フォールバックメカニズム
+   - データ整合性の検証
 
 ## リクエスト制限とキャッシュ戦略
 
@@ -114,10 +177,32 @@ const API_CONFIG = {
   RETRY: {
     MAX_RETRIES: 3,
     DELAY: 1000, // 初期遅延（ミリ秒）
+  },
+  CACHE: {
+    TLE_EXPIRATION: 24 * 60 * 60 * 1000, // 24時間
+    STRATEGY: 'stale-while-revalidate' // キャッシュ戦略
   }
 }
 ```
 
+### キャッシュ戦略の詳細
+
 - 最大3回のリトライ
 - 指数バックオフ遅延（最大10秒）
 - TLEデータの24時間キャッシュ
+- stale-while-revalidate戦略の採用
+  - キャッシュの有効期限切れ後も一時的に古いデータを返却
+  - バックグラウンドで新しいデータを非同期に取得
+
+## 更新履歴
+
+### 2025/2/21
+- CelesTrak APIの基本的な連携方法を文書化
+- デバッグモードとモックデータの設定を追加
+- 初期のエラーハンドリング戦略を実装
+
+### 2025/3/4
+- エラーハンドリングの詳細な実装例を追加
+- N2YO API統合計画の具体化
+- キャッシュ戦略の詳細な説明を追記
+- トラブルシューティングセクションの拡充
