@@ -25,8 +25,6 @@ const getOrbitType = (tle: { line1: string, line2: string }): string => {
     // 平均運動（1日あたりの周回数）は53-63文字目に格納されている
     const meanMotion = parseFloat(line2.substring(52, 63).trim());
 
-    console.log(`Mean Motion: ${meanMotion}`); // デバッグ用
-
     // 周回数から軌道種類を判断
     if (meanMotion >= 11.25) {
       return 'LEO'; // 低軌道
