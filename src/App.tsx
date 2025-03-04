@@ -29,11 +29,11 @@ const Main = styled(Container)({
 });
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: '16px',
+  padding: theme.spacing(2),
   backgroundColor: theme.palette.background.default,
-  overflow: 'visible', // コンテンツが見切れないように
-  height: 'auto',
-  minHeight: 'min-content'
+  display: 'flex',
+  flexDirection: 'column',
+  boxSizing: 'border-box'  // パディングを含めたサイズ計算
 }));
 
 const MapInfoBox = styled(Box)(({ theme }) => ({
@@ -228,52 +228,63 @@ const App = () => {
         </Toolbar>
       </AppBar>
       <Main maxWidth="xl">
+        {/* 説明エリア */}
+        <MapInfoBox sx={{ mb: 2 }}>
+          <InfoIcon sx={{ mr: 1 }} />
+          <Typography variant="body2">
+            地図上の位置をクリックして、その場所から見える衛星を検索します
+          </Typography>
+        </MapInfoBox>
+
         <Grid container spacing={2} sx={{ height: '100%' }}>
           {/* 左側エリア - 地図と検索パネル */}
           <Grid item xs={12} lg={8}>
+            {/* 地図コンテナ */}
+            <StyledPaper
+              elevation={0}
+              variant="outlined"
+              sx={{
+                mb: 3,  // 下部マージンを増加
+                overflow: 'visible',  // コンテンツが見切れないように
+                height: { xs: '400px', md: '550px' }  // 地図の高さをさらに増加
+              }}
+            >
+              <Box
+                sx={{
+                  height: '100%',
+                  width: '100%',
+                  position: 'relative',
+                  '& .leaflet-container': {
+                    height: '100% !important',
+                    width: '100% !important'
+                  },
+                  '& .leaflet-bottom': {
+                    bottom: '10px'  // 凡例の位置を下から少し上に
+                  }
+                }}
+              >
+                <Map
+                  center={selectedLocation}
+                  onLocationSelect={handleLocationSelect}
+                  orbitPaths={orbitPaths}
+                  filters={searchFilters}
+                />
+              </Box>
+            </StyledPaper>
+
+            {/* 検索パネルを別のPaperに分離 */}
             <StyledPaper
               elevation={0}
               variant="outlined"
               sx={{
                 mb: { xs: 2, md: 0 },
-                minHeight: 'min-content',
                 height: 'auto'
               }}
             >
-              {/* 地図の上に説明テキストを配置 */}
-              <MapInfoBox>
-                <InfoIcon sx={{ mr: 1 }} />
-                <Typography variant="body2">
-                  地図上の位置をクリックして、その場所から見える衛星を検索します
-                </Typography>
-              </MapInfoBox>
-
-              <Box>
-                {/* 地図を先に配置 */}
-                <Box
-                  sx={{
-                    height: { xs: '400px', md: '500px' },  // 高さを少し小さく
-                    mb: 0.5,  // 余白を縮小
-                    '& .leaflet-container': {
-                      height: '100% !important',
-                      width: '100%'
-                    }
-                  }}
-                >
-                  <Map
-                    center={selectedLocation}
-                    onLocationSelect={handleLocationSelect}
-                    orbitPaths={orbitPaths}
-                    filters={searchFilters}
-                  />
-                </Box>
-
-                {/* 検索パネルを後に配置 */}
-                <SearchPanel
-                  filters={searchFilters}
-                  onFiltersChange={handleFiltersChange}
-                />
-              </Box>
+              <SearchPanel
+                filters={searchFilters}
+                onFiltersChange={handleFiltersChange}
+              />
             </StyledPaper>
           </Grid>
 
