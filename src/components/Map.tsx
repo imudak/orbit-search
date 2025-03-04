@@ -1,8 +1,8 @@
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
 import { styled } from '@mui/material/styles';
-import type { Location, OrbitPath } from '@/types';
+import type { Location, OrbitPath, SearchFilters } from '@/types';
 import 'leaflet/dist/leaflet.css';
 
 // デフォルトアイコンの設定
@@ -24,15 +24,67 @@ const MapWrapper = styled('div')({
   overflow: 'hidden',
 });
 
+// 地球の半径（km）
+const EARTH_RADIUS = 6371;
+
+// 仰角から地表での可視範囲の半径を計算する関数
+const calculateVisibleRadius = (elevationDeg: number): number => {
+  // 地球の半径（km）
+  const R = EARTH_RADIUS;
+  // 観測地点の高度（km、海抜0mと仮定）
+  const h = 0;
+
+  // 仰角をラジアンに変換
+  const elevation = elevationDeg * Math.PI / 180;
+
+  // 地平線までの距離を計算
+  // 参考: https://en.wikipedia.org/wiki/Horizon#Distance_to_the_horizon
+  const horizonDistance = Math.sqrt((R + h) * (R + h) - R * R);
+
+  // 仰角に基づいて可視範囲を計算（仰角が高いほど範囲は小さくなる）
+  return horizonDistance * Math.cos(elevation);
+};
+
 interface MapProps {
   center?: Location;
   onLocationSelect: (location: Location) => void;
   orbitPaths?: OrbitPath[];
+  filters?: SearchFilters;
 }
 
 interface OrbitLayerProps {
   paths: OrbitPath[];
 }
+
+// 観測地点からの可視範囲を表示するコンポーネント
+const VisibilityCircle: React.FC<{ center: Location; minElevation: number }> = ({
+  center,
+  minElevation
+}) => {
+  // 最低仰角から可視範囲の半径を計算
+  const radiusKm = calculateVisibleRadius(minElevation);
+  // kmをmに変換
+  const radiusMeters = radiusKm * 1000;
+
+  return (
+    <Circle
+      center={[center.lat, center.lng]}
+      radius={radiusMeters}
+      pathOptions={{
+        color: '#666666',
+        weight: 1,
+        dashArray: '5, 5',
+        fillColor: '#AAAAAA',
+        fillOpacity: 0.1
+      }}
+    >
+      <Popup>
+        仰角{minElevation}度以上の可視範囲<br />
+        （地表での距離: {radiusKm.toFixed(0)}km）
+      </Popup>
+    </Circle>
+  );
+};
 
 // マップクリックハンドラーコンポーネント
 const MapClickHandler: React.FC<{ onLocationSelect: (location: Location) => void }> = ({
@@ -174,12 +226,16 @@ const Map: React.FC<MapProps> = ({
   center = { lat: 35.6812, lng: 139.7671 }, // デフォルト: 東京
   onLocationSelect,
   orbitPaths = [],
+  filters,
 }) => {
+  // 最低仰角の値（デフォルト10度）
+  const minElevation = filters?.minElevation ?? 10;
+
   return (
     <MapWrapper>
       <MapContainer
         center={[center.lat, center.lng]}
-        zoom={13}
+        zoom={5} // より広い範囲を表示
         style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
@@ -188,12 +244,19 @@ const Map: React.FC<MapProps> = ({
         />
         <MapClickHandler onLocationSelect={onLocationSelect} />
         {center && (
-          <Marker position={[center.lat, center.lng]}>
-            <Popup>
-              緯度: {center.lat.toFixed(4)}<br />
-              経度: {center.lng.toFixed(4)}
-            </Popup>
-          </Marker>
+          <>
+            <Marker position={[center.lat, center.lng]}>
+              <Popup>
+                緯度: {center.lat.toFixed(4)}<br />
+                経度: {center.lng.toFixed(4)}
+              </Popup>
+            </Marker>
+            {/* 最低仰角の可視範囲を表示 */}
+            <VisibilityCircle
+              center={center}
+              minElevation={minElevation}
+            />
+          </>
         )}
         {orbitPaths.length > 0 && <OrbitLayer paths={orbitPaths} />}
       </MapContainer>
