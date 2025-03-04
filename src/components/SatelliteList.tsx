@@ -109,10 +109,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
     }).format(date);
   };
 
-  // 衛星の運用状態を表示する関数
-  const getOperationalStatus = (satellite: Satellite) => {
-    return `運用状態: ${satellite.operationalStatus || '不明'}`;
-  };
+  // 衛星の情報を表示する関数（現在は使用していない）
 
   return (
     <Card
@@ -191,7 +188,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                       </Box>
                     </Box>
                   }
-                  secondary={getOperationalStatus(satellite)}
+
                 />
               </ListItemButton>
             </ListItem>
