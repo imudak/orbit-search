@@ -94,7 +94,15 @@ const VisibilityCircle: React.FC<{
         weight: 1,
         dashArray: '5, 5',
         fillColor: orbitType.color,
-        fillOpacity: 0.05
+        fillOpacity: 0.05,
+        bubblingMouseEvents: true // マウスイベントを下のレイヤーに伝播させる
+      }}
+      eventHandlers={{
+        click: (e) => {
+          // クリックイベントの伝播を停止しない
+          // ポップアップを表示
+          e.target.openPopup();
+        }
       }}
     >
       <Popup>
