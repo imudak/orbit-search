@@ -27,13 +27,23 @@ const MapWrapper = styled('div')({
 // 地球の半径（km）
 const EARTH_RADIUS = 6371;
 
+// 衛星軌道の種類と高度の定義
+interface OrbitType {
+  name: string;
+  height: number; // km
+  color: string;
+}
+
+const ORBIT_TYPES: OrbitType[] = [
+  { name: 'LEO', height: 800, color: '#FF0000' },    // 低軌道: 赤
+  { name: 'MEO', height: 20000, color: '#00FF00' },  // 中軌道: 緑
+  { name: 'GEO', height: 35786, color: '#0000FF' }   // 静止軌道: 青
+];
+
 // 仰角と衛星高度から地表での可視範囲の半径を計算する関数
-const calculateVisibleRadius = (elevationDeg: number): number => {
+const calculateVisibleRadius = (elevationDeg: number, satelliteHeight: number): number => {
   // 地球の半径（km）
   const R = EARTH_RADIUS;
-
-  // 平均的な衛星高度（km）- 低軌道衛星（LEO）を想定
-  const satelliteHeight = 800;
 
   // 仰角をラジアンに変換
   const elevationRad = elevationDeg * Math.PI / 180;
@@ -61,12 +71,17 @@ interface OrbitLayerProps {
 }
 
 // 観測地点からの可視範囲を表示するコンポーネント
-const VisibilityCircle: React.FC<{ center: Location; minElevation: number }> = ({
+const VisibilityCircle: React.FC<{
+  center: Location;
+  minElevation: number;
+  orbitType: OrbitType;
+}> = ({
   center,
-  minElevation
+  minElevation,
+  orbitType
 }) => {
-  // 最低仰角から可視範囲の半径を計算
-  const radiusKm = calculateVisibleRadius(minElevation);
+  // 最低仰角と衛星高度から可視範囲の半径を計算
+  const radiusKm = calculateVisibleRadius(minElevation, orbitType.height);
   // kmをmに変換
   const radiusMeters = radiusKm * 1000;
 
@@ -75,16 +90,17 @@ const VisibilityCircle: React.FC<{ center: Location; minElevation: number }> = (
       center={[center.lat, center.lng]}
       radius={radiusMeters}
       pathOptions={{
-        color: '#666666',
+        color: orbitType.color,
         weight: 1,
         dashArray: '5, 5',
-        fillColor: '#AAAAAA',
-        fillOpacity: 0.1
+        fillColor: orbitType.color,
+        fillOpacity: 0.05
       }}
     >
       <Popup>
-        仰角{minElevation}度以上の可視範囲<br />
-        （地表での距離: {radiusKm.toFixed(0)}km）
+        {orbitType.name}衛星の可視範囲（仰角{minElevation}度以上）<br />
+        高度: {orbitType.height}km<br />
+        地表での距離: {radiusKm.toFixed(0)}km
       </Popup>
     </Circle>
   );
@@ -239,7 +255,7 @@ const Map: React.FC<MapProps> = ({
     <MapWrapper>
       <MapContainer
         center={[center.lat, center.lng]}
-        zoom={5} // より広い範囲を表示
+        zoom={4} // より広い範囲を表示
         style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
@@ -255,11 +271,15 @@ const Map: React.FC<MapProps> = ({
                 経度: {center.lng.toFixed(4)}
               </Popup>
             </Marker>
-            {/* 最低仰角の可視範囲を表示 */}
-            <VisibilityCircle
-              center={center}
-              minElevation={minElevation}
-            />
+            {/* 各軌道種類ごとの可視範囲を表示 */}
+            {ORBIT_TYPES.map((orbitType, index) => (
+              <VisibilityCircle
+                key={orbitType.name}
+                center={center}
+                minElevation={minElevation}
+                orbitType={orbitType}
+              />
+            ))}
           </>
         )}
         {orbitPaths.length > 0 && <OrbitLayer paths={orbitPaths} />}
