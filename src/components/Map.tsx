@@ -27,21 +27,26 @@ const MapWrapper = styled('div')({
 // 地球の半径（km）
 const EARTH_RADIUS = 6371;
 
-// 仰角から地表での可視範囲の半径を計算する関数
+// 仰角と衛星高度から地表での可視範囲の半径を計算する関数
 const calculateVisibleRadius = (elevationDeg: number): number => {
   // 地球の半径（km）
   const R = EARTH_RADIUS;
 
+  // 平均的な衛星高度（km）- 低軌道衛星（LEO）を想定
+  const satelliteHeight = 800;
+
   // 仰角をラジアンに変換
   const elevationRad = elevationDeg * Math.PI / 180;
 
-  // 仰角から地平線までの距離を計算
-  // 参考: https://en.wikipedia.org/wiki/Horizon#Distance_to_the_horizon
-  const d = Math.sqrt(2 * R * 0.001); // 観測者の高さを1mと仮定
+  // 衛星から地球中心までの距離
+  const satelliteDistance = R + satelliteHeight;
 
-  // 仰角に基づいて可視範囲を調整（仰角が高いほど範囲は小さくなる）
-  // 最低仰角10度の場合、約500km程度になるように調整
-  return d * (90 - elevationDeg) / 8;
+  // 仰角から中心角を計算
+  // 参考: https://en.wikipedia.org/wiki/Satellite_ground_track
+  const centralAngle = Math.asin(R / satelliteDistance * Math.cos(elevationRad)) - elevationRad;
+
+  // 中心角から地表での距離を計算
+  return R * Math.abs(centralAngle);
 };
 
 interface MapProps {
