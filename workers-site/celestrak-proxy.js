@@ -23,7 +23,7 @@ export default {
       const celestrakRequest = new Request(celestrakUrl, {
         method: request.method,
         headers: {
-          'Accept': 'text/plain, application/json',
+          'Accept': 'text/plain, application/json, */*',
           'Accept-Encoding': 'identity',
           'User-Agent': 'Mozilla/5.0'
         }
