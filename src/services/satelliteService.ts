@@ -14,20 +14,6 @@ interface SatelliteResponse extends Satellite {
   passes: Array<Pass>;
 }
 
-interface CelesTrakEphemerisPoint {
-  epoch: string;
-  position: {
-    x: number;
-    y: number;
-    z: number;
-  };
-  velocity: {
-    x: number;
-    y: number;
-    z: number;
-  };
-}
-
 class SatelliteService {
   private readonly MAX_SATELLITES = 200; // 一度に処理する最大衛星数
   private readonly RATE_LIMIT_DELAY = 100; // APIリクエスト間の遅延（ミリ秒）
@@ -76,39 +62,27 @@ class SatelliteService {
         return cached;
       }
 
-      // CelesTrakのEphemerisエンドポイントにリクエスト
-      const response = await celestrakApi.get<CelesTrakEphemerisPoint[]>('/api/gp.php', {
+      // CelesTrakのEphemerisエンドポイントにリクエスト（Ascii text形式）
+      const response = await celestrakApi.get<string>('/NORAD/elements/gp.php', {
         params: {
           CATNR: noradId,
           EPHEM: '1',        // Ephemerisデータを要求
           TOD: '1',          // TOD座標系を指定
-          START: startTime.toISOString(),
-          DURATION: duration
+          START_TIME: startTime.toISOString(),
+          STEP: 60,          // 60秒間隔
+          DAYS: duration / 86400  // 日数に変換
         }
       });
 
-      if (!response.data || !Array.isArray(response.data)) {
-        throw new Error('Invalid response format from CelesTrak API');
+      if (!response.data) {
+        throw new Error('Empty response from CelesTrak API');
       }
 
-      // レスポンスデータをEphemerisData型に変換
+      // テキストデータをそのまま保持（クライアントで必要に応じて解析可能）
       const ephemerisData: EphemerisData = {
         epoch: startTime.toISOString(),
-        stateVectors: response.data.map((point) => ({
-          position: {
-            x: point.position.x,
-            y: point.position.y,
-            z: point.position.z
-          },
-          velocity: {
-            x: point.velocity.x,
-            y: point.velocity.y,
-            z: point.velocity.z
-          }
-        })),
-        interval: response.data.length > 1 ?
-          (new Date(response.data[1].epoch).getTime() - new Date(response.data[0].epoch).getTime()) / 1000 :
-          60, // デフォルトは60秒間隔
+        data: response.data,
+        duration: duration,
         frame: 'TOD'
       };
 

@@ -88,21 +88,10 @@ export interface CelesTrakGPData {
 
 // TOD座標系でのEphemerisデータの型
 export interface EphemerisData {
-  epoch: string;        // エポック時刻
-  stateVectors: {      // 状態ベクトル
-    position: {        // 位置ベクトル (km)
-      x: number;
-      y: number;
-      z: number;
-    };
-    velocity: {        // 速度ベクトル (km/s)
-      x: number;
-      y: number;
-      z: number;
-    };
-  }[];
-  interval: number;    // データ間隔（秒）
-  frame: 'TOD';       // 座標系（True of Date）
+  epoch: string;        // 開始時刻
+  data: string;         // Ascii text形式のエフェメリスデータ
+  duration: number;     // データ期間（秒）
+  frame: 'TOD';        // 座標系（True of Date）
 }
 
 // 緯度経度の型

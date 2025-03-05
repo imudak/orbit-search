@@ -199,9 +199,8 @@ const App = () => {
         (searchFilters.endDate.getTime() - searchFilters.startDate.getTime()) / 1000
       );
 
-      // JSONデータの作成
-      const jsonData = JSON.stringify(ephemerisData, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json' });
+      // テキストデータとして保存
+      const blob = new Blob([ephemerisData.data], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
