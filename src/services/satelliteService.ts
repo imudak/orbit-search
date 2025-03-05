@@ -67,15 +67,20 @@ class SatelliteService {
       const stopTime = new Date(startTime.getTime() + duration * 1000);
       const params = new URLSearchParams({
         CATNR: noradId,
+        FORMAT: 'STATE',    // 状態ベクトル形式
         EPHEM: '1',
-        START: startTime.toISOString(),
-        STOP: stopTime.toISOString(),
-        STEP: '60',
-        REF_FRAME: 'TOD',
-        OUT_FMT: 'TXT'      // テキスト形式を強制
+        REF_FRAME_TOD: '1', // True of Date座標系
+        START_TIME: startTime.toISOString().split('.')[0] + 'Z', // マイクロ秒を除去
+        STOP_TIME: stopTime.toISOString().split('.')[0] + 'Z',
+        STEP_SIZE: '60',    // 60秒間隔
       });
 
       console.log('Request params:', Object.fromEntries(params.entries()));
+      console.log('Time range:', {
+        start: startTime.toISOString(),
+        stop: stopTime.toISOString(),
+        duration: duration
+      });
 
       // URLを構築してフェッチ
       const { data } = await celestrakApi.get<string>(`/NORAD/elements/gp.php?${params}`, {
