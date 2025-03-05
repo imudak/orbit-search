@@ -39,7 +39,7 @@ const API_CONFIG = {
   },
   CELESTRAK: {
     BASE_URL: CELESTRAK_API_ENDPOINT,
-    DEFAULT_FORMAT: 'json'
+    DEFAULT_FORMAT: 'txt'
   },
   RATE_LIMIT: {
     REQUESTS_PER_SEC: 2,      // 1秒あたりの最大リクエスト数
@@ -104,12 +104,9 @@ const rateLimiter = new RateLimiter();
 // CelesTrak APIクライアントの設定
 const celestrakApi = axios.create({
   baseURL: API_CONFIG.CELESTRAK.BASE_URL,
-  headers: {
-    'Accept': 'application/json'
-  },
   timeout: API_CONFIG.TIMEOUT.CELESTRAK_MSEC,
-  params: {
-    FORMAT: API_CONFIG.CELESTRAK.DEFAULT_FORMAT
+  headers: {
+    'Accept': 'text/plain, application/json'
   }
 });
 
