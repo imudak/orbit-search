@@ -19,30 +19,22 @@ export class SunService {
         const time = new Date(currentDate);
         time.setMinutes(time.getMinutes() + minutes);
 
-        // SunCalcを使用して太陽の位置を計算
-        const sunPosition = SunCalc.getPosition(
-          time,
-          location.lat,
-          location.lng
-        );
+        // 時刻から経度を計算（1時間 = 15度）
+        const utcHours = time.getUTCHours() + time.getUTCMinutes() / 60;
+        const lng = -180 + (utcHours * 15);
 
-        // 高度（altitude）と方位角（azimuth）から緯度経度に変換
-        const { altitude, azimuth } = sunPosition;
+        // 季節による太陽の赤緯（南北の偏り）を計算
+        const dayOfYear = Math.floor((time.getTime() - new Date(time.getFullYear(), 0, 0).getTime()) / 86400000);
+        const declination = 23.45 * Math.sin((360/365 * (dayOfYear - 81)) * Math.PI / 180);
+        const lat = declination; // 赤緯を緯度として使用（約±23.45度の範囲）
 
-        // 太陽の方位角と高度から天球上の位置を計算
-        const altitudeDeg = altitude * 180 / Math.PI;
-        const azimuthDeg = azimuth * 180 / Math.PI;
-
-        // 天球上の位置を地図上に投影
-        // 高度90度の場合は観測地点の真上、0度の場合は地平線上、-90度の場合は真下
-        const angularDistance = (90 - altitudeDeg) / 2; // 角距離を半分にして投影を調整
-        const lat = location.lat + angularDistance * Math.cos(azimuth);
-        const lng = location.lng + angularDistance * Math.sin(azimuth) / Math.cos(location.lat * Math.PI / 180);
+        // 観測地点からの可視判定用に位置を再計算
+        const localPosition = SunCalc.getPosition(time, location.lat, location.lng);
 
         points.push({
           lat,
           lng,
-          isDaylight: altitude > 0
+          isDaylight: localPosition.altitude > 0 // 観測地点から見て地平線より上なら昼
         });
       }
 
