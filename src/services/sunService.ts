@@ -29,24 +29,27 @@ export class SunService {
         // 高度（altitude）と方位角（azimuth）から緯度経度に変換
         const { altitude, azimuth } = sunPosition;
 
-        // 地平線より上にある場合のみ位置を記録
-        const visible = altitude > 0;
-        if (visible) {
-          // 高度と方位角から見かけの位置を計算（単純な投影）
-          // 注: これは見かけの位置を地図上に表現するための簡略化された計算です
-          const distance = (90 - (altitude * 180 / Math.PI)) * 111; // km単位（1度あたり約111km）
-          const lat = location.lat + distance * Math.cos(azimuth) / 111;
-          const lng = location.lng + distance * Math.sin(azimuth) / (111 * Math.cos(location.lat * Math.PI / 180));
+        // 太陽の方位角と高度から天球上の位置を計算
+        const altitudeDeg = altitude * 180 / Math.PI;
+        const azimuthDeg = azimuth * 180 / Math.PI;
 
-          points.push({ lat, lng });
-        }
+        // 天球上の位置を地図上に投影
+        // 高度90度の場合は観測地点の真上、0度の場合は地平線上、-90度の場合は真下
+        const angularDistance = (90 - altitudeDeg) / 2; // 角距離を半分にして投影を調整
+        const lat = location.lat + angularDistance * Math.cos(azimuth);
+        const lng = location.lng + angularDistance * Math.sin(azimuth) / Math.cos(location.lat * Math.PI / 180);
+
+        points.push({
+          lat,
+          lng,
+          isDaylight: altitude > 0
+        });
       }
 
       // その日の軌道を追加
       paths.push({
         date: new Date(currentDate),
-        points,
-        visible: points.length > 0
+        points
       });
 
       // 次の日へ

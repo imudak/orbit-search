@@ -106,8 +106,9 @@ interface MapProps {
 // 太陽軌道表示レイヤー
 const SunPathLayer: React.FC<{
   paths: SunPath[];
-  color?: string;
-}> = ({ paths, color = '#FFA500' }) => {
+  dayColor?: string;
+  nightColor?: string;
+}> = ({ paths, dayColor = '#FFA500', nightColor = '#4A4A7C' }) => {
   const map = useMap();
 
   React.useEffect(() => {
@@ -115,29 +116,44 @@ const SunPathLayer: React.FC<{
 
     // 太陽軌道の描画
     const lines = paths.flatMap((path) => {
-      if (!path.visible || path.points.length < 2) return [];
+      if (path.points.length < 2) return [];
 
-      const points = path.points.map(point => new LatLng(point.lat, point.lng));
-      const line = L.polyline(points, {
-        color,
-        weight: 2,
-        opacity: 0.7,
-        dashArray: '5, 5',
-      }).addTo(map);
+      const lines: L.Polyline[] = [];
 
-      // マウスオーバー時に日付を表示
-      line.bindTooltip(
-        `日付: ${path.date.toLocaleDateString('ja-JP')}`
-      );
+      // 点と点の間を結ぶラインを作成
+      for (let i = 0; i < path.points.length - 1; i++) {
+        const point1 = path.points[i];
+        const point2 = path.points[i + 1];
 
-      return [line];
+        const line = L.polyline(
+          [
+            [point1.lat, point1.lng],
+            [point2.lat, point2.lng]
+          ],
+          {
+            color: point1.isDaylight ? dayColor : nightColor,
+            weight: 2,
+            opacity: 0.7,
+            dashArray: '5, 5',
+          }
+        ).addTo(map);
+
+        // マウスオーバー時に日付と昼/夜を表示
+        line.bindTooltip(
+          `日付: ${path.date.toLocaleDateString('ja-JP')}（${point1.isDaylight ? '昼' : '夜'}）`
+        );
+
+        lines.push(line);
+      }
+
+      return lines;
     });
 
     return () => {
       // クリーンアップ時に軌道を削除
       lines.forEach(line => line.remove());
     };
-  }, [paths, map, color]);
+  }, [paths, map, dayColor, nightColor]);
 
   return null;
 };
@@ -664,7 +680,11 @@ const Map: React.FC<MapProps> = ({
         )}
         {orbitPaths.length > 0 && <OrbitLayer paths={orbitPaths} />}
         {showSunPaths && calculatedSunPaths.length > 0 && (
-          <SunPathLayer paths={calculatedSunPaths} color="#FFA500" />
+          <SunPathLayer
+            paths={calculatedSunPaths}
+            dayColor="#FFA500"
+            nightColor="#4A4A7C"
+          />
         )}
       </MapContainer>
     </MapWrapper>

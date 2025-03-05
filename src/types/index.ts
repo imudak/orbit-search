@@ -90,13 +90,13 @@ export interface CelesTrakGPData {
 export interface LatLng {
   lat: number;
   lng: number;
+  isDaylight?: boolean;
 }
 
 // 太陽軌道の型
 export interface SunPath {
   date: Date;
   points: LatLng[];
-  visible: boolean;
 }
 
 // 太陽軌道表示設定の型
