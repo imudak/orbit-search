@@ -3,7 +3,8 @@ import type { TLEData } from '@/types';
 
 const DB_NAME = 'orbit-search-db';
 const TLE_STORE = 'tle-cache';
-const DB_VERSION = 1;
+const EPHEMERIS_STORE = 'ephemeris-cache';
+const DB_VERSION = 2;
 
 // キャッシュの設定
 const CACHE_CONFIG = {
@@ -20,8 +21,8 @@ const CACHE_CONFIG = {
   }
 } as const;
 
-interface CacheItem {
-  data: TLEData;
+interface CacheItem<T = any> {
+  data: T;
   timestamp: number;
   expiresAt: number;
 }
@@ -46,12 +47,67 @@ class CacheService {
 
   private async initDB() {
     return openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion, newVersion) {
+        // TLEストアの作成
         if (!db.objectStoreNames.contains(TLE_STORE)) {
           db.createObjectStore(TLE_STORE, { keyPath: 'noradId' });
         }
+
+        // Ephemerisストアの作成
+        if (!db.objectStoreNames.contains(EPHEMERIS_STORE)) {
+          db.createObjectStore(EPHEMERIS_STORE, { keyPath: 'cacheKey' });
+        }
       },
     });
+  }
+
+  /**
+   * 汎用的なキャッシュ取得メソッド
+   */
+  async get<T>(key: string): Promise<T | null> {
+    try {
+      const db = await this.db;
+      const item = await db.get(EPHEMERIS_STORE, key) as (CacheItem & { cacheKey: string }) | undefined;
+
+      if (!item) {
+        return null;
+      }
+
+      const now = Date.now();
+      if (now > item.expiresAt) {
+        await db.delete(EPHEMERIS_STORE, key);
+        return null;
+      }
+
+      return item.data as T;
+    } catch (error) {
+      console.error('Failed to get cached data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 汎用的なキャッシュ保存メソッド
+   */
+  async set<T>(key: string, data: T, ttl: number = CACHE_CONFIG.TTL.DEFAULT): Promise<void> {
+    if (!this.checkRateLimit()) {
+      console.warn('Rate limit exceeded for cache operation');
+      return;
+    }
+
+    const item: CacheItem = {
+      data: data as any,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + Math.max(ttl, CACHE_CONFIG.TTL.MINIMUM),
+    };
+
+    try {
+      const db = await this.db;
+      await db.put(EPHEMERIS_STORE, { ...item, cacheKey: key });
+    } catch (error) {
+      console.error('Failed to cache data:', error);
+      throw error;
+    }
   }
 
   /**
