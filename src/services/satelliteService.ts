@@ -67,14 +67,20 @@ class SatelliteService {
         responseType: 'text',
         params: {
           CATNR: noradId,
-          EPHEM: 'YES',      // Ephemerisデータを要求
-          TYPE: 'STATE',     // 状態ベクトル形式
-          REF: 'TOD',        // TOD座標系
+          EPHEM: '1',        // Ephemerisデータを要求
+          TOD: '1',          // TOD座標系を指定
           START: startTime.toISOString(),
-          DAYS: Math.ceil(duration / 86400), // 日数（切り上げ）
-          STEP: 60           // 60秒間隔
+          DURATION: Math.ceil(duration / 86400), // 日数（切り上げ）
+          STEP: 60,          // 60秒間隔
+          REF: 'TOD'         // True of Date座標系
+        },
+        headers: {
+          'Accept': 'text/plain'
         }
       });
+
+      // デバッグログ（最初の1000文字のみ表示）
+      console.log('Received Ephemeris data (first 1000 chars):', data.substring(0, 1000));
 
       if (!data) {
         throw new Error('Empty response from CelesTrak API');
