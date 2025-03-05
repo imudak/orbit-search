@@ -65,15 +65,13 @@ class SatelliteService {
       // CelesTrakのEphemerisエンドポイントにリクエスト（Ascii text形式）
       const { data } = await celestrakApi.get<string>('/NORAD/elements/gp.php', {
         responseType: 'text',
-        headers: {
-          'Accept': 'text/plain'
-        },
         params: {
           CATNR: noradId,
-          EPHEM: '1',        // Ephemerisデータを要求
-          TOD: '1',          // TOD座標系を指定
-          START_TIME: startTime.toISOString(),
-          DURATION: Math.ceil(duration / 86400), // 日数（切り上げ）
+          EPHEM: 'YES',      // Ephemerisデータを要求
+          TYPE: 'STATE',     // 状態ベクトル形式
+          REF: 'TOD',        // TOD座標系
+          START: startTime.toISOString(),
+          DAYS: Math.ceil(duration / 86400), // 日数（切り上げ）
           STEP: 60           // 60秒間隔
         }
       });
