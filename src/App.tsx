@@ -11,7 +11,7 @@ import SatelliteList from '@/components/SatelliteList';
 import type { Location, SearchFilters, Satellite, OrbitPath, OrbitSegment, LatLng } from '@/types';
 import { useAppStore } from '@/store';
 import { tleService } from '@/services/tleService';
-import { searchSatellites } from '@/services/satelliteService';
+import { satelliteService } from '@/services/satelliteService';
 import { orbitService } from '@/services/orbitService';
 
 const Root = styled(Box)({
@@ -79,7 +79,7 @@ const App = () => {
 
     setIsLoading(true);
     try {
-      const results = await searchSatellites({
+      const results = await satelliteService.searchSatellites({
         ...searchFilters,
         latitude: selectedLocation.lat,
         longitude: selectedLocation.lng
