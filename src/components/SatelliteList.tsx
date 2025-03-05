@@ -60,6 +60,7 @@ const getOrbitTypeColor = (orbitType: string): 'default' | 'error' | 'primary' |
 interface SatelliteListProps {
   satellites: Array<Satellite & { passes: Pass[] }>;
   onTLEDownload: (satellite: Satellite) => void;
+  onEphemerisDownload: (satellite: Satellite) => void;
   onSatelliteSelect: (satellite: Satellite) => void;
   selectedSatellite?: Satellite;
   isLoading?: boolean;
@@ -68,6 +69,7 @@ interface SatelliteListProps {
 const SatelliteList: React.FC<SatelliteListProps> = ({
   satellites,
   onTLEDownload,
+  onEphemerisDownload,
   onSatelliteSelect,
   selectedSatellite,
   isLoading = false,
@@ -172,15 +174,26 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
               divider
               secondaryAction={
                 <ListItemSecondaryAction>
-                  <Tooltip title="TLEデータをダウンロード">
-                    <IconButton
-                      edge="end"
-                      aria-label="download"
-                      onClick={() => onTLEDownload(satellite)}
-                    >
-                      <DownloadIcon />
-                    </IconButton>
-                  </Tooltip>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="TLEデータをダウンロード">
+                      <IconButton
+                        edge="end"
+                        aria-label="download-tle"
+                        onClick={() => onTLEDownload(satellite)}
+                      >
+                        <DownloadIcon color="primary" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Ephemerisデータをダウンロード">
+                      <IconButton
+                        edge="end"
+                        aria-label="download-ephemeris"
+                        onClick={() => onEphemerisDownload(satellite)}
+                      >
+                        <DownloadIcon color="secondary" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                 </ListItemSecondaryAction>
               }
             >

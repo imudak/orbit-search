@@ -187,6 +187,36 @@ const App = () => {
     }
   };
 
+  // Ephemerisデータのダウンロードハンドラー
+  const handleEphemerisDownload = async (satellite: Satellite) => {
+    try {
+      console.log('Downloading Ephemeris for satellite:', satellite);
+
+      // 指定された期間のEphemerisデータを取得
+      const ephemerisData = await satelliteService.getEphemerisData(
+        satellite.noradId,
+        searchFilters.startDate,
+        (searchFilters.endDate.getTime() - searchFilters.startDate.getTime()) / 1000
+      );
+
+      // JSONデータの作成
+      const jsonData = JSON.stringify(ephemerisData, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${satellite.name.replace(/\s+/g, '_')}_ephemeris.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Failed to download Ephemeris data:', error);
+      alert('Ephemerisデータのダウンロードに失敗しました。');
+    }
+  };
+
   // TLEデータのダウンロードハンドラー
   const handleTLEDownload = async (satellite: Satellite) => {
     try {
@@ -302,6 +332,7 @@ const App = () => {
               <SatelliteList
                 satellites={satellites}
                 onTLEDownload={handleTLEDownload}
+                onEphemerisDownload={handleEphemerisDownload}
                 onSatelliteSelect={handleSatelliteSelect}
                 selectedSatellite={selectedSatellite}
                 isLoading={isLoading}
