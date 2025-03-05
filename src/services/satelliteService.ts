@@ -63,26 +63,30 @@ class SatelliteService {
       }
 
       // CelesTrakのEphemerisエンドポイントにリクエスト（Ascii text形式）
-      const response = await celestrakApi.get<string>('/NORAD/elements/gp.php', {
+      const { data } = await celestrakApi.get<string>('/NORAD/elements/gp.php', {
+        responseType: 'text',
+        headers: {
+          'Accept': 'text/plain'
+        },
         params: {
           CATNR: noradId,
           EPHEM: '1',        // Ephemerisデータを要求
           TOD: '1',          // TOD座標系を指定
           START_TIME: startTime.toISOString(),
-          STEP: 60,          // 60秒間隔
-          DAYS: duration / 86400  // 日数に変換
+          DURATION: Math.ceil(duration / 86400), // 日数（切り上げ）
+          STEP: 60           // 60秒間隔
         }
       });
 
-      if (!response.data) {
+      if (!data) {
         throw new Error('Empty response from CelesTrak API');
       }
 
-      // テキストデータをそのまま保持（クライアントで必要に応じて解析可能）
+      // テキストデータをそのまま保持
       const ephemerisData: EphemerisData = {
         epoch: startTime.toISOString(),
-        data: response.data,
-        duration: duration,
+        data,
+        duration,
         frame: 'TOD'
       };
 

@@ -199,12 +199,12 @@ const App = () => {
         (searchFilters.endDate.getTime() - searchFilters.startDate.getTime()) / 1000
       );
 
-      // テキストデータとして保存
+      // Ephemerisデータとして保存
       const blob = new Blob([ephemerisData.data], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${satellite.name.replace(/\s+/g, '_')}_ephemeris.json`;
+      a.download = `${satellite.name.replace(/\s+/g, '_')}_ephemeris.ephem`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
