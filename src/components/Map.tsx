@@ -8,7 +8,9 @@ import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import HomeIcon from '@mui/icons-material/Home';
 import LegendToggleIcon from '@mui/icons-material/LegendToggle';
-import type { Location, OrbitPath, SearchFilters } from '@/types';
+import WbSunnyIcon from '@mui/icons-material/WbSunny';
+import type { Location, OrbitPath, SearchFilters, SunPath } from '@/types';
+import { SunService } from '@/services/sunService';
 import 'leaflet/dist/leaflet.css';
 
 // デフォルトアイコンの設定
@@ -98,7 +100,47 @@ interface MapProps {
     orbitHeight?: number;
     orbitType?: string;
   }>;
+  sunPaths?: SunPath[];
 }
+
+// 太陽軌道表示レイヤー
+const SunPathLayer: React.FC<{
+  paths: SunPath[];
+  color?: string;
+}> = ({ paths, color = '#FFA500' }) => {
+  const map = useMap();
+
+  React.useEffect(() => {
+    if (!paths.length) return;
+
+    // 太陽軌道の描画
+    const lines = paths.flatMap((path) => {
+      if (!path.visible || path.points.length < 2) return [];
+
+      const points = path.points.map(point => new LatLng(point.lat, point.lng));
+      const line = L.polyline(points, {
+        color,
+        weight: 2,
+        opacity: 0.7,
+        dashArray: '5, 5',
+      }).addTo(map);
+
+      // マウスオーバー時に日付を表示
+      line.bindTooltip(
+        `日付: ${path.date.toLocaleDateString('ja-JP')}`
+      );
+
+      return [line];
+    });
+
+    return () => {
+      // クリーンアップ時に軌道を削除
+      lines.forEach(line => line.remove());
+    };
+  }, [paths, map, color]);
+
+  return null;
+};
 
 interface OrbitLayerProps {
   paths: OrbitPath[];
@@ -145,12 +187,16 @@ const MapControls: React.FC<{
   defaultZoom: number;
   showLegend: boolean;
   onToggleLegend: () => void;
+  showSunPaths?: boolean;
+  onToggleSunPaths?: () => void;
 }> = ({
   map,
   currentCenter,
   defaultZoom,
   showLegend,
-  onToggleLegend
+  onToggleLegend,
+  showSunPaths = false,
+  onToggleSunPaths
 }) => {
   // マップが存在しない場合は何も表示しない
   if (!map) return null;
@@ -218,6 +264,15 @@ const MapControls: React.FC<{
         >
           <LegendToggleIcon fontSize="small" />
         </Button>
+        {onToggleSunPaths && (
+          <Button
+            onClick={onToggleSunPaths}
+            title={showSunPaths ? "太陽軌道を非表示" : "太陽軌道を表示"}
+            color={showSunPaths ? "primary" : "inherit"}
+          >
+            <WbSunnyIcon fontSize="small" />
+          </Button>
+        )}
       </ButtonGroup>
     </Box>
   );
@@ -494,6 +549,7 @@ const Map: React.FC<MapProps> = ({
   orbitPaths = [],
   filters,
   satellites = [],
+  sunPaths = [],
 }) => {
   // 最低仰角の値（デフォルト10度）
   const minElevation = filters?.minElevation ?? 10;
@@ -506,10 +562,17 @@ const Map: React.FC<MapProps> = ({
 
   // 凡例の表示/非表示を管理する状態
   const [showLegend, setShowLegend] = React.useState(true);
+  // 太陽軌道の表示/非表示を管理する状態
+  const [showSunPaths, setShowSunPaths] = React.useState(false);
 
   // 凡例の表示/非表示を切り替えるハンドラー
   const handleToggleLegend = React.useCallback(() => {
     setShowLegend(prev => !prev);
+  }, []);
+
+  // 太陽軌道の表示/非表示を切り替えるハンドラー
+  const handleToggleSunPaths = React.useCallback(() => {
+    setShowSunPaths(prev => !prev);
   }, []);
 
   // 衛星データから軌道種類ごとの高度を集計
@@ -518,6 +581,25 @@ const Map: React.FC<MapProps> = ({
     // 集計結果がない場合はデフォルト値を使用
     return aggregated.length > 0 ? aggregated : DEFAULT_ORBIT_TYPES;
   }, [satellites]);
+
+  // 太陽軌道を計算
+  const [calculatedSunPaths, setCalculatedSunPaths] = React.useState<SunPath[]>([]);
+
+  // filtersが変更されたときに太陽軌道を再計算
+  React.useEffect(() => {
+    if (filters && filters.startDate && filters.endDate && filters.location) {
+      const settings = {
+        enabled: true,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        interval: 30, // 30分間隔で計算
+        color: '#FFA500'
+      };
+
+      const paths = SunService.calculateSunPaths(filters.location, settings);
+      setCalculatedSunPaths(paths);
+    }
+  }, [filters]);
 
   // マップが準備できたときのコールバック
   const handleMapReady = React.useCallback((map: L.Map) => {
@@ -541,6 +623,8 @@ const Map: React.FC<MapProps> = ({
         defaultZoom={defaultZoom}
         showLegend={showLegend}
         onToggleLegend={handleToggleLegend}
+        showSunPaths={showSunPaths}
+        onToggleSunPaths={handleToggleSunPaths}
       />
       {/* 可視範囲の凡例を表示（showLegendがtrueの場合のみ） */}
       {showLegend && <VisibilityLegend minElevation={minElevation} orbitTypes={orbitTypes} />}
@@ -579,6 +663,9 @@ const Map: React.FC<MapProps> = ({
           </>
         )}
         {orbitPaths.length > 0 && <OrbitLayer paths={orbitPaths} />}
+        {showSunPaths && calculatedSunPaths.length > 0 && (
+          <SunPathLayer paths={calculatedSunPaths} color="#FFA500" />
+        )}
       </MapContainer>
     </MapWrapper>
   );

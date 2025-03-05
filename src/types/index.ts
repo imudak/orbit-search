@@ -91,3 +91,19 @@ export interface LatLng {
   lat: number;
   lng: number;
 }
+
+// 太陽軌道の型
+export interface SunPath {
+  date: Date;
+  points: LatLng[];
+  visible: boolean;
+}
+
+// 太陽軌道表示設定の型
+export interface SunPathSettings {
+  enabled: boolean;
+  startDate: Date;
+  endDate: Date;
+  interval: number; // 分単位での軌道計算間隔
+  color: string;
+}
