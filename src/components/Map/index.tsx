@@ -8,9 +8,7 @@ import type { Location, OrbitPath, SearchFilters } from '@/types';
 
 // コンポーネントのインポート
 import MapView from './MapView';
-import ZoomControls from './controls/ZoomControls';
-import ViewControls from './controls/ViewControls';
-import LayerControls from './controls/LayerControls';
+import UnifiedControlPanel from './controls/UnifiedControlPanel';
 import ObserverMarkerLayer from './layers/ObserverMarkerLayer';
 import VisibilityCircleLayer from './layers/VisibilityCircleLayer';
 import SatelliteOrbitLayer from './layers/SatelliteOrbitLayer';
@@ -21,8 +19,8 @@ import { AnimationState } from './panels/AnimationControlPanel';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from './layers/VisibilityCircleLayer';
 import { MapLayer } from './controls/LayerControls';
 import { LayerProvider, useLayerManager, LayerRenderer } from './layers/LayerManager';
-import MapModeSelector from './modes/MapModeSelector';
-import { ModeProvider, useMapMode, ModeRenderer, MapMode } from './modes/MapModeSelector';
+import MapModeSelectorDefault, { ModeProvider, useMapMode, ModeRenderer, MapMode } from './modes/MapModeSelector';
+const MapModeSelector = MapModeSelectorDefault.MapModeSelector;
 import NormalPanel from './modes/NormalPanel';
 import AnimationPanel from './modes/AnimationPanel';
 import AnalysisPanel from './modes/AnalysisPanel';
@@ -91,24 +89,23 @@ const InnerMap: React.FC<InnerMapProps> = ({
   showLegend,
   animationState,
   satellitePosition,
+  handleToggleLegend,
 }) => {
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
 
   return (
     <MapView center={center} zoom={defaultZoom}>
-      {/* コントロール */}
-      <ZoomControls position="topright" />
-      <ViewControls
+      {/* 統一コントロールパネル */}
+      <UnifiedControlPanel
         position="topright"
         currentCenter={center}
         defaultZoom={defaultZoom}
+        showLegend={showLegend}
+        onToggleLegend={handleToggleLegend}
       />
-      <LayerControls
-        position="topright"
-        layers={layers}
-        onLayerToggle={toggleLayer}
-      />
+
+      {/* モード切替 */}
       <MapModeSelector position="topright" />
 
       {/* レイヤー */}
