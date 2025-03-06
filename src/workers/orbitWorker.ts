@@ -104,7 +104,7 @@ function calculatePasses(
     endUTC: filters.endDate?.toUTCString()
   });
   const minElevation = filters.minElevation || 0;
-  const stepSize = 30 * 1000; // 30秒ごとに計算
+  const stepSize = filters.stepSize || 30 * 1000; // デフォルトは30秒
 
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
   if (!satrec) {

@@ -14,7 +14,7 @@ import {
   Box,
   Chip,
 } from '@mui/material';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import { Download as DownloadIcon, Timeline as TimelineIcon } from '@mui/icons-material';
 import type { Satellite, Pass } from '@/types';
 
 // TLEデータから軌道種類を判断する関数
@@ -60,6 +60,7 @@ const getOrbitTypeColor = (orbitType: string): 'default' | 'error' | 'primary' |
 interface SatelliteListProps {
   satellites: Array<Satellite & { passes: Pass[] }>;
   onTLEDownload: (satellite: Satellite) => void;
+  onObservationDataRequest: (satellite: Satellite) => void; // 追加
   onSatelliteSelect: (satellite: Satellite) => void;
   selectedSatellite?: Satellite;
   isLoading?: boolean;
@@ -68,6 +69,7 @@ interface SatelliteListProps {
 const SatelliteList: React.FC<SatelliteListProps> = ({
   satellites,
   onTLEDownload,
+  onObservationDataRequest,
   onSatelliteSelect,
   selectedSatellite,
   isLoading = false,
@@ -172,10 +174,20 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
               divider
               secondaryAction={
                 <ListItemSecondaryAction>
+                  <Tooltip title="観測データをダウンロード">
+                    <IconButton
+                      edge="end"
+                      aria-label="download-observation"
+                      onClick={() => onObservationDataRequest(satellite)}
+                      sx={{ mr: 1 }}
+                    >
+                      <TimelineIcon color="primary" />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="TLEデータをダウンロード">
                     <IconButton
                       edge="end"
-                      aria-label="download"
+                      aria-label="download-tle"
                       onClick={() => onTLEDownload(satellite)}
                     >
                       <DownloadIcon />

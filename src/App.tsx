@@ -8,7 +8,8 @@ import ja from 'date-fns/locale/ja';
 import Map from '@/components/Map';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
-import type { Location, SearchFilters, Satellite, OrbitPath, OrbitSegment, LatLng } from '@/types';
+import ObservationDataDialog from '@/components/ObservationDataDialog';
+import type { Location, SearchFilters, Satellite, OrbitPath, OrbitSegment, LatLng, ObservationPoint } from '@/types';
 import { useAppStore } from '@/store';
 import { tleService } from '@/services/tleService';
 import { searchSatellites } from '@/services/satelliteService';
@@ -59,6 +60,11 @@ const Footer = styled(Box)(({ theme }) => ({
 const App = () => {
   // 軌道パスの状態
   const [orbitPaths, setOrbitPaths] = useState<OrbitPath[]>([]);
+
+  // 観測データダイアログの状態
+  const [observationDialogOpen, setObservationDialogOpen] = useState<boolean>(false);
+  const [observationLoading, setObservationLoading] = useState<boolean>(false);
+  const [satelliteForObservation, setSatelliteForObservation] = useState<Satellite | null>(null);
 
   const {
     selectedLocation,
@@ -187,6 +193,60 @@ const App = () => {
     }
   };
 
+  // 観測データダイアログを開くハンドラー
+  const handleObservationDataRequest = (satellite: Satellite) => {
+    setSatelliteForObservation(satellite);
+    setObservationDialogOpen(true);
+  };
+
+  // 観測データをダウンロードするハンドラー
+  const handleObservationDataDownload = async (stepSize: number) => {
+    if (!satelliteForObservation || !selectedLocation || !searchFilters) {
+      return;
+    }
+
+    setObservationLoading(true);
+    try {
+      // 観測データを計算
+      const observationData = await orbitService.calculateObservationData(
+        satelliteForObservation.tle,
+        selectedLocation,
+        searchFilters.startDate,
+        searchFilters.endDate,
+        stepSize
+      );
+
+      if (observationData.length === 0) {
+        alert('観測データが見つかりませんでした。');
+        return;
+      }
+
+      // CSVに変換
+      const csvData = orbitService.exportObservationDataToCsv(
+        observationData,
+        satelliteForObservation.name
+      );
+
+      // ダウンロード
+      const blob = new Blob([csvData], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${satelliteForObservation.name.replace(/\s+/g, '_')}_observation_data.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setObservationDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to download observation data:', error);
+      alert('観測データのダウンロードに失敗しました。');
+    } finally {
+      setObservationLoading(false);
+    }
+  };
+
   // TLEデータのダウンロードハンドラー
   const handleTLEDownload = async (satellite: Satellite) => {
     try {
@@ -302,6 +362,7 @@ const App = () => {
               <SatelliteList
                 satellites={satellites}
                 onTLEDownload={handleTLEDownload}
+                onObservationDataRequest={handleObservationDataRequest}
                 onSatelliteSelect={handleSatelliteSelect}
                 selectedSatellite={selectedSatellite}
                 isLoading={isLoading}
@@ -319,6 +380,15 @@ const App = () => {
           Version 1.0.0
         </Typography>
       </Footer>
+
+      {/* 観測データダイアログ */}
+      <ObservationDataDialog
+        open={observationDialogOpen}
+        onClose={() => setObservationDialogOpen(false)}
+        onDownload={handleObservationDataDownload}
+        isLoading={observationLoading}
+        satelliteName={satelliteForObservation?.name || ''}
+      />
     </Root>
   </LocalizationProvider>
   );
