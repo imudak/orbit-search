@@ -65,8 +65,8 @@ const InfoPanelContainer = styled('div')({
 // 情報パネル表示切り替えボタン用のスタイル
 const ToggleButtonContainer = styled('div')({
   position: 'absolute',
-  top: '-40px',
-  right: '0',
+  bottom: '10px',
+  right: '120px', // 凡例の左側に配置
   zIndex: 1100,
 });
 
