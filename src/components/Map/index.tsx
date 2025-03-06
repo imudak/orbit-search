@@ -21,6 +21,11 @@ import { AnimationState } from './panels/AnimationControlPanel';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from './layers/VisibilityCircleLayer';
 import { MapLayer } from './controls/LayerControls';
 import { LayerProvider, useLayerManager, LayerRenderer } from './layers/LayerManager';
+import MapModeSelector from './modes/MapModeSelector';
+import { ModeProvider, useMapMode, ModeRenderer, MapMode } from './modes/MapModeSelector';
+import NormalPanel from './modes/NormalPanel';
+import AnimationPanel from './modes/AnimationPanel';
+import AnalysisPanel from './modes/AnalysisPanel';
 
 // スタイル付きコンポーネント
 const MapWrapper = styled('div')({
@@ -73,6 +78,10 @@ interface InnerMapProps {
   handleToggleInfoPanel: () => void;
 }
 
+/**
+ * 基本的なマップコンポーネント
+ * レイヤーの表示を担当
+ */
 const InnerMap: React.FC<InnerMapProps> = ({
   center,
   defaultZoom,
@@ -80,93 +89,116 @@ const InnerMap: React.FC<InnerMapProps> = ({
   orbitTypes,
   orbitPaths,
   showLegend,
-  showInfoPanel,
   animationState,
   satellitePosition,
-  handlePlayPause,
-  handleSeek,
-  handleSpeedChange,
-  handleToggleLegend,
-  handleToggleInfoPanel
 }) => {
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
 
   return (
-    <>
-      <MapView center={center} zoom={defaultZoom}>
-        {/* コントロール */}
-        <ZoomControls position="topright" />
-        <ViewControls
-          position="topright"
-          currentCenter={center}
-          defaultZoom={defaultZoom}
-        />
-        <LayerControls
-          position="topright"
-          layers={layers}
-          onLayerToggle={toggleLayer}
-        />
+    <MapView center={center} zoom={defaultZoom}>
+      {/* コントロール */}
+      <ZoomControls position="topright" />
+      <ViewControls
+        position="topright"
+        currentCenter={center}
+        defaultZoom={defaultZoom}
+      />
+      <LayerControls
+        position="topright"
+        layers={layers}
+        onLayerToggle={toggleLayer}
+      />
+      <MapModeSelector position="topright" />
 
-        {/* レイヤー */}
-        <LayerRenderer layerId="observer-marker">
-          {center && <ObserverMarkerLayer center={center} />}
-        </LayerRenderer>
+      {/* レイヤー */}
+      <LayerRenderer layerId="observer-marker">
+        {center && <ObserverMarkerLayer center={center} />}
+      </LayerRenderer>
 
-        <LayerRenderer layerId="visibility-circles">
-          {center && (
-            <VisibilityCircleLayer
-              center={center}
-              minElevation={minElevation}
-              orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
-            />
-          )}
-        </LayerRenderer>
-
-        <LayerRenderer layerId="orbit-paths">
-          {orbitPaths.length > 0 && <SatelliteOrbitLayer paths={orbitPaths} />}
-        </LayerRenderer>
-
-        {/* 情報パネル */}
-        {showLegend && (
-          <LegendPanel
-            position="bottomright"
+      <LayerRenderer layerId="visibility-circles">
+        {center && (
+          <VisibilityCircleLayer
+            center={center}
             minElevation={minElevation}
             orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
           />
         )}
-        {showInfoPanel && orbitPaths.length > 0 && (
-          <>
-            <AnimationControlPanel
-              position="bottom"
-              animationState={animationState}
-              onPlayPause={handlePlayPause}
-              onSeek={handleSeek}
-              onSpeedChange={handleSpeedChange}
-            />
-            {satellitePosition && (
-              <SatelliteInfoPanel
-                position="bottomleft"
-                satellite={orbitPaths[0]?.satelliteId ? { id: orbitPaths[0].satelliteId } as any : undefined}
-                currentPosition={satellitePosition}
-                currentTime={animationState.currentTime}
-              />
-            )}
-          </>
+      </LayerRenderer>
+
+      <LayerRenderer layerId="orbit-paths">
+        {orbitPaths.length > 0 && <SatelliteOrbitLayer paths={orbitPaths} />}
+      </LayerRenderer>
+
+      {/* 凡例 */}
+      {showLegend && (
+        <LegendPanel
+          position="bottomright"
+          minElevation={minElevation}
+          orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
+        />
+      )}
+    </MapView>
+  );
+};
+
+/**
+ * モード対応のマップコンポーネント
+ * モードに応じたパネルの表示を担当
+ */
+const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
+  // モード管理コンテキストを使用
+  const { currentMode } = useMapMode();
+
+  return (
+    <>
+      <InnerMap {...props} />
+
+      {/* モードに応じたパネルを表示 */}
+      <ModeRenderer mode={MapMode.NORMAL}>
+        <NormalPanel
+          position="bottomleft"
+          center={props.center}
+          orbitPaths={props.orbitPaths}
+        />
+      </ModeRenderer>
+
+      <ModeRenderer mode={MapMode.ANIMATION}>
+        <AnimationPanel
+          position="bottom"
+          orbitPaths={props.orbitPaths}
+          animationState={props.animationState}
+          satellitePosition={props.satellitePosition}
+        />
+        {props.showInfoPanel && props.orbitPaths.length > 0 && props.satellitePosition && (
+          <AnimationControlPanel
+            position="bottom"
+            animationState={props.animationState}
+            onPlayPause={props.handlePlayPause}
+            onSeek={props.handleSeek}
+            onSpeedChange={props.handleSpeedChange}
+          />
         )}
-      </MapView>
+      </ModeRenderer>
+
+      <ModeRenderer mode={MapMode.ANALYSIS}>
+        <AnalysisPanel
+          position="bottom"
+          orbitPaths={props.orbitPaths}
+        />
+      </ModeRenderer>
 
       {/* 情報パネル表示切り替えボタン */}
-      {orbitPaths.length > 0 && (
+      {props.orbitPaths.length > 0 && (
         <ToggleButtonContainer>
           <Button
             variant="contained"
-            color={showInfoPanel ? "primary" : "secondary"}
+            color={props.showInfoPanel ? "primary" : "secondary"}
             size="small"
-            onClick={handleToggleInfoPanel}
-            startIcon={showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
+            onClick={props.handleToggleInfoPanel}
+            startIcon={props.showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
           >
-            {showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
+            {props.showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
           </Button>
         </ToggleButtonContainer>
       )}
@@ -182,12 +214,12 @@ const InnerMap: React.FC<InnerMapProps> = ({
       >
         <Button
           variant="contained"
-          color={showLegend ? "primary" : "secondary"}
+          color={props.showLegend ? "primary" : "secondary"}
           size="small"
-          onClick={handleToggleLegend}
+          onClick={props.handleToggleLegend}
           startIcon={<LegendToggleIcon />}
         >
-          {showLegend ? "凡例を隠す" : "凡例を表示"}
+          {props.showLegend ? "凡例を隠す" : "凡例を表示"}
         </Button>
       </Box>
     </>
@@ -312,24 +344,26 @@ const Map: React.FC<MapProps> = ({
 
   return (
     <MapWrapper>
-      <LayerProvider>
-        <InnerMap
-          center={center}
-          defaultZoom={defaultZoom}
-          minElevation={minElevation}
-          orbitTypes={orbitTypes}
-          orbitPaths={orbitPaths}
-          showLegend={showLegend}
-          showInfoPanel={showInfoPanel}
-          animationState={animationState}
-          satellitePosition={satellitePosition}
-          handlePlayPause={handlePlayPause}
-          handleSeek={handleSeek}
-          handleSpeedChange={handleSpeedChange}
-          handleToggleLegend={handleToggleLegend}
-          handleToggleInfoPanel={handleToggleInfoPanel}
-        />
-      </LayerProvider>
+      <ModeProvider>
+        <LayerProvider>
+          <InnerMapWithModes
+            center={center}
+            defaultZoom={defaultZoom}
+            minElevation={minElevation}
+            orbitTypes={orbitTypes}
+            orbitPaths={orbitPaths}
+            showLegend={showLegend}
+            showInfoPanel={showInfoPanel}
+            animationState={animationState}
+            satellitePosition={satellitePosition}
+            handlePlayPause={handlePlayPause}
+            handleSeek={handleSeek}
+            handleSpeedChange={handleSpeedChange}
+            handleToggleLegend={handleToggleLegend}
+            handleToggleInfoPanel={handleToggleInfoPanel}
+          />
+        </LayerProvider>
+      </ModeProvider>
     </MapWrapper>
   );
 };
