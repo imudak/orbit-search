@@ -59,6 +59,7 @@ const InfoPanelContainer = styled('div')({
   marginTop: '10px',
   gap: '10px',
   position: 'relative', // ボタンの位置決めのため
+  zIndex: 1100, // 検索ボックスよりも前面に表示
 });
 
 // 情報パネル表示切り替えボタン用のスタイル
@@ -66,7 +67,7 @@ const ToggleButtonContainer = styled('div')({
   position: 'absolute',
   top: '-40px',
   right: '0',
-  zIndex: 1000,
+  zIndex: 1100,
 });
 
 // 地球の半径（km）
@@ -752,9 +753,10 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     <Paper
       sx={{
         padding: '10px',
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: '4px',
-        boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
+        backgroundColor: 'rgba(240, 240, 255, 0.95)', // 薄い青色の背景
+        borderRadius: '8px', // より丸みを帯びた角
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', // より強い影
+        border: '1px solid rgba(0, 0, 100, 0.1)', // 薄い青色のボーダー
         width: '100%',
         flexGrow: 1,
       }}
@@ -823,9 +825,10 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
     <Paper
       sx={{
         padding: '10px',
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: '4px',
-        boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
+        backgroundColor: 'rgba(240, 240, 255, 0.95)', // 薄い青色の背景
+        borderRadius: '8px', // より丸みを帯びた角
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', // より強い影
+        border: '1px solid rgba(0, 0, 100, 0.1)', // 薄い青色のボーダー
         width: '100%',
         flexGrow: 1,
       }}
