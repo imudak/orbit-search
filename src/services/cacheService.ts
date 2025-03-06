@@ -3,7 +3,7 @@ import type { TLEData } from '@/types';
 
 const DB_NAME = 'orbit-search-db';
 const TLE_STORE = 'tle-cache';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // キャッシュの設定
 const CACHE_CONFIG = {
