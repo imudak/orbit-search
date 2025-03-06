@@ -63,7 +63,13 @@ const ObservationDataDialog: React.FC<ObservationDataDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      disableRestoreFocus
+    >
       <DialogTitle>観測データのダウンロード</DialogTitle>
       <DialogContent>
         <Box sx={{ mb: 2 }}>
@@ -81,6 +87,7 @@ const ObservationDataDialog: React.FC<ObservationDataDialogProps> = ({
             onChange={handleStepValueChange}
             inputProps={{ min: 1 }}
             sx={{ width: '40%' }}
+            autoFocus
           />
 
           <FormControl sx={{ width: '60%' }}>
