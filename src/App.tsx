@@ -5,7 +5,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
-import Map from '@/components/Map';
+import Map from '@/components/Map/index';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
 import ObservationDataDialog from '@/components/ObservationDataDialog';

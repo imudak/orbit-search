@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import Map from '../../components/Map';
+import Map from '../../components/Map/index';
 import { MapContainer } from 'react-leaflet';
 
 // MapContainerのモック

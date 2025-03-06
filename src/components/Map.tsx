@@ -848,7 +848,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   );
 };
 
-const Map: React.FC<MapProps> = ({
+const MapLegacy: React.FC<MapProps> = ({
   center = { lat: 35.6812, lng: 139.7671 }, // デフォルト: 東京
   onLocationSelect,
   orbitPaths = [],
@@ -1043,4 +1043,4 @@ const Map: React.FC<MapProps> = ({
   );
 };
 
-export default Map;
+export default MapLegacy;
