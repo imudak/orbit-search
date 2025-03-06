@@ -91,8 +91,18 @@ function calculatePasses(
     endDate: filters.endDate?.toISOString(),
   });
 
+  // 入力された日時はローカルタイム（ブラウザのタイムゾーン）
+  // JavaScriptのDate objectは内部的にUTCとして処理
   const startTime = (filters.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000)).getTime();
   const endTime = (filters.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).getTime();
+
+  // デバッグ用：時刻変換の確認
+  console.log('Time conversion check:', {
+    startLocal: filters.startDate?.toLocaleString(),
+    startUTC: filters.startDate?.toUTCString(),
+    endLocal: filters.endDate?.toLocaleString(),
+    endUTC: filters.endDate?.toUTCString()
+  });
   const minElevation = filters.minElevation || 0;
   const stepSize = 30 * 1000; // 30秒ごとに計算
 

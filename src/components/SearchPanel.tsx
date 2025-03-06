@@ -42,6 +42,14 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
   // スライダーの内部状態
   const [sliderValue, setSliderValue] = useState<number>(filters.minElevation);
 
+  // ローカルタイムゾーンを取得
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeZoneAbbr = new Intl.DateTimeFormat('en-US', {
+    timeZoneName: 'short',
+    timeZone
+  }).formatToParts(new Date())
+    .find(part => part.type === 'timeZoneName')?.value || timeZone;
+
   // デバウンスされた値
   const debouncedSliderValue = useDebounce<number>(sliderValue, 500); // 500ms遅延
 
@@ -98,7 +106,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Box sx={{ flex: 1 }}>
               <DateTimePicker
-                label="開始日時"
+                label={`開始日時 (${timeZoneAbbr})`}
                 value={filters.startDate}
                 onChange={handleStartDateChange}
                 renderInput={(props) => (
@@ -120,7 +128,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
             </Box>
             <Box sx={{ flex: 1 }}>
               <DateTimePicker
-                label="終了日時"
+                label={`終了日時 (${timeZoneAbbr})`}
                 value={filters.endDate}
                 onChange={handleEndDateChange}
                 renderInput={(props) => (
