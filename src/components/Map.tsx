@@ -25,6 +25,9 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import FastForwardIcon from '@mui/icons-material/FastForward';
 import FastRewindIcon from '@mui/icons-material/FastRewind';
+import InfoIcon from '@mui/icons-material/Info';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import type { Location, OrbitPath, SearchFilters, PassPoint } from '@/types';
 import 'leaflet/dist/leaflet.css';
 
@@ -46,6 +49,24 @@ const MapWrapper = styled('div')({
   borderRadius: '8px',
   overflow: 'hidden',
   position: 'relative', // 子要素の絶対位置指定の基準にする
+  marginBottom: '10px', // コントロールパネル用のスペースを確保
+});
+
+// 情報パネル用のコンテナ
+const InfoPanelContainer = styled('div')({
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginTop: '10px',
+  gap: '10px',
+  position: 'relative', // ボタンの位置決めのため
+});
+
+// 情報パネル表示切り替えボタン用のスタイル
+const ToggleButtonContainer = styled('div')({
+  position: 'absolute',
+  top: '-40px',
+  right: '0',
+  zIndex: 1000,
 });
 
 // 地球の半径（km）
@@ -730,15 +751,12 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   return (
     <Paper
       sx={{
-        position: 'absolute',
-        bottom: '70px',
-        left: '10px',
-        zIndex: 1000,
         padding: '10px',
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         borderRadius: '4px',
         boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
-        width: '300px',
+        width: '100%',
+        flexGrow: 1,
       }}
     >
       <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
@@ -789,6 +807,44 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   );
 };
 
+// 衛星位置情報パネルコンポーネント
+interface SatelliteInfoPanelProps {
+  satellitePosition: AnimationState['currentPosition'];
+  currentTime: Date;
+}
+
+const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
+  satellitePosition,
+  currentTime
+}) => {
+  if (!satellitePosition) return null;
+
+  return (
+    <Paper
+      sx={{
+        padding: '10px',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: '4px',
+        boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
+        width: '100%',
+        flexGrow: 1,
+      }}
+    >
+      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+        衛星位置情報
+      </Typography>
+      <Typography variant="body2">
+        時刻: {currentTime.toLocaleString()}<br />
+        緯度: {satellitePosition.lat.toFixed(6)}°<br />
+        経度: {satellitePosition.lng.toFixed(6)}°<br />
+        仰角: {satellitePosition.elevation.toFixed(2)}°<br />
+        方位角: {satellitePosition.azimuth.toFixed(2)}°<br />
+        距離: {satellitePosition.range.toFixed(2)}km
+      </Typography>
+    </Paper>
+  );
+};
+
 const Map: React.FC<MapProps> = ({
   center = { lat: 35.6812, lng: 139.7671 }, // デフォルト: 東京
   onLocationSelect,
@@ -807,6 +863,9 @@ const Map: React.FC<MapProps> = ({
 
   // 凡例の表示/非表示を管理する状態
   const [showLegend, setShowLegend] = useState(true);
+
+  // 情報パネルの表示/非表示を管理する状態
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
 
   // アニメーション状態
   const [animationState, setAnimationState] = useState<AnimationState>({
@@ -854,6 +913,11 @@ const Map: React.FC<MapProps> = ({
     setShowLegend(prev => !prev);
   }, []);
 
+  // 情報パネルの表示/非表示を切り替えるハンドラー
+  const handleToggleInfoPanel = useCallback(() => {
+    setShowInfoPanel(prev => !prev);
+  }, []);
+
   // 衛星データから軌道種類ごとの高度を集計
   const orbitTypes = React.useMemo(() => {
     const aggregated = aggregateOrbitHeights(satellites);
@@ -875,104 +939,104 @@ const Map: React.FC<MapProps> = ({
   }, []);
 
   return (
-    <MapWrapper>
-      {/* MapControlsコンポーネントをMapContainerの外に配置 */}
-      <MapControls
-        map={mapInstance}
-        currentCenter={center}
-        defaultZoom={defaultZoom}
-        showLegend={showLegend}
-        onToggleLegend={handleToggleLegend}
-      />
-      {/* 可視範囲の凡例を表示（showLegendがtrueの場合のみ） */}
-      {showLegend && <VisibilityLegend minElevation={minElevation} orbitTypes={orbitTypes} />}
-
-      {/* 再生コントロールを表示（軌道パスがある場合のみ） */}
-      {orbitPaths.length > 0 && (
-        <PlaybackControls
-          animationState={animationState}
-          onPlayPause={handlePlayPause}
-          onSeek={handleSeek}
-          onSpeedChange={handleSpeedChange}
+    <>
+      <MapWrapper>
+        {/* MapControlsコンポーネントをMapContainerの外に配置 */}
+        <MapControls
+          map={mapInstance}
+          currentCenter={center}
+          defaultZoom={defaultZoom}
+          showLegend={showLegend}
+          onToggleLegend={handleToggleLegend}
         />
-      )}
+        {/* 可視範囲の凡例を表示（showLegendがtrueの場合のみ） */}
+        {showLegend && <VisibilityLegend minElevation={minElevation} orbitTypes={orbitTypes} />}
 
-      {/* 衛星位置情報パネル */}
-      {satellitePosition && (
-        <Paper
-          sx={{
-            position: 'absolute',
-            top: '50px',
-            left: '10px',
-            zIndex: 1000,
-            padding: '10px',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            borderRadius: '4px',
-            boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
-          }}
+        <MapContainer
+          center={[center.lat, center.lng]}
+          zoom={defaultZoom}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={false} // デフォルトのズームコントロールを無効化
         >
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-            衛星位置情報
-          </Typography>
-          <Typography variant="body2">
-            時刻: {animationState.currentTime.toLocaleString()}<br />
-            緯度: {satellitePosition.lat.toFixed(6)}°<br />
-            経度: {satellitePosition.lng.toFixed(6)}°<br />
-            仰角: {satellitePosition.elevation.toFixed(2)}°<br />
-            方位角: {satellitePosition.azimuth.toFixed(2)}°<br />
-            距離: {satellitePosition.range.toFixed(2)}km
-          </Typography>
-        </Paper>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | &copy; Kazumi OKANO'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <MapClickHandler onLocationSelect={onLocationSelect} />
+          <MapController onMapReady={handleMapReady} />
+          {center && (
+            <>
+              <Marker position={[center.lat, center.lng]} icon={observerIcon}>
+                <Popup>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>観測地点</Typography>
+                  <Typography variant="body2">
+                    緯度: {center.lat.toFixed(6)}<br />
+                    経度: {center.lng.toFixed(6)}
+                  </Typography>
+                </Popup>
+              </Marker>
+              {/* 各軌道種類ごとの可視範囲を表示（高度の高い順に表示） */}
+              {orbitTypes.map((orbitType, index) => (
+                <VisibilityCircle
+                  key={orbitType.name}
+                  center={center}
+                  minElevation={minElevation}
+                  orbitType={orbitType}
+                />
+              ))}
+            </>
+          )}
+          {orbitPaths.length > 0 && (
+            <>
+              <OrbitLayer paths={orbitPaths} />
+              {/* 選択された軌道パスの衛星アニメーション */}
+              <SatelliteAnimation
+                path={orbitPaths[0]} // 最初の軌道パスを使用
+                animationState={animationState}
+                setAnimationState={setAnimationState}
+                onPositionUpdate={handlePositionUpdate}
+              />
+            </>
+          )}
+        </MapContainer>
+      </MapWrapper>
+
+      {/* 情報パネル表示切り替えボタン */}
+      {orbitPaths.length > 0 && (
+        <ToggleButtonContainer>
+          <Button
+            variant="contained"
+            color={showInfoPanel ? "primary" : "secondary"}
+            size="small"
+            onClick={handleToggleInfoPanel}
+            startIcon={showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
+          >
+            {showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
+          </Button>
+        </ToggleButtonContainer>
       )}
 
-      <MapContainer
-        center={[center.lat, center.lng]}
-        zoom={defaultZoom}
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={false} // デフォルトのズームコントロールを無効化
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | &copy; Kazumi OKANO'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapClickHandler onLocationSelect={onLocationSelect} />
-        <MapController onMapReady={handleMapReady} />
-        {center && (
-          <>
-            <Marker position={[center.lat, center.lng]} icon={observerIcon}>
-              <Popup>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>観測地点</Typography>
-                <Typography variant="body2">
-                  緯度: {center.lat.toFixed(6)}<br />
-                  経度: {center.lng.toFixed(6)}
-                </Typography>
-              </Popup>
-            </Marker>
-            {/* 各軌道種類ごとの可視範囲を表示（高度の高い順に表示） */}
-            {orbitTypes.map((orbitType, index) => (
-              <VisibilityCircle
-                key={orbitType.name}
-                center={center}
-                minElevation={minElevation}
-                orbitType={orbitType}
-              />
-            ))}
-          </>
-        )}
-        {orbitPaths.length > 0 && (
-          <>
-            <OrbitLayer paths={orbitPaths} />
-            {/* 選択された軌道パスの衛星アニメーション */}
-            <SatelliteAnimation
-              path={orbitPaths[0]} // 最初の軌道パスを使用
-              animationState={animationState}
-              setAnimationState={setAnimationState}
-              onPositionUpdate={handlePositionUpdate}
+      {/* 地図の下に情報パネルを配置（showInfoPanelがtrueの場合のみ表示） */}
+      {orbitPaths.length > 0 && showInfoPanel && (
+        <InfoPanelContainer>
+          {/* 再生コントロールパネル */}
+          <PlaybackControls
+            animationState={animationState}
+            onPlayPause={handlePlayPause}
+            onSeek={handleSeek}
+            onSpeedChange={handleSpeedChange}
+          />
+
+          {/* 衛星位置情報パネル */}
+          {satellitePosition && (
+            <SatelliteInfoPanel
+              satellitePosition={satellitePosition}
+              currentTime={animationState.currentTime}
             />
-          </>
-        )}
-      </MapContainer>
-    </MapWrapper>
+          )}
+        </InfoPanelContainer>
+      )}
+    </>
   );
 };
 
