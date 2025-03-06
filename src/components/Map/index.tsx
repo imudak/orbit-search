@@ -20,6 +20,7 @@ import AnimationControlPanel from './panels/AnimationControlPanel';
 import { AnimationState } from './panels/AnimationControlPanel';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from './layers/VisibilityCircleLayer';
 import { MapLayer } from './controls/LayerControls';
+import { LayerProvider, useLayerManager, LayerRenderer } from './layers/LayerManager';
 
 // スタイル付きコンポーネント
 const MapWrapper = styled('div')({
@@ -50,6 +51,148 @@ interface MapProps {
     orbitType?: string;
   }>;
 }
+
+/**
+ * 内部マップコンポーネント
+ * LayerManagerのコンテキスト内で使用される
+ */
+interface InnerMapProps {
+  center: Location;
+  defaultZoom: number;
+  minElevation: number;
+  orbitTypes: OrbitType[];
+  orbitPaths: OrbitPath[];
+  showLegend: boolean;
+  showInfoPanel: boolean;
+  animationState: AnimationState;
+  satellitePosition?: AnimationState['currentPosition'];
+  handlePlayPause: () => void;
+  handleSeek: (time: Date) => void;
+  handleSpeedChange: (speed: number) => void;
+  handleToggleLegend: () => void;
+  handleToggleInfoPanel: () => void;
+}
+
+const InnerMap: React.FC<InnerMapProps> = ({
+  center,
+  defaultZoom,
+  minElevation,
+  orbitTypes,
+  orbitPaths,
+  showLegend,
+  showInfoPanel,
+  animationState,
+  satellitePosition,
+  handlePlayPause,
+  handleSeek,
+  handleSpeedChange,
+  handleToggleLegend,
+  handleToggleInfoPanel
+}) => {
+  // レイヤー管理コンテキストを使用
+  const { layers, toggleLayer } = useLayerManager();
+
+  return (
+    <>
+      <MapView center={center} zoom={defaultZoom}>
+        {/* コントロール */}
+        <ZoomControls position="topright" />
+        <ViewControls
+          position="topright"
+          currentCenter={center}
+          defaultZoom={defaultZoom}
+        />
+        <LayerControls
+          position="topright"
+          layers={layers}
+          onLayerToggle={toggleLayer}
+        />
+
+        {/* レイヤー */}
+        <LayerRenderer layerId="observer-marker">
+          {center && <ObserverMarkerLayer center={center} />}
+        </LayerRenderer>
+
+        <LayerRenderer layerId="visibility-circles">
+          {center && (
+            <VisibilityCircleLayer
+              center={center}
+              minElevation={minElevation}
+              orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
+            />
+          )}
+        </LayerRenderer>
+
+        <LayerRenderer layerId="orbit-paths">
+          {orbitPaths.length > 0 && <SatelliteOrbitLayer paths={orbitPaths} />}
+        </LayerRenderer>
+
+        {/* 情報パネル */}
+        {showLegend && (
+          <LegendPanel
+            position="bottomright"
+            minElevation={minElevation}
+            orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
+          />
+        )}
+        {showInfoPanel && orbitPaths.length > 0 && (
+          <>
+            <AnimationControlPanel
+              position="bottom"
+              animationState={animationState}
+              onPlayPause={handlePlayPause}
+              onSeek={handleSeek}
+              onSpeedChange={handleSpeedChange}
+            />
+            {satellitePosition && (
+              <SatelliteInfoPanel
+                position="bottomleft"
+                satellite={orbitPaths[0]?.satelliteId ? { id: orbitPaths[0].satelliteId } as any : undefined}
+                currentPosition={satellitePosition}
+                currentTime={animationState.currentTime}
+              />
+            )}
+          </>
+        )}
+      </MapView>
+
+      {/* 情報パネル表示切り替えボタン */}
+      {orbitPaths.length > 0 && (
+        <ToggleButtonContainer>
+          <Button
+            variant="contained"
+            color={showInfoPanel ? "primary" : "secondary"}
+            size="small"
+            onClick={handleToggleInfoPanel}
+            startIcon={showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
+          >
+            {showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
+          </Button>
+        </ToggleButtonContainer>
+      )}
+
+      {/* 凡例表示切り替えボタン */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '10px',
+          right: '200px',
+          zIndex: 1100,
+        }}
+      >
+        <Button
+          variant="contained"
+          color={showLegend ? "primary" : "secondary"}
+          size="small"
+          onClick={handleToggleLegend}
+          startIcon={<LegendToggleIcon />}
+        >
+          {showLegend ? "凡例を隠す" : "凡例を表示"}
+        </Button>
+      </Box>
+    </>
+  );
+};
 
 /**
  * 地図コンポーネント
@@ -83,43 +226,6 @@ const Map: React.FC<MapProps> = ({
 
   // 衛星位置情報
   const [satellitePosition, setSatellitePosition] = useState<AnimationState['currentPosition']>();
-
-  // レイヤー管理
-  const [layers, setLayers] = useState<MapLayer[]>([
-    {
-      id: 'observer-marker',
-      name: '観測地点',
-      description: '選択された観測地点を表示します',
-      isVisible: true,
-      icon: null,
-      color: '#1976d2',
-    },
-    {
-      id: 'visibility-circles',
-      name: '可視範囲',
-      description: '各軌道種類の衛星が見える範囲を表示します',
-      isVisible: true,
-      icon: null,
-      color: '#4caf50',
-    },
-    {
-      id: 'orbit-paths',
-      name: '軌道パス',
-      description: '選択された衛星の軌道を表示します',
-      isVisible: true,
-      icon: null,
-      color: '#f44336',
-    },
-  ]);
-
-  // レイヤーの表示/非表示を切り替える
-  const handleLayerToggle = useCallback((layerId: string) => {
-    setLayers(prevLayers =>
-      prevLayers.map(layer =>
-        layer.id === layerId ? { ...layer, isVisible: !layer.isVisible } : layer
-      )
-    );
-  }, []);
 
   // 凡例の表示/非表示を切り替えるハンドラー
   const handleToggleLegend = useCallback(() => {
@@ -204,109 +310,27 @@ const Map: React.FC<MapProps> = ({
     return result.sort((a, b) => b.height - a.height);
   }, [satellites]);
 
-  // 各レイヤーの表示状態を取得
-  const isLayerVisible = useCallback((layerId: string) => {
-    const layer = layers.find(l => l.id === layerId);
-    return layer ? layer.isVisible : false;
-  }, [layers]);
-
   return (
-    <>
-      <MapWrapper>
-        <MapView center={center} zoom={defaultZoom}>
-          {/* コントロール */}
-          <ZoomControls position="topright" />
-          <ViewControls
-            position="topright"
-            currentCenter={center}
-            defaultZoom={defaultZoom}
-          />
-          <LayerControls
-            position="topright"
-            layers={layers}
-            onLayerToggle={handleLayerToggle}
-          />
-
-          {/* レイヤー */}
-          {isLayerVisible('observer-marker') && center && (
-            <ObserverMarkerLayer center={center} />
-          )}
-          {isLayerVisible('visibility-circles') && center && (
-            <VisibilityCircleLayer
-              center={center}
-              minElevation={minElevation}
-              orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
-            />
-          )}
-          {isLayerVisible('orbit-paths') && orbitPaths.length > 0 && (
-            <SatelliteOrbitLayer paths={orbitPaths} />
-          )}
-
-          {/* 情報パネル */}
-          {showLegend && (
-            <LegendPanel
-              position="bottomright"
-              minElevation={minElevation}
-              orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
-            />
-          )}
-          {showInfoPanel && orbitPaths.length > 0 && (
-            <>
-              <AnimationControlPanel
-                position="bottom"
-                animationState={animationState}
-                onPlayPause={handlePlayPause}
-                onSeek={handleSeek}
-                onSpeedChange={handleSpeedChange}
-              />
-              {satellitePosition && (
-                <SatelliteInfoPanel
-                  position="bottomleft"
-                  satellite={orbitPaths[0]?.satelliteId ? { id: orbitPaths[0].satelliteId } as any : undefined}
-                  currentPosition={satellitePosition}
-                  currentTime={animationState.currentTime}
-                />
-              )}
-            </>
-          )}
-        </MapView>
-
-        {/* 情報パネル表示切り替えボタン */}
-        {orbitPaths.length > 0 && (
-          <ToggleButtonContainer>
-            <Button
-              variant="contained"
-              color={showInfoPanel ? "primary" : "secondary"}
-              size="small"
-              onClick={handleToggleInfoPanel}
-              startIcon={showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
-            >
-              {showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
-            </Button>
-          </ToggleButtonContainer>
-        )}
-
-        {/* 凡例表示切り替えボタン */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '10px',
-            right: '200px',
-            zIndex: 1100,
-          }}
-        >
-          <Button
-            variant="contained"
-            color={showLegend ? "primary" : "secondary"}
-            size="small"
-            onClick={handleToggleLegend}
-            startIcon={<LegendToggleIcon />}
-          >
-            {showLegend ? "凡例を隠す" : "凡例を表示"}
-          </Button>
-        </Box>
-      </MapWrapper>
-    </>
+    <MapWrapper>
+      <LayerProvider>
+        <InnerMap
+          center={center}
+          defaultZoom={defaultZoom}
+          minElevation={minElevation}
+          orbitTypes={orbitTypes}
+          orbitPaths={orbitPaths}
+          showLegend={showLegend}
+          showInfoPanel={showInfoPanel}
+          animationState={animationState}
+          satellitePosition={satellitePosition}
+          handlePlayPause={handlePlayPause}
+          handleSeek={handleSeek}
+          handleSpeedChange={handleSpeedChange}
+          handleToggleLegend={handleToggleLegend}
+          handleToggleInfoPanel={handleToggleInfoPanel}
+        />
+      </LayerProvider>
+    </MapWrapper>
   );
 };
 
