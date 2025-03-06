@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import { Box, Button, useTheme, useMediaQuery } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -14,6 +14,7 @@ import ResponsiveMapLayout from './layout/ResponsiveMapLayout';
 import ObserverMarkerLayer from './layers/ObserverMarkerLayer';
 import VisibilityCircleLayer from './layers/VisibilityCircleLayer';
 import SatelliteOrbitLayer from './layers/SatelliteOrbitLayer';
+import SatelliteAnimationLayer from './layers/SatelliteAnimationLayer';
 import LegendPanel from './panels/LegendPanel';
 import SatelliteInfoPanel from './panels/SatelliteInfoPanel';
 import AnimationControlPanel from './panels/AnimationControlPanel';
@@ -68,6 +69,7 @@ interface InnerMapProps {
   handleSpeedChange: (speed: number) => void;
   handleToggleLegend: () => void;
   handleToggleInfoPanel: () => void;
+  handlePositionUpdate: (position: AnimationState['currentPosition']) => void;
 }
 
 /**
@@ -86,6 +88,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
   satellitePosition,
   handleToggleLegend,
   handleToggleInfoPanel,
+  handlePositionUpdate,
 }) => {
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
@@ -108,7 +111,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
             showInfoPanel={showInfoPanel}
             onToggleInfoPanel={handleToggleInfoPanel}
           />
-          <MapModeSelector position="topright" />
+          <MapModeSelector position="topleft" />
         </>
       )}
 
@@ -131,14 +134,18 @@ const InnerMap: React.FC<InnerMapProps> = ({
         {orbitPaths.length > 0 && <SatelliteOrbitLayer paths={orbitPaths} />}
       </LayerRenderer>
 
-      {/* 凡例 */}
-      {showLegend && (
-        <LegendPanel
-          position={isMobile ? "bottomleft" : "bottomright"}
-          minElevation={minElevation}
-          orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
-        />
-      )}
+      {/* 衛星アニメーション */}
+      <LayerRenderer layerId="satellite-animation">
+        {orbitPaths.length > 0 && (
+          <SatelliteAnimationLayer
+            path={orbitPaths[0]}
+            animationState={animationState}
+            onPositionUpdate={handlePositionUpdate}
+          />
+        )}
+      </LayerRenderer>
+
+      {/* 凡例は削除 - マップ外に配置 */}
     </MapView>
   );
 };
@@ -153,7 +160,7 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
 
   return (
     <>
-      <InnerMap {...props} />
+      <InnerMap {...props} handlePositionUpdate={props.handlePositionUpdate} />
 
       {/* モードに応じたパネルを表示 */}
       <ModeRenderer mode={MapMode.NORMAL}>
@@ -266,6 +273,24 @@ const Map: React.FC<MapProps> = ({
     setSatellitePosition(position);
   }, []);
 
+  // アニメーション用の衛星位置更新
+  useEffect(() => {
+    if (orbitPaths.length > 0 && animationState.isPlaying) {
+      const interval = setInterval(() => {
+        // 現在時刻を更新（再生速度に応じて）
+        const newTime = new Date(animationState.currentTime.getTime() + 1000 * animationState.playbackSpeed);
+
+        // 状態を更新
+        setAnimationState(prev => ({
+          ...prev,
+          currentTime: newTime
+        }));
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [orbitPaths, animationState.isPlaying, animationState.currentTime, animationState.playbackSpeed]);
+
   // 衛星データから軌道種類ごとの高度を集計
   const orbitTypes = useMemo(() => {
     // 軌道種類ごとの高度の合計と数を記録
@@ -346,6 +371,7 @@ const Map: React.FC<MapProps> = ({
             handleSpeedChange={handleSpeedChange}
             handleToggleLegend={handleToggleLegend}
             handleToggleInfoPanel={handleToggleInfoPanel}
+            handlePositionUpdate={handlePositionUpdate}
           />
         </ResponsiveMapLayout>
       </LayerProvider>

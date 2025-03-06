@@ -296,48 +296,15 @@ const App = () => {
           </Typography>
         </MapInfoBox>
 
-        <Grid container spacing={2} sx={{ height: '100%' }}>
-          {/* 左側エリア - 地図と検索パネル */}
-          <Grid item xs={12} lg={8}>
-            {/* 地図コンテナ */}
+        {/* 新しいレイアウト - 上部に検索パネル、下部に地図と衛星リスト */}
+        <Grid container spacing={2}>
+          {/* 上部 - 検索パネル */}
+          <Grid item xs={12}>
             <StyledPaper
               elevation={0}
               variant="outlined"
               sx={{
-                mb: 3,  // 下部マージンを増加
-                overflow: 'visible',  // コンテンツが見切れないように
-                height: { xs: '400px', md: '550px' }  // 地図の高さをさらに増加
-              }}
-            >
-              <Box
-                sx={{
-                  height: '100%',
-                  width: '100%',
-                  position: 'relative',
-                  '& .leaflet-container': {
-                    height: '100% !important',
-                    width: '100% !important'
-                  },
-                  '& .leaflet-bottom': {
-                    bottom: '10px'  // 凡例の位置を下から少し上に
-                  }
-                }}
-              >
-                <Map
-                  center={selectedLocation}
-                  onLocationSelect={handleLocationSelect}
-                  orbitPaths={orbitPaths}
-                  filters={searchFilters}
-                />
-              </Box>
-            </StyledPaper>
-
-            {/* 検索パネルを別のPaperに分離 */}
-            <StyledPaper
-              elevation={0}
-              variant="outlined"
-              sx={{
-                mb: { xs: 2, md: 0 },
+                mb: 2,
                 height: 'auto'
               }}
             >
@@ -348,26 +315,140 @@ const App = () => {
             </StyledPaper>
           </Grid>
 
-          {/* 右側エリア - 衛星リスト */}
-          <Grid item xs={12} lg={4} sx={{ height: { xs: 'auto', md: '100%' } }}>
-            <StyledPaper
-              elevation={0}
-              variant="outlined"
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-            >
-              <SatelliteList
-                satellites={satellites}
-                onTLEDownload={handleTLEDownload}
-                onObservationDataRequest={handleObservationDataRequest}
-                onSatelliteSelect={handleSatelliteSelect}
-                selectedSatellite={selectedSatellite}
-                isLoading={isLoading}
-              />
-            </StyledPaper>
+          {/* 下部 - 地図と衛星リスト */}
+          <Grid container item xs={12} spacing={2} sx={{ height: 'calc(100vh - 250px)' }}>
+            {/* 地図エリア */}
+            <Grid item xs={12} md={8} sx={{ height: '100%' }}>
+              <Grid container spacing={2} sx={{ height: '100%' }}>
+                <Grid item xs={12} sx={{ height: 'calc(100% - 150px)' }}>
+                  <StyledPaper
+                    elevation={0}
+                    variant="outlined"
+                    sx={{
+                      overflow: 'visible',
+                      height: '100%'
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        height: '100%',
+                        width: '100%',
+                        position: 'relative',
+                        '& .leaflet-container': {
+                          height: '100% !important',
+                          width: '100% !important'
+                        },
+                        '& .leaflet-bottom': {
+                          bottom: '10px'
+                        }
+                      }}
+                    >
+                      <Map
+                        center={selectedLocation}
+                        onLocationSelect={handleLocationSelect}
+                        orbitPaths={orbitPaths}
+                        filters={searchFilters}
+                      />
+                    </Box>
+                  </StyledPaper>
+                </Grid>
+
+                {/* 凡例エリア */}
+                <Grid item xs={12} sx={{ height: '150px' }}>
+                  <StyledPaper
+                    elevation={0}
+                    variant="outlined"
+                    sx={{
+                      height: '100%',
+                      overflow: 'auto',
+                      padding: '10px'
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.1)', pb: 0.5 }}>
+                      地図の色分け説明
+                    </Typography>
+
+                    {/* 軌道種類の凡例 */}
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', mt: 1 }}>
+                      ① 衛星軌道種類別の可視範囲（円）
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}>
+                      各高度の衛星が最低仰角{filters?.minElevation || 10}°以上で見える範囲
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                        <Box
+                          sx={{
+                            width: '16px',
+                            height: '16px',
+                            backgroundColor: '#FF0000',
+                            opacity: 0.7,
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.3)',
+                          }}
+                        />
+                        <Typography variant="body2">
+                          LEO（低軌道）: 500km
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                        <Box
+                          sx={{
+                            width: '16px',
+                            height: '16px',
+                            backgroundColor: '#00FF00',
+                            opacity: 0.7,
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.3)',
+                          }}
+                        />
+                        <Typography variant="body2">
+                          MEO（中軌道）: 20,000km
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                        <Box
+                          sx={{
+                            width: '16px',
+                            height: '16px',
+                            backgroundColor: '#0000FF',
+                            opacity: 0.7,
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.3)',
+                          }}
+                        />
+                        <Typography variant="body2">
+                          GEO（静止軌道）: 35,786km
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </StyledPaper>
+                </Grid>
+              </Grid>
+            </Grid>
+
+            {/* 衛星リストエリア */}
+            <Grid item xs={12} md={4} sx={{ height: '100%' }}>
+              <StyledPaper
+                elevation={0}
+                variant="outlined"
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'auto'
+                }}
+              >
+                <SatelliteList
+                  satellites={satellites}
+                  onTLEDownload={handleTLEDownload}
+                  onObservationDataRequest={handleObservationDataRequest}
+                  onSatelliteSelect={handleSatelliteSelect}
+                  selectedSatellite={selectedSatellite}
+                  isLoading={isLoading}
+                />
+              </StyledPaper>
+            </Grid>
           </Grid>
         </Grid>
       </Main>
