@@ -395,12 +395,14 @@ const VisibilityLegend: React.FC<{
 interface SatelliteAnimationProps {
   path: OrbitPath;
   animationState: AnimationState;
+  setAnimationState: React.Dispatch<React.SetStateAction<AnimationState>>;
   onPositionUpdate?: (position: AnimationState['currentPosition']) => void;
 }
 
 const SatelliteAnimation: React.FC<SatelliteAnimationProps> = ({
   path,
   animationState,
+  setAnimationState,
   onPositionUpdate
 }) => {
   const map = useMap();
@@ -408,12 +410,12 @@ const SatelliteAnimation: React.FC<SatelliteAnimationProps> = ({
   const animationFrameRef = useRef<number | null>(null);
   const { isPlaying, currentTime, playbackSpeed } = animationState;
 
-  // 衛星アイコンの設定
+  // 衛星アイコンの設定（衛星SVGアイコンを使用）
   const satelliteIcon = useMemo(() => L.icon({
     iconUrl: `${import.meta.env.BASE_URL}satellite.svg`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12]
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
   }), []);
 
   // 指定された時刻に最も近い軌道点のインデックスを見つける
@@ -510,13 +512,19 @@ const SatelliteAnimation: React.FC<SatelliteAnimationProps> = ({
       // 現在時刻を更新（再生速度に応じて）
       const newTime = new Date(currentTime.getTime() + 1000 * playbackSpeed);
 
+      // 状態を更新
+      setAnimationState(prev => ({
+        ...prev,
+        currentTime: newTime
+      }));
+
       // 衛星位置を更新
       updateSatellitePosition(newTime);
 
       // 次のフレームをリクエスト
       animationFrameRef.current = requestAnimationFrame(animate);
     }
-  }, [isPlaying, currentTime, playbackSpeed, updateSatellitePosition]);
+  }, [isPlaying, currentTime, playbackSpeed, updateSatellitePosition, setAnimationState]);
 
   // 再生状態が変わったときの処理
   useEffect(() => {
@@ -958,6 +966,7 @@ const Map: React.FC<MapProps> = ({
             <SatelliteAnimation
               path={orbitPaths[0]} // 最初の軌道パスを使用
               animationState={animationState}
+              setAnimationState={setAnimationState}
               onPositionUpdate={handlePositionUpdate}
             />
           </>
