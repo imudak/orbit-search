@@ -24,6 +24,15 @@ export interface SearchFilters {
   location: Location;
   minElevation: number;
   considerDaylight?: boolean;
+  stepSize?: number; // 軌道計算の時間間隔（ミリ秒）
+}
+
+// 観測データポイントの型
+export interface ObservationPoint {
+  time: Date;
+  azimuth: number;
+  elevation: number;
+  range: number;
 }
 
 // 観測地点の型
