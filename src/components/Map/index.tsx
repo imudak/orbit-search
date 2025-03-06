@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { styled } from '@mui/material/styles';
-import { Box, Button } from '@mui/material';
+import { Box, Button, useTheme, useMediaQuery } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import LegendToggleIcon from '@mui/icons-material/LegendToggle';
@@ -9,6 +9,8 @@ import type { Location, OrbitPath, SearchFilters } from '@/types';
 // コンポーネントのインポート
 import MapView from './MapView';
 import UnifiedControlPanel from './controls/UnifiedControlPanel';
+import MobileControls from './controls/MobileControls';
+import ResponsiveMapLayout from './layout/ResponsiveMapLayout';
 import ObserverMarkerLayer from './layers/ObserverMarkerLayer';
 import VisibilityCircleLayer from './layers/VisibilityCircleLayer';
 import SatelliteOrbitLayer from './layers/SatelliteOrbitLayer';
@@ -25,15 +27,7 @@ import NormalPanel from './modes/NormalPanel';
 import AnimationPanel from './modes/AnimationPanel';
 import AnalysisPanel from './modes/AnalysisPanel';
 
-// スタイル付きコンポーネント
-const MapWrapper = styled('div')({
-  width: '100%',
-  height: '500px',
-  borderRadius: '8px',
-  overflow: 'hidden',
-  position: 'relative', // 子要素の絶対位置指定の基準にする
-  marginBottom: '10px', // コントロールパネル用のスペースを確保
-});
+// スタイル付きコンポーネント（レスポンシブ対応のためResponsiveMapLayoutに移行）
 
 // 情報パネル表示切り替えボタン用のスタイル
 const ToggleButtonContainer = styled('div')({
@@ -94,19 +88,25 @@ const InnerMap: React.FC<InnerMapProps> = ({
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
 
+  // レスポンシブ対応のためのメディアクエリ
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <MapView center={center} zoom={defaultZoom}>
-      {/* 統一コントロールパネル */}
-      <UnifiedControlPanel
-        position="topright"
-        currentCenter={center}
-        defaultZoom={defaultZoom}
-        showLegend={showLegend}
-        onToggleLegend={handleToggleLegend}
-      />
-
-      {/* モード切替 */}
-      <MapModeSelector position="topright" />
+      {/* デスクトップ用コントロール（モバイルでは非表示） */}
+      {!isMobile && (
+        <>
+          <UnifiedControlPanel
+            position="topright"
+            currentCenter={center}
+            defaultZoom={defaultZoom}
+            showLegend={showLegend}
+            onToggleLegend={handleToggleLegend}
+          />
+          <MapModeSelector position="topright" />
+        </>
+      )}
 
       {/* レイヤー */}
       <LayerRenderer layerId="observer-marker">
@@ -130,7 +130,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
       {/* 凡例 */}
       {showLegend && (
         <LegendPanel
-          position="bottomright"
+          position={isMobile ? "bottomleft" : "bottomright"}
           minElevation={minElevation}
           orbitTypes={orbitTypes.length > 0 ? orbitTypes : DEFAULT_ORBIT_TYPES}
         />
@@ -339,10 +339,25 @@ const Map: React.FC<MapProps> = ({
     return result.sort((a, b) => b.height - a.height);
   }, [satellites]);
 
+  // レスポンシブ対応のためのメディアクエリ
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
-    <MapWrapper>
-      <ModeProvider>
-        <LayerProvider>
+    <ModeProvider>
+      <LayerProvider>
+        <ResponsiveMapLayout
+          controls={
+            isMobile ? (
+              <MobileControls
+                currentCenter={center}
+                defaultZoom={defaultZoom}
+                showLegend={showLegend}
+                onToggleLegend={handleToggleLegend}
+              />
+            ) : null
+          }
+        >
           <InnerMapWithModes
             center={center}
             defaultZoom={defaultZoom}
@@ -359,9 +374,9 @@ const Map: React.FC<MapProps> = ({
             handleToggleLegend={handleToggleLegend}
             handleToggleInfoPanel={handleToggleInfoPanel}
           />
-        </LayerProvider>
-      </ModeProvider>
-    </MapWrapper>
+        </ResponsiveMapLayout>
+      </LayerProvider>
+    </ModeProvider>
   );
 };
 
