@@ -278,7 +278,8 @@ const Map: React.FC<MapProps> = ({
     if (orbitPaths.length > 0 && animationState.isPlaying) {
       const interval = setInterval(() => {
         // 現在時刻を更新（再生速度に応じて）
-        const newTime = new Date(animationState.currentTime.getTime() + 1000 * animationState.playbackSpeed);
+        // 再生速度を10倍に増加
+        const newTime = new Date(animationState.currentTime.getTime() + 10000 * animationState.playbackSpeed);
 
         // 状態を更新
         setAnimationState(prev => ({
