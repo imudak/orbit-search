@@ -13,6 +13,8 @@ import HomeIcon from '@mui/icons-material/Home';
 import LegendToggleIcon from '@mui/icons-material/LegendToggle';
 import LayersIcon from '@mui/icons-material/Layers';
 import MapIcon from '@mui/icons-material/Map';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { Location } from '@/types';
@@ -23,6 +25,8 @@ interface MobileControlsProps {
   defaultZoom?: number;
   showLegend: boolean;
   onToggleLegend: () => void;
+  showInfoPanel?: boolean;
+  onToggleInfoPanel?: () => void;
 }
 
 /**
@@ -34,6 +38,8 @@ const MobileControls: React.FC<MobileControlsProps> = ({
   defaultZoom = 5,
   showLegend,
   onToggleLegend,
+  showInfoPanel = false,
+  onToggleInfoPanel,
 }) => {
   // SpeedDialの開閉状態
   const [open, setOpen] = useState(false);
@@ -96,6 +102,14 @@ const MobileControls: React.FC<MobileControlsProps> = ({
     handleClose();
   };
 
+  // 情報パネルの表示/非表示を切り替えるハンドラー
+  const handleToggleInfoPanel = () => {
+    if (onToggleInfoPanel) {
+      onToggleInfoPanel();
+    }
+    handleClose();
+  };
+
   // レイヤーダイアログを表示するハンドラー
   const handleShowLayers = () => {
     // レイヤーダイアログの表示は未実装
@@ -154,6 +168,13 @@ const MobileControls: React.FC<MobileControlsProps> = ({
             tooltipTitle="レイヤー"
             onClick={handleShowLayers}
           />
+          {onToggleInfoPanel && (
+            <SpeedDialAction
+              icon={showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
+              tooltipTitle={showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
+              onClick={handleToggleInfoPanel}
+            />
+          )}
         </SpeedDial>
       </Tooltip>
     </Box>

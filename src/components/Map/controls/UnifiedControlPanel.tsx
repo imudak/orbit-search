@@ -21,6 +21,8 @@ import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import HomeIcon from '@mui/icons-material/Home';
 import LegendToggleIcon from '@mui/icons-material/LegendToggle';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { Location } from '@/types';
@@ -59,6 +61,8 @@ interface UnifiedControlPanelProps {
   defaultZoom?: number;
   showLegend: boolean;
   onToggleLegend: () => void;
+  showInfoPanel?: boolean;
+  onToggleInfoPanel?: () => void;
 }
 
 /**
@@ -70,7 +74,9 @@ const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
   currentCenter,
   defaultZoom = 5,
   showLegend,
-  onToggleLegend
+  onToggleLegend,
+  showInfoPanel = false,
+  onToggleInfoPanel
 }) => {
   // タブの状態
   const [activeTab, setActiveTab] = useState(0);
@@ -245,7 +251,7 @@ const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                 </Tooltip>
               </Box>
               <Divider sx={{ my: 1 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
                 <Tooltip title={showLegend ? "凡例を隠す" : "凡例を表示"}>
                   <Button
                     variant="contained"
@@ -257,6 +263,20 @@ const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                     {showLegend ? "凡例を隠す" : "凡例を表示"}
                   </Button>
                 </Tooltip>
+
+                {onToggleInfoPanel && (
+                  <Tooltip title={showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}>
+                    <Button
+                      variant="contained"
+                      color={showInfoPanel ? "primary" : "secondary"}
+                      size="small"
+                      onClick={onToggleInfoPanel}
+                      startIcon={showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    >
+                      {showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
+                    </Button>
+                  </Tooltip>
+                )}
               </Box>
             </Box>
           </TabPanel>

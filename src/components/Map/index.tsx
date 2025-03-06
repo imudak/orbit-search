@@ -81,9 +81,11 @@ const InnerMap: React.FC<InnerMapProps> = ({
   orbitTypes,
   orbitPaths,
   showLegend,
+  showInfoPanel,
   animationState,
   satellitePosition,
   handleToggleLegend,
+  handleToggleInfoPanel,
 }) => {
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
@@ -103,6 +105,8 @@ const InnerMap: React.FC<InnerMapProps> = ({
             defaultZoom={defaultZoom}
             showLegend={showLegend}
             onToggleLegend={handleToggleLegend}
+            showInfoPanel={showInfoPanel}
+            onToggleInfoPanel={handleToggleInfoPanel}
           />
           <MapModeSelector position="topright" />
         </>
@@ -167,7 +171,7 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
           animationState={props.animationState}
           satellitePosition={props.satellitePosition}
         />
-        {props.showInfoPanel && props.orbitPaths.length > 0 && props.satellitePosition && (
+        {props.orbitPaths.length > 0 && (
           <AnimationControlPanel
             position="bottom"
             animationState={props.animationState}
@@ -185,40 +189,7 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
         />
       </ModeRenderer>
 
-      {/* 情報パネル表示切り替えボタン */}
-      {props.orbitPaths.length > 0 && (
-        <ToggleButtonContainer>
-          <Button
-            variant="contained"
-            color={props.showInfoPanel ? "primary" : "secondary"}
-            size="small"
-            onClick={props.handleToggleInfoPanel}
-            startIcon={props.showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
-          >
-            {props.showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
-          </Button>
-        </ToggleButtonContainer>
-      )}
-
-      {/* 凡例表示切り替えボタン */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '10px',
-          right: '200px',
-          zIndex: 1100,
-        }}
-      >
-        <Button
-          variant="contained"
-          color={props.showLegend ? "primary" : "secondary"}
-          size="small"
-          onClick={props.handleToggleLegend}
-          startIcon={<LegendToggleIcon />}
-        >
-          {props.showLegend ? "凡例を隠す" : "凡例を表示"}
-        </Button>
-      </Box>
+      {/* 情報パネル表示切り替えボタンは削除 - UnifiedControlPanelに統合 */}
     </>
   );
 };
@@ -354,6 +325,8 @@ const Map: React.FC<MapProps> = ({
                 defaultZoom={defaultZoom}
                 showLegend={showLegend}
                 onToggleLegend={handleToggleLegend}
+                showInfoPanel={showInfoPanel}
+                onToggleInfoPanel={handleToggleInfoPanel}
               />
             ) : null
           }
