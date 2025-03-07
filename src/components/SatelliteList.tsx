@@ -165,6 +165,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
             <Chip size="small" label="HEO: 高楕円軌道" color="warning" />
           </Box>
         </Box>
+      </Box>
 
         <List disablePadding>
           {satellites.map((satellite, index) => (
