@@ -5,8 +5,8 @@ import type { Location, OrbitPath, SearchFilters } from '@/types';
 
 // コンポーネントのインポート
 import MapView from './MapView';
-import UnifiedControlPanel from './controls/UnifiedControlPanel';
 import MobileControls from './controls/MobileControls';
+import MapControlIcons from './controls/MapControlIcons';
 import ResponsiveMapLayout from './layout/ResponsiveMapLayout';
 import ObserverMarkerLayer from './layers/ObserverMarkerLayer';
 import VisibilityCircleLayer from './layers/VisibilityCircleLayer';
@@ -80,7 +80,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
       {/* デスクトップ用コントロール（モバイルでは非表示） */}
       {!isMobile && (
         <>
-          <UnifiedControlPanel
+          <MapControlIcons
             position="topright"
             currentCenter={center}
             defaultZoom={defaultZoom}
@@ -312,6 +312,8 @@ const Map: React.FC<MapProps> = ({
               satelliteId={orbitPaths[0]?.satelliteId}
               center={center}
               orbitPaths={orbitPaths}
+              mapCenter={center}
+              mapZoom={defaultZoom}
             />
           }
         >

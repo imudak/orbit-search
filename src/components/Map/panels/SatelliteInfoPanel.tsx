@@ -19,6 +19,8 @@ interface SatelliteInfoPanelProps {
   satelliteId?: string;
   center?: Location;
   orbitPaths?: OrbitPath[];
+  mapZoom?: number;
+  mapCenter?: Location;
 }
 
 /**
@@ -33,6 +35,8 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   satelliteId,
   center,
   orbitPaths = [],
+  mapZoom,
+  mapCenter,
 }) => {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -222,6 +226,24 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                   仰角: {currentPosition.elevation.toFixed(2)}°<br />
                   方位角: {currentPosition.azimuth.toFixed(2)}°<br />
                   距離: {currentPosition.range.toFixed(2)} km
+                </Typography>
+              </Box>
+            </>
+          )}
+
+          {/* 地図情報セクション */}
+          {mapCenter && mapZoom && (
+            <>
+              <Divider sx={{ my: 1 }} />
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  地図情報
+                </Typography>
+                <Typography variant="body2">
+                  中心座標:<br />
+                  緯度: {mapCenter.lat.toFixed(6)}°<br />
+                  経度: {mapCenter.lng.toFixed(6)}°<br />
+                  ズームレベル: {mapZoom}
                 </Typography>
               </Box>
             </>

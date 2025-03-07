@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Paper, Typography, Box, IconButton, Collapse } from '@mui/material';
+import { Paper, Typography, Box, IconButton, Collapse, Switch, Tooltip } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import LayersIcon from '@mui/icons-material/Layers';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from '../layers/VisibilityCircleLayer';
+import { useLayerManager } from '../layers/LayerManager';
 
 interface LegendPanelProps {
   position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
@@ -18,6 +20,8 @@ const LegendPanel: React.FC<LegendPanelProps> = ({
   orbitTypes = DEFAULT_ORBIT_TYPES
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showLayers, setShowLayers] = useState(false);
+  const { layers, toggleLayer } = useLayerManager();
 
   return (
     <Box sx={{
@@ -28,8 +32,9 @@ const LegendPanel: React.FC<LegendPanelProps> = ({
       display: 'flex',
       flexDirection: 'column',
       alignItems: position.includes('right') ? 'flex-end' : 'flex-start',
+      gap: 1
     }}>
-      <Box>
+      <Box sx={{ display: 'flex', gap: 1 }}>
         <IconButton
           size="small"
           onClick={() => setIsOpen(!isOpen)}
@@ -39,6 +44,16 @@ const LegendPanel: React.FC<LegendPanelProps> = ({
           }}
         >
           <InfoOutlinedIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => setShowLayers(!showLayers)}
+          sx={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            '&:hover': { backgroundColor: 'rgba(255, 255, 255, 1)' },
+          }}
+        >
+          <LayersIcon fontSize="small" />
         </IconButton>
       </Box>
 
@@ -101,6 +116,53 @@ const LegendPanel: React.FC<LegendPanelProps> = ({
             <Typography sx={{ fontSize: '0.7rem' }}>
               {item.angle}
             </Typography>
+          </Box>
+        ))}
+      </Paper>
+    </Collapse>
+
+    <Collapse in={showLayers} sx={{ minWidth: 0 }}>
+      <Paper
+        elevation={2}
+        sx={{
+          padding: '8px',
+          backgroundColor: 'rgba(255, 255, 255, 0.85)',
+          borderRadius: '4px',
+          width: '200px',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          }
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>レイヤー設定</Typography>
+        {layers.map((layer) => (
+          <Box
+            key={layer.id}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 1,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  backgroundColor: layer.color || 'primary.main',
+                  borderRadius: '2px',
+                }}
+              />
+              <Tooltip title={layer.description || ''}>
+                <Typography variant="body2">{layer.name}</Typography>
+              </Tooltip>
+            </Box>
+            <Switch
+              size="small"
+              checked={layer.isVisible}
+              onChange={() => toggleLayer(layer.id)}
+            />
           </Box>
         ))}
       </Paper>
