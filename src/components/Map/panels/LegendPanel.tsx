@@ -33,17 +33,21 @@ const LegendPanel: React.FC<LegendPanelProps> = ({
   };
 
   return (
-    <Paper
-      sx={{
-        position: 'absolute',
-        ...getPositionStyle(),
-        zIndex: 1000,
-        padding: '8px',
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: '4px',
-        boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
-        maxWidth: '300px',
-      }}
+    <Box sx={{
+      position: 'relative',
+      display: 'flex',
+      justifyContent: position.includes('right') ? 'flex-end' : 'flex-start',
+      padding: '10px',
+      width: '100%'
+    }}>
+      <Paper
+        sx={{
+          padding: '8px',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '4px',
+          boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
+          maxWidth: '300px',
+        }}
     >
       {/* 凡例のタイトル */}
       <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.1)', pb: 0.5 }}>
@@ -103,6 +107,7 @@ const LegendPanel: React.FC<LegendPanelProps> = ({
         </Box>
       ))}
     </Paper>
+   </Box>
   );
 };
 
