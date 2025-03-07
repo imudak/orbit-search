@@ -304,42 +304,22 @@ const App = () => {
             </Box>
           </Box>
 
-          {/* 右側のコンテンツ（検索パネルと衛星リスト） */}
-          <Box sx={{ flex: 1, height: '100%', minWidth: '350px', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* 検索パネル（リストの上部に配置） */}
-            <Paper
-              elevation={3}
-              sx={{
-                p: 2,
-                backgroundColor: 'white',
-                overflow: 'auto'
-              }}
-            >
-              <SearchPanel
-                filters={searchFilters}
-                onFiltersChange={handleFiltersChange}
-              />
-            </Paper>
-
-            {/* 衛星リスト */}
-            <Paper
-              elevation={3}
-              sx={{
-                flex: 1,
-                p: 2,
-                backgroundColor: 'white',
-                overflow: 'auto'
-              }}
-            >
-              <SatelliteList
-                satellites={satellites}
-                onTLEDownload={handleTLEDownload}
-                onObservationDataRequest={handleObservationDataRequest}
-                onSatelliteSelect={handleSatelliteSelect}
-                selectedSatellite={selectedSatellite}
-                isLoading={isLoading}
-              />
-            </Paper>
+          {/* 右側のコンテンツ（衛星リスト） */}
+          <Box sx={{ flex: 1, height: '100%', minWidth: '350px', maxWidth: '450px' }}>
+            <SatelliteList
+              satellites={satellites}
+              onTLEDownload={handleTLEDownload}
+              onObservationDataRequest={handleObservationDataRequest}
+              onSatelliteSelect={handleSatelliteSelect}
+              selectedSatellite={selectedSatellite}
+              isLoading={isLoading}
+              searchPanel={
+                <SearchPanel
+                  filters={searchFilters}
+                  onFiltersChange={handleFiltersChange}
+                />
+              }
+            />
           </Box>
 
           {/* 凡例はMap内に移動 */}

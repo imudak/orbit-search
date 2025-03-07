@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Card,
-  CardContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   FormControl,
   FormControlLabel,
   Checkbox,
@@ -19,6 +20,7 @@ import {
   DialogActions,
   Alert,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
@@ -188,14 +190,15 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
   };
 
   return (
-    <Card
-      variant="outlined"
-      sx={{
-        backgroundColor: 'white',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}
-    >
-      <CardContent>
+    <Accordion defaultExpanded={true}>
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+        aria-controls="search-panel-content"
+        id="search-panel-header"
+      >
+        <Typography>検索条件</Typography>
+      </AccordionSummary>
+      <AccordionDetails>
         <Box sx={{
           display: 'flex',
           flexDirection: 'column',
@@ -278,50 +281,32 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
             </Alert>
           )}
 
-          {/* 最低仰角と観測地点を横並びに */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {/* 最低仰角設定 */}
-            <Box sx={{ flex: 1 }}>
-              <Typography gutterBottom>
-                最低仰角: {sliderValue}°
-                <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
-                  <IconButton size="small" sx={{ ml: 1 }}>
-                    <HelpOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Typography>
-              <Slider
-                value={sliderValue}
-                onChange={handleMinElevationChange}
-                min={0}
-                max={90}
-                step={1}
-                marks={[
-                  { value: 0, label: '0°' },
-                  { value: 45, label: '45°' },
-                  { value: 90, label: '90°' },
-                ]}
-                valueLabelDisplay="auto"
-              />
-            </Box>
-
-            {/* 現在の観測地点情報 */}
-            {filters.location && (
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  観測地点
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={`緯度: ${filters.location.lat.toFixed(4)}, 経度: ${filters.location.lng.toFixed(4)}`}
-                  InputProps={{ readOnly: true }}
-                />
-              </Box>
-            )}
+          {/* 最低仰角設定 */}
+          <Box>
+            <Typography gutterBottom>
+              最低仰角: {sliderValue}°
+              <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
+                <IconButton size="small" sx={{ ml: 1 }}>
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Typography>
+            <Slider
+              value={sliderValue}
+              onChange={handleMinElevationChange}
+              min={0}
+              max={90}
+              step={1}
+              marks={[
+                { value: 0, label: '0°' },
+                { value: 45, label: '45°' },
+                { value: 90, label: '90°' },
+              ]}
+              valueLabelDisplay="auto"
+            />
           </Box>
         </Box>
-      </CardContent>
+      </AccordionDetails>
 
       {/* 確認ダイアログ */}
       <Dialog
@@ -343,7 +328,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
           </Button>
         </DialogActions>
       </Dialog>
-    </Card>
+    </Accordion>
   );
 };
 
