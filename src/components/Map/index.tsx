@@ -21,8 +21,6 @@ import { MapLayer } from './controls/LayerControls';
 import { LayerProvider, useLayerManager, LayerRenderer } from './layers/LayerManager';
 import MapModeSelectorDefault, { ModeProvider, useMapMode, ModeRenderer, MapMode } from './modes/MapModeSelector';
 const MapModeSelector = MapModeSelectorDefault.MapModeSelector;
-import NormalPanel from './modes/NormalPanel';
-import AnimationPanel from './modes/AnimationPanel';
 import AnalysisPanel from './modes/AnalysisPanel';
 
 // マップコンポーネントのプロパティ
@@ -143,21 +141,7 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
       <InnerMap {...props} handlePositionUpdate={props.handlePositionUpdate} />
 
       {/* モードに応じたパネルを表示 */}
-      <ModeRenderer mode={MapMode.NORMAL}>
-        <NormalPanel
-          position="bottomleft"
-          center={props.center}
-          orbitPaths={props.orbitPaths}
-        />
-      </ModeRenderer>
-
       <ModeRenderer mode={MapMode.ANIMATION}>
-        <AnimationPanel
-          position="bottomright"
-          orbitPaths={props.orbitPaths}
-          animationState={props.animationState}
-          satellitePosition={props.satellitePosition}
-        />
         {props.orbitPaths.length > 0 && (
           <AnimationControlPanel
             position="bottomleft"
@@ -320,13 +304,15 @@ const Map: React.FC<MapProps> = ({
             ) : null
           }
           satelliteInfo={
-            selectedSatellite ? (
-              <SatelliteInfoPanel
-                satellite={selectedSatellite}
-                currentPosition={satellitePosition}
-                currentTime={animationState.currentTime}
-              />
-            ) : null
+            <SatelliteInfoPanel
+              satellite={selectedSatellite}
+              currentPosition={satellitePosition}
+              currentTime={animationState.currentTime}
+              animationState={animationState}
+              satelliteId={orbitPaths[0]?.satelliteId}
+              center={center}
+              orbitPaths={orbitPaths}
+            />
           }
         >
           <InnerMapWithModes

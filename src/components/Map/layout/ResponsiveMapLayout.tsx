@@ -26,20 +26,13 @@ const MapContainer = styled(Box)(({ theme }) => ({
 }));
 
 // サイドパネルコンテナ
-const SidePanelContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '20px',
-  width: 'fit-content',
-  minWidth: 0,
-  backgroundColor: 'background.paper',
-  borderRadius: '8px',
-  padding: 2,
-  boxShadow: theme.shadows[1],
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'row',
-    gap: '10px',
-  },
+const SidePanelContainer = styled(Box)(() => ({
+  position: 'absolute',
+  zIndex: 1000,
+  pointerEvents: 'none',
+  '& > *': {
+    pointerEvents: 'auto'
+  }
 }));
 
 // モバイル用のコントロールコンテナ
@@ -123,14 +116,14 @@ const ResponsiveMapLayout: React.FC<ResponsiveMapLayoutProps> = ({
             {infoPanel}
           </InfoPanelContainer>
         )}
-      </MapContainer>
 
-      {/* サイドパネル - 衛星情報がある場合のみ表示 */}
-      {satelliteInfo && satelliteInfo !== true && (
-        <SidePanelContainer>
-          {satelliteInfo}
-        </SidePanelContainer>
-      )}
+        {/* サイドパネル */}
+        {satelliteInfo && (
+          <SidePanelContainer>
+            {satelliteInfo}
+          </SidePanelContainer>
+        )}
+      </MapContainer>
     </LayoutContainer>
   );
 };
