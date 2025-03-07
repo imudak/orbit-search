@@ -119,8 +119,9 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
       display: 'flex',
       flexDirection: 'column'
     }}>
-        {/* リストのタイトルと総数を表示 */}
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* ヘッダー部分 */}
+        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6" component="h2" sx={{
             fontWeight: 'bold',
             color: '#1976d2',
