@@ -59,10 +59,6 @@ interface UnifiedControlPanelProps {
   position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
   currentCenter?: Location;
   defaultZoom?: number;
-  showLegend: boolean;
-  onToggleLegend: () => void;
-  showInfoPanel?: boolean;
-  onToggleInfoPanel?: () => void;
 }
 
 /**
@@ -73,10 +69,6 @@ const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
   position = 'topright',
   currentCenter,
   defaultZoom = 5,
-  showLegend,
-  onToggleLegend,
-  showInfoPanel = false,
-  onToggleInfoPanel
 }) => {
   // タブの状態
   const [activeTab, setActiveTab] = useState(0);
@@ -153,13 +145,15 @@ const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
       sx={{
         position: 'absolute',
         ...getPositionStyle(),
-        zIndex: 1000,
+        zIndex: 1002, // 最前面に表示
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         borderRadius: '4px',
         overflow: 'hidden',
         width: expanded ? '300px' : 'auto',
         transition: 'width 0.3s ease',
         boxShadow: '0 0 10px rgba(0, 0, 0, 0.2)',
+        maxHeight: expanded ? '80vh' : 'auto', // 高さを制限
+        overflowY: expanded ? 'auto' : 'hidden', // スクロール可能に
       }}
     >
       {/* ヘッダー部分 */}
@@ -250,34 +244,6 @@ const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                   </Button>
                 </Tooltip>
               </Box>
-              <Divider sx={{ my: 1 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
-                <Tooltip title={showLegend ? "凡例を隠す" : "凡例を表示"}>
-                  <Button
-                    variant="contained"
-                    color={showLegend ? "primary" : "secondary"}
-                    size="small"
-                    onClick={onToggleLegend}
-                    startIcon={<LegendToggleIcon />}
-                  >
-                    {showLegend ? "凡例を隠す" : "凡例を表示"}
-                  </Button>
-                </Tooltip>
-
-                {onToggleInfoPanel && (
-                  <Tooltip title={showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}>
-                    <Button
-                      variant="contained"
-                      color={showInfoPanel ? "primary" : "secondary"}
-                      size="small"
-                      onClick={onToggleInfoPanel}
-                      startIcon={showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    >
-                      {showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
-                    </Button>
-                  </Tooltip>
-                )}
-              </Box>
             </Box>
           </TabPanel>
 
@@ -318,7 +284,10 @@ const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                     variant={layer.isVisible ? "contained" : "outlined"}
                     color={layer.isVisible ? "primary" : "inherit"}
                     size="small"
-                    onClick={() => toggleLayer(layer.id)}
+                    onClick={() => {
+                      console.log('Toggle layer clicked:', layer.id, 'current state:', layer.isVisible);
+                      toggleLayer(layer.id);
+                    }}
                   >
                     {layer.isVisible ? "表示中" : "非表示"}
                   </Button>

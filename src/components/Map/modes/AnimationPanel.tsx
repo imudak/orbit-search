@@ -93,6 +93,8 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
         boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
         border: '1px solid rgba(0, 0, 100, 0.1)',
         maxWidth: '300px',
+        maxHeight: '300px',
+        overflowY: 'auto',
       }}
     >
       <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.1)', pb: 0.5 }}>

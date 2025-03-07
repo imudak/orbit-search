@@ -1,9 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import { Box, Button, useTheme, useMediaQuery } from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import LegendToggleIcon from '@mui/icons-material/LegendToggle';
 import type { Location, OrbitPath, SearchFilters } from '@/types';
 
 // コンポーネントのインポート
@@ -28,16 +25,6 @@ import NormalPanel from './modes/NormalPanel';
 import AnimationPanel from './modes/AnimationPanel';
 import AnalysisPanel from './modes/AnalysisPanel';
 
-// スタイル付きコンポーネント（レスポンシブ対応のためResponsiveMapLayoutに移行）
-
-// 情報パネル表示切り替えボタン用のスタイル
-const ToggleButtonContainer = styled('div')({
-  position: 'absolute',
-  bottom: '10px',
-  right: '120px', // 凡例の左側に配置
-  zIndex: 1100,
-});
-
 // マップコンポーネントのプロパティ
 interface MapProps {
   center?: Location;
@@ -48,6 +35,7 @@ interface MapProps {
     orbitHeight?: number;
     orbitType?: string;
   }>;
+  selectedSatellite?: any; // 選択された衛星
 }
 
 /**
@@ -60,15 +48,11 @@ interface InnerMapProps {
   minElevation: number;
   orbitTypes: OrbitType[];
   orbitPaths: OrbitPath[];
-  showLegend: boolean;
-  showInfoPanel: boolean;
   animationState: AnimationState;
   satellitePosition?: AnimationState['currentPosition'];
   handlePlayPause: () => void;
   handleSeek: (time: Date) => void;
   handleSpeedChange: (speed: number) => void;
-  handleToggleLegend: () => void;
-  handleToggleInfoPanel: () => void;
   handlePositionUpdate: (position: AnimationState['currentPosition']) => void;
 }
 
@@ -82,12 +66,8 @@ const InnerMap: React.FC<InnerMapProps> = ({
   minElevation,
   orbitTypes,
   orbitPaths,
-  showLegend,
-  showInfoPanel,
   animationState,
   satellitePosition,
-  handleToggleLegend,
-  handleToggleInfoPanel,
   handlePositionUpdate,
 }) => {
   // レイヤー管理コンテキストを使用
@@ -106,10 +86,6 @@ const InnerMap: React.FC<InnerMapProps> = ({
             position="topright"
             currentCenter={center}
             defaultZoom={defaultZoom}
-            showLegend={showLegend}
-            onToggleLegend={handleToggleLegend}
-            showInfoPanel={showInfoPanel}
-            onToggleInfoPanel={handleToggleInfoPanel}
           />
           <MapModeSelector position="topleft" />
         </>
@@ -173,14 +149,14 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
 
       <ModeRenderer mode={MapMode.ANIMATION}>
         <AnimationPanel
-          position="bottom"
+          position="bottomright"
           orbitPaths={props.orbitPaths}
           animationState={props.animationState}
           satellitePosition={props.satellitePosition}
         />
         {props.orbitPaths.length > 0 && (
           <AnimationControlPanel
-            position="bottom"
+            position="bottomleft"
             animationState={props.animationState}
             onPlayPause={props.handlePlayPause}
             onSeek={props.handleSeek}
@@ -211,16 +187,13 @@ const Map: React.FC<MapProps> = ({
   orbitPaths = [],
   filters,
   satellites = [],
+  selectedSatellite,
 }) => {
   // 最低仰角の値（デフォルト10度）
   const minElevation = filters?.minElevation ?? 10;
 
   // デフォルトのズームレベル（日本全体が見えるレベル）
   const defaultZoom = 5;
-
-  // 表示/非表示の状態管理
-  const [showLegend, setShowLegend] = useState(true);
-  const [showInfoPanel, setShowInfoPanel] = useState(false);
 
   // アニメーション状態
   const [animationState, setAnimationState] = useState<AnimationState>({
@@ -233,16 +206,6 @@ const Map: React.FC<MapProps> = ({
 
   // 衛星位置情報
   const [satellitePosition, setSatellitePosition] = useState<AnimationState['currentPosition']>();
-
-  // 凡例の表示/非表示を切り替えるハンドラー
-  const handleToggleLegend = useCallback(() => {
-    setShowLegend(prev => !prev);
-  }, []);
-
-  // 情報パネルの表示/非表示を切り替えるハンドラー
-  const handleToggleInfoPanel = useCallback(() => {
-    setShowInfoPanel(prev => !prev);
-  }, []);
 
   // 再生/停止の切り替え
   const handlePlayPause = useCallback(() => {
@@ -349,10 +312,21 @@ const Map: React.FC<MapProps> = ({
               <MobileControls
                 currentCenter={center}
                 defaultZoom={defaultZoom}
-                showLegend={showLegend}
-                onToggleLegend={handleToggleLegend}
-                showInfoPanel={showInfoPanel}
-                onToggleInfoPanel={handleToggleInfoPanel}
+              />
+            ) : null
+          }
+          legend={
+            <LegendPanel
+              minElevation={minElevation}
+              orbitTypes={orbitTypes}
+            />
+          }
+          satelliteInfo={
+            selectedSatellite ? (
+              <SatelliteInfoPanel
+                satellite={selectedSatellite}
+                currentPosition={satellitePosition}
+                currentTime={animationState.currentTime}
               />
             ) : null
           }
@@ -363,15 +337,11 @@ const Map: React.FC<MapProps> = ({
             minElevation={minElevation}
             orbitTypes={orbitTypes}
             orbitPaths={orbitPaths}
-            showLegend={showLegend}
-            showInfoPanel={showInfoPanel}
             animationState={animationState}
             satellitePosition={satellitePosition}
             handlePlayPause={handlePlayPause}
             handleSeek={handleSeek}
             handleSpeedChange={handleSpeedChange}
-            handleToggleLegend={handleToggleLegend}
-            handleToggleInfoPanel={handleToggleInfoPanel}
             handlePositionUpdate={handlePositionUpdate}
           />
         </ResponsiveMapLayout>

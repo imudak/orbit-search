@@ -10,11 +10,8 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import HomeIcon from '@mui/icons-material/Home';
-import LegendToggleIcon from '@mui/icons-material/LegendToggle';
 import LayersIcon from '@mui/icons-material/Layers';
 import MapIcon from '@mui/icons-material/Map';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { Location } from '@/types';
@@ -23,10 +20,6 @@ import { useLayerManager } from '../layers/LayerManager';
 interface MobileControlsProps {
   currentCenter?: Location;
   defaultZoom?: number;
-  showLegend: boolean;
-  onToggleLegend: () => void;
-  showInfoPanel?: boolean;
-  onToggleInfoPanel?: () => void;
 }
 
 /**
@@ -36,10 +29,6 @@ interface MobileControlsProps {
 const MobileControls: React.FC<MobileControlsProps> = ({
   currentCenter,
   defaultZoom = 5,
-  showLegend,
-  onToggleLegend,
-  showInfoPanel = false,
-  onToggleInfoPanel,
 }) => {
   // SpeedDialの開閉状態
   const [open, setOpen] = useState(false);
@@ -96,20 +85,6 @@ const MobileControls: React.FC<MobileControlsProps> = ({
     handleClose();
   };
 
-  // 凡例の表示/非表示を切り替えるハンドラー
-  const handleToggleLegend = () => {
-    onToggleLegend();
-    handleClose();
-  };
-
-  // 情報パネルの表示/非表示を切り替えるハンドラー
-  const handleToggleInfoPanel = () => {
-    if (onToggleInfoPanel) {
-      onToggleInfoPanel();
-    }
-    handleClose();
-  };
-
   // レイヤーダイアログを表示するハンドラー
   const handleShowLayers = () => {
     // レイヤーダイアログの表示は未実装
@@ -159,22 +134,10 @@ const MobileControls: React.FC<MobileControlsProps> = ({
             />
           )}
           <SpeedDialAction
-            icon={<LegendToggleIcon />}
-            tooltipTitle={showLegend ? "凡例を隠す" : "凡例を表示"}
-            onClick={handleToggleLegend}
-          />
-          <SpeedDialAction
             icon={<LayersIcon />}
             tooltipTitle="レイヤー"
             onClick={handleShowLayers}
           />
-          {onToggleInfoPanel && (
-            <SpeedDialAction
-              icon={showInfoPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
-              tooltipTitle={showInfoPanel ? "情報パネルを隠す" : "情報パネルを表示"}
-              onClick={handleToggleInfoPanel}
-            />
-          )}
         </SpeedDial>
       </Tooltip>
     </Box>

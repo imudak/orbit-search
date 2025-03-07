@@ -35,6 +35,13 @@ const defaultLayers: MapLayer[] = [
     isVisible: true,
     color: '#f44336',
   },
+  {
+    id: 'satellite-animation',
+    name: '衛星アニメーション',
+    description: '衛星の動きをアニメーションで表示します',
+    isVisible: true,
+    color: '#ff9800',
+  },
 ];
 
 // レイヤー管理コンテキストの作成

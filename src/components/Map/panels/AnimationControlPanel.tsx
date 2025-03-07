@@ -95,12 +95,14 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
       sx={{
         position: 'absolute',
         ...getPositionStyle(),
-        zIndex: 1000,
+        zIndex: 1001, // 他のパネルより前面に表示
         padding: '10px',
         backgroundColor: 'rgba(240, 240, 255, 0.95)', // 薄い青色の背景
         borderRadius: '8px', // より丸みを帯びた角
         boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', // より強い影
         border: '1px solid rgba(0, 0, 100, 0.1)', // 薄い青色のボーダー
+        width: 'calc(100% - 40px)', // 幅を調整
+        maxWidth: '600px', // 最大幅を制限
       }}
     >
       <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>

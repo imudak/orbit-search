@@ -6,8 +6,6 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
-  Card,
-  CardContent,
   Typography,
   Tooltip,
   CircularProgress,
@@ -112,14 +110,15 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
   // 衛星の情報を表示する関数（現在は使用していない）
 
   return (
-    <Card
-      variant="outlined"
-      sx={{
-        maxHeight: 'calc(100vh - 200px)', // 画面の高さから余白を引いた値
-        overflow: 'auto' // コンテンツがはみ出した場合にスクロールバーを表示
-      }}
-    >
-      <CardContent sx={{ p: 1 }}>
+    <Box sx={{
+      height: '100%',
+      backgroundColor: 'background.paper',
+      borderRadius: 1,
+      border: '1px solid',
+      borderColor: 'divider',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
         {/* リストのタイトルと総数を表示 */}
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" component="h2" sx={{
@@ -275,8 +274,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
             </ListItem>
           ))}
         </List>
-      </CardContent>
-    </Card>
+    </Box>
   );
 };
 

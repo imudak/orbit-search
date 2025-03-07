@@ -296,41 +296,42 @@ const App = () => {
           </Typography>
         </MapInfoBox>
 
-        {/* 全画面地図レイアウト */}
-        <Box sx={{ position: 'relative', height: 'calc(100vh - 150px)', width: '100%' }}>
-          {/* 地図 */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              '& .leaflet-container': {
-                height: '100% !important',
-                width: '100% !important'
-              }
-            }}
-          >
-            <Map
-              center={selectedLocation}
-              onLocationSelect={handleLocationSelect}
-              orbitPaths={orbitPaths}
-              filters={searchFilters}
-            />
+        {/* 地図と衛星リストを横に並べるレイアウト */}
+        <Box sx={{ display: 'flex', height: 'calc(100vh - 150px)', width: '100%', gap: 2 }}>
+          {/* 地図エリア */}
+          <Box sx={{ position: 'relative', flex: 2, height: '100%' }}>
+            {/* 地図 */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                '& .leaflet-container': {
+                  height: '100% !important',
+                  width: '100% !important'
+                }
+              }}
+            >
+              <Map
+                center={selectedLocation}
+                onLocationSelect={handleLocationSelect}
+                orbitPaths={orbitPaths}
+                filters={searchFilters}
+                selectedSatellite={selectedSatellite}
+              />
+            </Box>
           </Box>
 
-          {/* オーバーレイコントロール */}
-          <Box sx={{ position: 'absolute', top: 10, left: 10, right: 10, zIndex: 1000, display: 'flex', gap: 2 }}>
-            {/* 検索パネル */}
+          {/* 右側のコンテンツ（検索パネルと衛星リスト） */}
+          <Box sx={{ flex: 1, height: '100%', minWidth: '350px', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* 検索パネル（リストの上部に配置） */}
             <Paper
               elevation={3}
               sx={{
-                width: '350px',
                 p: 2,
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                backdropFilter: 'blur(5px)',
-                maxHeight: '300px',
+                backgroundColor: 'white',
                 overflow: 'auto'
               }}
             >
@@ -346,9 +347,7 @@ const App = () => {
               sx={{
                 flex: 1,
                 p: 2,
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                backdropFilter: 'blur(5px)',
-                maxHeight: '500px',
+                backgroundColor: 'white',
                 overflow: 'auto'
               }}
             >
@@ -363,79 +362,7 @@ const App = () => {
             </Paper>
           </Box>
 
-          {/* 凡例 */}
-          <Paper
-            elevation={3}
-            sx={{
-              position: 'absolute',
-              bottom: 20,
-              left: 20,
-              p: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(5px)',
-              maxWidth: '400px',
-              zIndex: 1000
-            }}
-          >
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.1)', pb: 0.5 }}>
-              地図の色分け説明
-            </Typography>
-
-            {/* 軌道種類の凡例 */}
-            <Typography variant="body2" sx={{ fontWeight: 'bold', mt: 1 }}>
-              衛星軌道種類別の可視範囲（円）
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}>
-              各高度の衛星が最低仰角{searchFilters?.minElevation || 10}°以上で見える範囲
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                <Box
-                  sx={{
-                    width: '16px',
-                    height: '16px',
-                    backgroundColor: '#FF0000',
-                    opacity: 0.7,
-                    mr: 1,
-                    border: '1px solid rgba(0, 0, 0, 0.3)',
-                  }}
-                />
-                <Typography variant="body2">
-                  LEO（低軌道）: 500km
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                <Box
-                  sx={{
-                    width: '16px',
-                    height: '16px',
-                    backgroundColor: '#00FF00',
-                    opacity: 0.7,
-                    mr: 1,
-                    border: '1px solid rgba(0, 0, 0, 0.3)',
-                  }}
-                />
-                <Typography variant="body2">
-                  MEO（中軌道）: 20,000km
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                <Box
-                  sx={{
-                    width: '16px',
-                    height: '16px',
-                    backgroundColor: '#0000FF',
-                    opacity: 0.7,
-                    mr: 1,
-                    border: '1px solid rgba(0, 0, 0, 0.3)',
-                  }}
-                />
-                <Typography variant="body2">
-                  GEO（静止軌道）: 35,786km
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
+          {/* 凡例はMap内に移動 */}
         </Box>
       </Main>
       {/* フッター */}
