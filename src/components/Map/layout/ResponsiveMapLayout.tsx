@@ -124,33 +124,19 @@ const ResponsiveMapLayout: React.FC<ResponsiveMapLayoutProps> = ({
         )}
       </MapContainer>
 
-      {/* サイドパネル - 中身がある場合のみ表示 */}
-      {(legend || satelliteInfo) && (
+      {/* サイドパネル - 衛星情報がある場合のみ表示 */}
+      {satelliteInfo && (
         <SidePanelContainer>
-          {legend && (
-            <Box sx={{
-              backgroundColor: 'background.paper',
-              borderRadius: '8px',
-              padding: 2,
-              boxShadow: 1,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {legend}
-            </Box>
-          )}
-          {satelliteInfo && satelliteInfo !== true && (
-            <Box sx={{
-              backgroundColor: 'background.paper',
-              borderRadius: '8px',
-              padding: 2,
-              boxShadow: 1,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {satelliteInfo}
-            </Box>
-          )}
+          <Box sx={{
+            backgroundColor: 'background.paper',
+            borderRadius: '8px',
+            padding: 2,
+            boxShadow: 1,
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {satelliteInfo}
+          </Box>
         </SidePanelContainer>
       )}
     </LayoutContainer>

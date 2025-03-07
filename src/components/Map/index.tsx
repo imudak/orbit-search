@@ -121,7 +121,11 @@ const InnerMap: React.FC<InnerMapProps> = ({
         )}
       </LayerRenderer>
 
-      {/* 凡例は削除 - マップ外に配置 */}
+      {/* 凡例を地図上にオーバーレイ */}
+      <LegendPanel
+        minElevation={minElevation}
+        orbitTypes={orbitTypes}
+      />
     </MapView>
   );
 };
@@ -314,12 +318,6 @@ const Map: React.FC<MapProps> = ({
                 defaultZoom={defaultZoom}
               />
             ) : null
-          }
-          legend={
-            <LegendPanel
-              minElevation={minElevation}
-              orbitTypes={orbitTypes}
-            />
           }
           satelliteInfo={
             selectedSatellite ? (

@@ -1,5 +1,6 @@
-import React from 'react';
-import { Paper, Typography, Box } from '@mui/material';
+import React, { useState } from 'react';
+import { Paper, Typography, Box, IconButton, Collapse } from '@mui/material';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from '../layers/VisibilityCircleLayer';
 
 interface LegendPanelProps {
@@ -16,98 +17,95 @@ const LegendPanel: React.FC<LegendPanelProps> = ({
   minElevation,
   orbitTypes = DEFAULT_ORBIT_TYPES
 }) => {
-  // ポジションに応じたスタイルを設定
-  const getPositionStyle = () => {
-    switch (position) {
-      case 'topleft':
-        return { top: '10px', left: '10px' };
-      case 'topright':
-        return { top: '10px', right: '10px' };
-      case 'bottomleft':
-        return { bottom: '10px', left: '10px' };
-      case 'bottomright':
-        return { bottom: '10px', right: '10px' };
-      default:
-        return { bottom: '10px', right: '10px' };
-    }
-  };
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <Box sx={{
-      position: 'relative',
+      position: 'absolute',
+      ...(position.includes('top') ? { top: '10px' } : { bottom: '10px' }),
+      ...(position.includes('right') ? { right: '10px' } : { left: '10px' }),
+      zIndex: 1000,
       display: 'flex',
-      justifyContent: position.includes('right') ? 'flex-end' : 'flex-start',
-      padding: '10px',
-      width: '100%'
+      flexDirection: 'column',
+      alignItems: position.includes('right') ? 'flex-end' : 'flex-start',
     }}>
-      <Paper
-        sx={{
-          padding: '8px',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '4px',
-          boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
-          maxWidth: '300px',
-        }}
-    >
-      {/* 凡例のタイトル */}
-      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.1)', pb: 0.5 }}>
-        地図の色分け説明
-      </Typography>
+      <Box>
+        <IconButton
+          size="small"
+          onClick={() => setIsOpen(!isOpen)}
+          sx={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            '&:hover': { backgroundColor: 'rgba(255, 255, 255, 1)' },
+          }}
+        >
+          <InfoOutlinedIcon fontSize="small" />
+        </IconButton>
+      </Box>
 
-      {/* 可視範囲の凡例 */}
-      <Typography variant="body2" sx={{ fontWeight: 'bold', mt: 1 }}>
-        ① 衛星軌道種類別の可視範囲（円）
-      </Typography>
-      <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}>
-        各高度の衛星が最低仰角{minElevation}°以上で見える範囲
-      </Typography>
-      {orbitTypes.map((orbitType) => (
-        <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-          <Box
-            sx={{
-              width: '16px',
-              height: '16px',
-              backgroundColor: orbitType.color,
-              opacity: 0.7,
-              mr: 1,
-              border: '1px solid rgba(0, 0, 0, 0.3)',
-            }}
-          />
-          <Typography variant="body2">
-            {orbitType.name}（{orbitType.name === 'LEO' ? '低軌道' : orbitType.name === 'MEO' ? '中軌道' : '静止軌道'}）: {orbitType.height.toLocaleString()}km
-          </Typography>
-        </Box>
-      ))}
+      <Collapse in={isOpen} sx={{ minWidth: 0 }}>
+        <Paper
+          elevation={2}
+          sx={{
+            padding: '4px 6px',
+            backgroundColor: 'rgba(255, 255, 255, 0.85)',
+            borderRadius: '4px',
+            width: 'fit-content',
+            minWidth: '120px',
+            maxWidth: '180px',
+            fontSize: '0.75rem',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            }
+          }}
+        >
+        {/* 衛星の種類 */}
+        <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', mb: 0.5 }}>
+          軌道の種類と高度
+        </Typography>
+        {orbitTypes.map((orbitType) => (
+          <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center', mb: 0.3 }}>
+            <Box
+              sx={{
+                width: '8px',
+                height: '8px',
+                backgroundColor: orbitType.color,
+                opacity: 0.7,
+                mr: 0.5,
+                border: '1px solid rgba(0, 0, 0, 0.3)',
+              }}
+            />
+            <Typography sx={{ fontSize: '0.7rem' }}>
+              {orbitType.name}: {orbitType.height.toLocaleString()}km
+            </Typography>
+          </Box>
+        ))}
 
-      {/* 軌道の色分け凡例 */}
-      <Typography variant="body2" sx={{ fontWeight: 'bold', mt: 2, borderTop: '1px solid rgba(0, 0, 0, 0.1)', pt: 1 }}>
-        ② 衛星軌道の色分け（線）
-      </Typography>
-      <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'text.secondary' }}>
-        実効的な角度（見やすさ）に基づく色分け
-      </Typography>
-      {[
-        { angle: '45°以上', color: '#FF0000', weight: 4, description: '最も見やすい' },
-        { angle: '20°〜45°', color: '#FFA500', weight: 3, description: '見やすい' },
-        { angle: '10°〜20°', color: '#0000FF', weight: 2, description: '見にくい' },
-        { angle: '10°未満', color: '#808080', weight: 1, description: '最も見にくい' },
-      ].map((item, index) => (
-        <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-          <Box
-            sx={{
-              width: '20px',
-              height: `${item.weight}px`,
-              backgroundColor: item.color,
-              mr: 1,
-            }}
-          />
-          <Typography variant="body2">
-            {item.angle}: {item.description}
-          </Typography>
-        </Box>
-      ))}
-    </Paper>
-   </Box>
+        {/* 可視性の色分け */}
+        <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', mt: 1, mb: 0.5, borderTop: '1px solid rgba(0, 0, 0, 0.1)', pt: 0.5 }}>
+          衛星の見やすさ
+        </Typography>
+        {[
+          { angle: '45°↑', color: '#FF0000', weight: 2 },
+          { angle: '20-45°', color: '#FFA500', weight: 2 },
+          { angle: '↓20°', color: '#808080', weight: 2 },
+        ].map((item, index) => (
+          <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 0.3 }}>
+            <Box
+              sx={{
+                width: '12px',
+                height: '2px',
+                backgroundColor: item.color,
+                mr: 0.5,
+              }}
+            />
+            <Typography sx={{ fontSize: '0.7rem' }}>
+              {item.angle}
+            </Typography>
+          </Box>
+        ))}
+      </Paper>
+    </Collapse>
+  </Box>
   );
 };
 
