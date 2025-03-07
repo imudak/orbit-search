@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import InfoIcon from '@mui/icons-material/Info';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
@@ -35,17 +34,6 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   boxSizing: 'border-box'  // パディングを含めたサイズ計算
-}));
-
-const MapInfoBox = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  padding: theme.spacing(1),
-  backgroundColor: theme.palette.primary.light,
-  color: theme.palette.primary.contrastText,
-  borderRadius: theme.shape.borderRadius,
-  marginBottom: theme.spacing(1),
-  boxShadow: theme.shadows[1]
 }));
 
 const Footer = styled(Box)(({ theme }) => ({
@@ -283,19 +271,11 @@ const App = () => {
       <AppBar position="static" color="primary">
         <Toolbar>
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            Orbit Search - 衛星軌道検索
+            Orbit Search - 衛星軌道検索 - 地図上の位置をクリックして、その場所から見える衛星を検索します
           </Typography>
         </Toolbar>
       </AppBar>
       <Main maxWidth="xl">
-        {/* 説明エリア */}
-        <MapInfoBox sx={{ mb: 2 }}>
-          <InfoIcon sx={{ mr: 1 }} />
-          <Typography variant="body2">
-            地図上の位置をクリックして、その場所から見える衛星を検索します
-          </Typography>
-        </MapInfoBox>
-
         {/* 地図と衛星リストを横に並べるレイアウト */}
         <Box sx={{ display: 'flex', height: 'calc(100vh - 150px)', width: '100%', gap: 2 }}>
           {/* 地図エリア */}
