@@ -5,21 +5,20 @@ import { styled } from '@mui/material/styles';
 // レイアウトコンテナ
 const LayoutContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
-  gap: '20px',
   width: '100%',
   [theme.breakpoints.down('sm')]: {
     flexDirection: 'column',
-    gap: '10px',
   },
 }));
 
 // 地図コンテナ
 const MapContainer = styled(Box)(({ theme }) => ({
-  flex: 1,
+  flex: '1 1 auto',
   height: '600px',
   borderRadius: '8px',
   overflow: 'hidden',
   position: 'relative',
+  minWidth: 0, // flexboxのバグを防ぐ
   [theme.breakpoints.down('sm')]: {
     height: '500px',
     borderRadius: '4px',
@@ -28,12 +27,16 @@ const MapContainer = styled(Box)(({ theme }) => ({
 
 // サイドパネルコンテナ
 const SidePanelContainer = styled(Box)(({ theme }) => ({
-  width: '300px',
   display: 'flex',
   flexDirection: 'column',
   gap: '20px',
+  width: 'fit-content',
+  minWidth: 0,
+  backgroundColor: 'background.paper',
+  borderRadius: '8px',
+  padding: 2,
+  boxShadow: theme.shadows[1],
   [theme.breakpoints.down('sm')]: {
-    width: '100%',
     flexDirection: 'row',
     gap: '10px',
   },
@@ -79,7 +82,6 @@ interface ResponsiveMapLayoutProps {
   children: React.ReactNode;
   controls?: React.ReactNode;
   infoPanel?: React.ReactNode;
-  legend?: React.ReactNode;
   satelliteInfo?: React.ReactNode;
 }
 
@@ -91,7 +93,6 @@ const ResponsiveMapLayout: React.FC<ResponsiveMapLayoutProps> = ({
   children,
   controls,
   infoPanel,
-  legend,
   satelliteInfo,
 }) => {
   const theme = useTheme();
@@ -125,18 +126,9 @@ const ResponsiveMapLayout: React.FC<ResponsiveMapLayoutProps> = ({
       </MapContainer>
 
       {/* サイドパネル - 衛星情報がある場合のみ表示 */}
-      {satelliteInfo && (
+      {satelliteInfo && satelliteInfo !== true && (
         <SidePanelContainer>
-          <Box sx={{
-            backgroundColor: 'background.paper',
-            borderRadius: '8px',
-            padding: 2,
-            boxShadow: 1,
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            {satelliteInfo}
-          </Box>
+          {satelliteInfo}
         </SidePanelContainer>
       )}
     </LayoutContainer>
