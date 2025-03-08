@@ -306,60 +306,55 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
           </FormControl>
         </Box>
 
-        {/* 進行状況表示 - 常に表示 */}
-        <Box sx={{ position: 'relative', height: '4px', backgroundColor: 'rgba(255, 255, 255, 0.3)', borderRadius: '2px', mb: isCompact ? 0 : 1 }}>
-          <Box
-            sx={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              height: '100%',
-              width: `${progress}%`,
+        {/* コンパクト表示の場合は現在時間のみ表示 */}
+        {isCompact && (
+          <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mb: 0.5 }}>
+            {formatTime(currentTime)}
+          </Typography>
+        )}
+
+        {/* タイムスライダー - 常に表示（コンパクト表示でも） */}
+        <Slider
+          value={currentTimeValue}
+          min={startTimeValue}
+          max={endTimeValue}
+          onChange={(_, value) => {
+            onSeek(new Date(value as number));
+          }}
+          valueLabelDisplay="auto"
+          valueLabelFormat={value => formatTime(new Date(value as number))}
+          sx={{
+            mt: 0,
+            mb: isCompact ? 0 : 1,
+            color: 'white',
+            height: isCompact ? 4 : 8,
+            '& .MuiSlider-thumb': {
               backgroundColor: 'white',
-              borderRadius: '2px'
-            }}
-          />
-        </Box>
+              width: isCompact ? 12 : 16,
+              height: isCompact ? 12 : 16,
+            },
+            '& .MuiSlider-rail': {
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            },
+            '& .MuiSlider-track': {
+              backgroundColor: 'white',
+            },
+            '& .MuiSlider-valueLabel': {
+              backgroundColor: 'rgba(25, 118, 210, 0.9)',
+            }
+          }}
+        />
 
-        {/* コンパクト表示でない場合のみタイムスライダーを表示 */}
+        {/* 開始・終了時間の表示 - コンパクト表示でない場合のみ */}
         {!isCompact && (
-          <>
-            <Slider
-              value={currentTimeValue}
-              min={startTimeValue}
-              max={endTimeValue}
-              onChange={(_, value) => {
-                onSeek(new Date(value as number));
-              }}
-              valueLabelDisplay="auto"
-              valueLabelFormat={value => formatTime(new Date(value as number))}
-              sx={{
-                mt: 1,
-                color: 'white',
-                '& .MuiSlider-thumb': {
-                  backgroundColor: 'white',
-                },
-                '& .MuiSlider-rail': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                },
-                '& .MuiSlider-track': {
-                  backgroundColor: 'white',
-                },
-                '& .MuiSlider-valueLabel': {
-                  backgroundColor: 'rgba(25, 118, 210, 0.9)',
-                }
-              }}
-            />
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                {formatTime(startTime)}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                {formatTime(endTime)}
-              </Typography>
-            </Box>
-          </>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+              {formatTime(startTime)}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+              {formatTime(endTime)}
+            </Typography>
+          </Box>
         )}
       </Paper>
 

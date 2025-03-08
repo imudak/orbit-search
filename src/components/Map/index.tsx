@@ -309,16 +309,20 @@ const MapWithModeContext: React.FC<MapProps> = ({
 
   // モード変更時の処理
   useEffect(() => {
-    // アニメーションモードに切り替えたとき、アニメーションが停止していれば自動的に再生
+    // アニメーションモードに初めて切り替えたときのみ自動再生する
+    // シーク操作後は自動再生しない
     if (currentMode === MapMode.ANIMATION && !animationState.isPlaying && orbitPaths.length > 0) {
-      // 少し遅延させて自動再生（UIが表示された後に再生開始）
-      const timer = setTimeout(() => {
-        setAnimationState(prev => ({
-          ...prev,
-          isPlaying: true
-        }));
-      }, 1000);
-      return () => clearTimeout(timer);
+      // モード変更時のみ自動再生する（シーク操作後は自動再生しない）
+      if (modeChangeNotification.mode !== MapMode.ANIMATION) {
+        // 少し遅延させて自動再生（UIが表示された後に再生開始）
+        const timer = setTimeout(() => {
+          setAnimationState(prev => ({
+            ...prev,
+            isPlaying: true
+          }));
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
     }
 
     // アニメーションモードから他のモードに切り替えたとき、アニメーションを停止
