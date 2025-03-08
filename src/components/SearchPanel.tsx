@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Card,
-  CardContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   FormControl,
   FormControlLabel,
   Checkbox,
@@ -19,6 +20,7 @@ import {
   DialogActions,
   Alert,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
@@ -56,6 +58,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [dateError, setDateError] = useState<boolean>(false);
+  const [expanded, setExpanded] = useState<boolean>(true);
 
   // ローカルタイムゾーンを取得
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -188,24 +191,48 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
   };
 
   return (
-    <Card
-      variant="outlined"
-      sx={{
-        backgroundColor: 'white',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}
+    <Accordion
+      defaultExpanded={true}
+      expanded={expanded}
+      onChange={(_, isExpanded) => setExpanded(isExpanded)}
     >
-      <CardContent>
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+        aria-controls="search-panel-content"
+        id="search-panel-header"
+        sx={{
+          minHeight: '40px',
+          py: 0,
+          backgroundColor: 'rgba(25, 118, 210, 0.08)',
+          '&:hover': {
+            backgroundColor: 'rgba(25, 118, 210, 0.12)',
+          },
+          borderRadius: '4px',
+          border: '1px solid rgba(25, 118, 210, 0.2)',
+          my: 1
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <SearchIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+          <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+            検索条件を設定
+          </Typography>
+          <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+            (クリックして{expanded ? '閉じる' : '開く'})
+          </Typography>
+        </Box>
+      </AccordionSummary>
+      <AccordionDetails sx={{ py: 1, px: 2 }}>
         <Box sx={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 3,
+          gap: 2,
         }}>
-          {/* 期間選択 */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Box sx={{ flex: 1 }}>
+          {/* 期間選択 - よりコンパクトなレイアウト */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ flex: 1, minWidth: '140px' }}>
               <DateTimePicker
-                label={`開始日時 (${timeZoneAbbr})`}
+                label={`開始 (${timeZoneAbbr})`}
                 value={localStartDate}
                 onChange={handleStartDateChange}
                 renderInput={(props) => (
@@ -214,7 +241,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                     fullWidth
                     size="small"
                     error={dateError}
-                    helperText={dateError ? '開始日時は終了日時より前に設定してください' : ''}
+                    helperText={dateError ? '開始日時は終了日時より前に' : ''}
                     sx={{
                       backgroundColor: 'white',
                       '& .MuiOutlinedInput-root': {
@@ -227,9 +254,9 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                 ampm={false}
               />
             </Box>
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, minWidth: '140px' }}>
               <DateTimePicker
-                label={`終了日時 (${timeZoneAbbr})`}
+                label={`終了 (${timeZoneAbbr})`}
                 value={localEndDate}
                 onChange={handleEndDateChange}
                 renderInput={(props) => (
@@ -238,7 +265,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                     fullWidth
                     size="small"
                     error={dateError}
-                    helperText={dateError ? '終了日時は開始日時より後に設定してください' : ''}
+                    helperText={dateError ? '終了日時は開始日時より後に' : ''}
                     sx={{
                       backgroundColor: 'white',
                       '& .MuiOutlinedInput-root': {
@@ -251,16 +278,15 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                 ampm={false}
               />
             </Box>
-          </Box>
-
-          {/* 検索ボタン */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {/* 検索ボタンを同じ行に配置 */}
             <Button
               variant="contained"
               color="primary"
+              size="small"
               startIcon={<SearchIcon />}
               onClick={handleSearch}
               disabled={isSearchButtonDisabled()}
+              sx={{ height: '40px', alignSelf: 'flex-start', mt: '4px' }}
             >
               {isSearching ? '検索中...' : '検索'}
             </Button>
@@ -268,60 +294,47 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
 
           {/* 警告メッセージ */}
           {dateError && (
-            <Alert severity="error" sx={{ mt: 1 }}>
+            <Alert severity="error" sx={{ py: 0.5, px: 1 }}>
               開始日時は終了日時より前に設定してください。
             </Alert>
           )}
           {showWarning && (
-            <Alert severity="warning" sx={{ mt: 1 }}>
+            <Alert severity="warning" sx={{ py: 0.5, px: 1 }}>
               選択された期間は{calculateDateDifference(localStartDate, localEndDate)}日間です。長期間の検索は計算に時間がかかる場合があります。
             </Alert>
           )}
 
-          {/* 最低仰角と観測地点を横並びに */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {/* 最低仰角設定 */}
-            <Box sx={{ flex: 1 }}>
-              <Typography gutterBottom>
-                最低仰角: {sliderValue}°
-                <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
-                  <IconButton size="small" sx={{ ml: 1 }}>
-                    <HelpOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Typography>
-              <Slider
-                value={sliderValue}
-                onChange={handleMinElevationChange}
-                min={0}
-                max={90}
-                step={1}
-                marks={[
-                  { value: 0, label: '0°' },
-                  { value: 45, label: '45°' },
-                  { value: 90, label: '90°' },
-                ]}
-                valueLabelDisplay="auto"
-              />
-            </Box>
-
-            {/* 現在の観測地点情報 */}
-            {filters.location && (
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  観測地点
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={`緯度: ${filters.location.lat.toFixed(4)}, 経度: ${filters.location.lng.toFixed(4)}`}
-                  InputProps={{ readOnly: true }}
-                />
-              </Box>
-            )}
+          {/* 最低仰角設定 - よりコンパクトに */}
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="body2" gutterBottom>
+              最低仰角: {sliderValue}°
+              <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
+                <IconButton size="small" sx={{ ml: 0.5, p: 0.5 }}>
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Typography>
+            <Slider
+              value={sliderValue}
+              onChange={handleMinElevationChange}
+              min={0}
+              max={90}
+              step={1}
+              marks={[
+                { value: 0, label: '0°' },
+                { value: 10, label: '10°' },
+                { value: 20, label: '20°' },
+                { value: 30, label: '30°' },
+                { value: 45, label: '45°' },
+                { value: 60, label: '60°' },
+                { value: 75, label: '75°' },
+                { value: 90, label: '90°' },
+              ]}
+              valueLabelDisplay="auto"
+            />
           </Box>
         </Box>
-      </CardContent>
+      </AccordionDetails>
 
       {/* 確認ダイアログ */}
       <Dialog
@@ -343,7 +356,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
           </Button>
         </DialogActions>
       </Dialog>
-    </Card>
+    </Accordion>
   );
 };
 

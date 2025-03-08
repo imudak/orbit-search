@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import InfoIcon from '@mui/icons-material/Info';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ja from 'date-fns/locale/ja';
-import Map from '@/components/Map';
+import Map from '@/components/Map/index';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
 import ObservationDataDialog from '@/components/ObservationDataDialog';
@@ -35,17 +34,6 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   boxSizing: 'border-box'  // パディングを含めたサイズ計算
-}));
-
-const MapInfoBox = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  padding: theme.spacing(1),
-  backgroundColor: theme.palette.primary.light,
-  color: theme.palette.primary.contrastText,
-  borderRadius: theme.shape.borderRadius,
-  marginBottom: theme.spacing(1),
-  boxShadow: theme.shadows[1]
 }));
 
 const Footer = styled(Box)(({ theme }) => ({
@@ -283,93 +271,59 @@ const App = () => {
       <AppBar position="static" color="primary">
         <Toolbar>
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            Orbit Search - 衛星軌道検索
+            Orbit Search - 衛星軌道検索 - 地図上の位置をクリックして、その場所から見える衛星を検索します
           </Typography>
         </Toolbar>
       </AppBar>
       <Main maxWidth="xl">
-        {/* 説明エリア */}
-        <MapInfoBox sx={{ mb: 2 }}>
-          <InfoIcon sx={{ mr: 1 }} />
-          <Typography variant="body2">
-            地図上の位置をクリックして、その場所から見える衛星を検索します
-          </Typography>
-        </MapInfoBox>
-
-        <Grid container spacing={2} sx={{ height: '100%' }}>
-          {/* 左側エリア - 地図と検索パネル */}
-          <Grid item xs={12} lg={8}>
-            {/* 地図コンテナ */}
-            <StyledPaper
-              elevation={0}
-              variant="outlined"
+        {/* 地図と衛星リストを横に並べるレイアウト */}
+        <Box sx={{ display: 'flex', height: 'calc(100vh - 150px)', width: '100%', gap: 2 }}>
+          {/* 地図エリア */}
+          <Box sx={{ position: 'relative', flex: 2, height: '100%' }}>
+            {/* 地図 */}
+            <Box
               sx={{
-                mb: 3,  // 下部マージンを増加
-                overflow: 'visible',  // コンテンツが見切れないように
-                height: { xs: '400px', md: '550px' }  // 地図の高さをさらに増加
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                '& .leaflet-container': {
+                  height: '100% !important',
+                  width: '100% !important'
+                }
               }}
             >
-              <Box
-                sx={{
-                  height: '100%',
-                  width: '100%',
-                  position: 'relative',
-                  '& .leaflet-container': {
-                    height: '100% !important',
-                    width: '100% !important'
-                  },
-                  '& .leaflet-bottom': {
-                    bottom: '10px'  // 凡例の位置を下から少し上に
-                  }
-                }}
-              >
-                <Map
-                  center={selectedLocation}
-                  onLocationSelect={handleLocationSelect}
-                  orbitPaths={orbitPaths}
-                  filters={searchFilters}
-                />
-              </Box>
-            </StyledPaper>
-
-            {/* 検索パネルを別のPaperに分離 */}
-            <StyledPaper
-              elevation={0}
-              variant="outlined"
-              sx={{
-                mb: { xs: 2, md: 0 },
-                height: 'auto'
-              }}
-            >
-              <SearchPanel
+              <Map
+                center={selectedLocation}
+                onLocationSelect={handleLocationSelect}
+                orbitPaths={orbitPaths}
                 filters={searchFilters}
-                onFiltersChange={handleFiltersChange}
-              />
-            </StyledPaper>
-          </Grid>
-
-          {/* 右側エリア - 衛星リスト */}
-          <Grid item xs={12} lg={4} sx={{ height: { xs: 'auto', md: '100%' } }}>
-            <StyledPaper
-              elevation={0}
-              variant="outlined"
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-            >
-              <SatelliteList
-                satellites={satellites}
-                onTLEDownload={handleTLEDownload}
-                onObservationDataRequest={handleObservationDataRequest}
-                onSatelliteSelect={handleSatelliteSelect}
                 selectedSatellite={selectedSatellite}
-                isLoading={isLoading}
               />
-            </StyledPaper>
-          </Grid>
-        </Grid>
+            </Box>
+          </Box>
+
+          {/* 右側のコンテンツ（衛星リスト） */}
+          <Box sx={{ flex: 1, height: '100%', minWidth: '350px', maxWidth: '450px' }}>
+            <SatelliteList
+              satellites={satellites}
+              onTLEDownload={handleTLEDownload}
+              onObservationDataRequest={handleObservationDataRequest}
+              onSatelliteSelect={handleSatelliteSelect}
+              selectedSatellite={selectedSatellite}
+              isLoading={isLoading}
+              searchPanel={
+                <SearchPanel
+                  filters={searchFilters}
+                  onFiltersChange={handleFiltersChange}
+                />
+              }
+            />
+          </Box>
+
+          {/* 凡例はMap内に移動 */}
+        </Box>
       </Main>
       {/* フッター */}
       <Footer>
