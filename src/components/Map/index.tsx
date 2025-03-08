@@ -286,7 +286,11 @@ const MapWithModeContext: React.FC<MapProps> = ({
   }, []);
 
   const handleToggleLayers = useCallback(() => {
-    setPanelState(prev => ({ ...prev, layers: !prev.layers }));
+    setPanelState(prev => ({
+      ...prev,
+      layers: !prev.layers,
+      info: true // レイヤー設定を表示するときは情報パネルも表示する
+    }));
   }, []);
 
   // モード変更通知

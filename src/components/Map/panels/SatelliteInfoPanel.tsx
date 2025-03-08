@@ -417,7 +417,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
 
             {/* 凡例情報セクション */}
             <Accordion
-              defaultExpanded={showLegend}
+              expanded={showLegend}
               disableGutters
               elevation={0}
               sx={{
@@ -429,6 +429,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                 e.stopPropagation();
                 e.preventDefault();
               }}
+              onChange={onClose} // onCloseはレイヤー設定の場合、実際にはonToggleLegendとして機能
             >
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
@@ -503,7 +504,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
 
             {/* レイヤー設定セクション */}
             <Accordion
-              defaultExpanded={showLayers}
+              expanded={showLayers}
               disableGutters
               elevation={0}
               sx={{
@@ -515,6 +516,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                 e.stopPropagation();
                 e.preventDefault();
               }}
+              onChange={onClose} // onCloseはレイヤー設定の場合、実際にはonToggleLayersとして機能
             >
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
