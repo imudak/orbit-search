@@ -12,7 +12,6 @@ import ObserverMarkerLayer from './layers/ObserverMarkerLayer';
 import VisibilityCircleLayer from './layers/VisibilityCircleLayer';
 import SatelliteOrbitLayer from './layers/SatelliteOrbitLayer';
 import SatelliteAnimationLayer from './layers/SatelliteAnimationLayer';
-import LegendPanel from './panels/LegendPanel';
 import SatelliteInfoPanel from './panels/SatelliteInfoPanel';
 import AnimationControlPanel from './panels/AnimationControlPanel';
 import { AnimationState } from './panels/AnimationControlPanel';
@@ -144,16 +143,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
         )}
       </LayerRenderer>
 
-      {/* 凡例パネル */}
-      <LegendPanel
-        position="center"
-        minElevation={minElevation}
-        orbitTypes={orbitTypes}
-        isLegendOpen={panelState.legend}
-        isLayersOpen={panelState.layers}
-      />
-
-      {/* 衛星情報パネル */}
+      {/* 衛星情報パネル（凡例情報も含む） */}
       <SatelliteInfoPanel
         position="center"
         satellite={orbitPaths.length > 0 ? { name: orbitPaths[0].satelliteId } as any : undefined}
@@ -167,6 +157,11 @@ const InnerMap: React.FC<InnerMapProps> = ({
         mapZoom={defaultZoom}
         isOpen={panelState.info}
         onClose={onToggleInfo}
+        // 凡例関連のプロパティ
+        minElevation={minElevation}
+        orbitTypes={orbitTypes}
+        showLegend={panelState.legend}
+        showLayers={panelState.layers}
       />
 
       {/* 通常モードパネル */}

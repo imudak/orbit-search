@@ -1,12 +1,14 @@
 import React from 'react';
 import {
   Paper, Typography, Box, IconButton, Collapse, Divider, Chip,
-  Accordion, AccordionSummary, AccordionDetails, useTheme, useMediaQuery
+  Accordion, AccordionSummary, AccordionDetails, useTheme, useMediaQuery, Switch, Tooltip
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { Satellite, Location, OrbitPath } from '@/types';
 import type { AnimationState } from '../panels/AnimationControlPanel';
+import { OrbitType, DEFAULT_ORBIT_TYPES } from '../layers/VisibilityCircleLayer';
+import { useLayerManager } from '../layers/LayerManager';
 
 interface SatelliteInfoPanelProps {
   position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' | 'center';
@@ -27,6 +29,11 @@ interface SatelliteInfoPanelProps {
   mapCenter?: Location;
   isOpen?: boolean;
   onClose?: () => void;
+  // 凡例関連のプロパティ
+  minElevation?: number;
+  orbitTypes?: OrbitType[];
+  showLegend?: boolean;
+  showLayers?: boolean;
 }
 
 /**
@@ -45,9 +52,15 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   mapCenter,
   isOpen = false,
   onClose,
+  // 凡例関連のプロパティ
+  minElevation = 10,
+  orbitTypes = DEFAULT_ORBIT_TYPES,
+  showLegend = false,
+  showLayers = false,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { layers, toggleLayer } = useLayerManager();
 
   // ポジションに応じたスタイルを設定
   const getPositionStyle = () => {
@@ -378,6 +391,135 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                 </AccordionDetails>
               </Accordion>
             )}
+
+            {/* 凡例情報セクション */}
+            <Accordion
+              defaultExpanded={showLegend}
+              disableGutters
+              elevation={0}
+              sx={{
+                backgroundColor: 'transparent',
+                '&:before': { display: 'none' },
+                mb: 1
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{
+                  minHeight: '36px',
+                  padding: '0 8px',
+                  '& .MuiAccordionSummary-content': { margin: '6px 0' }
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  凡例情報
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ padding: '0 16px 8px' }}>
+                {/* 軌道の種類と高度 */}
+                <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 0.5 }}>
+                  軌道の種類と高度
+                </Typography>
+                {orbitTypes.map((orbitType) => (
+                  <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center', mb: 0.3 }}>
+                    <Box
+                      sx={{
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: orbitType.color,
+                        opacity: 0.7,
+                        mr: 0.5,
+                        border: '1px solid rgba(0, 0, 0, 0.3)',
+                      }}
+                    />
+                    <Typography sx={{ fontSize: '0.8rem' }}>
+                      {orbitType.name}: {orbitType.height.toLocaleString()}km
+                    </Typography>
+                  </Box>
+                ))}
+
+                {/* 可視性の色分け */}
+                <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 1, mb: 0.5, borderTop: '1px solid rgba(0, 0, 0, 0.1)', pt: 0.5 }}>
+                  衛星の見やすさ
+                </Typography>
+                {[
+                  { angle: '45°↑', color: '#FF0000', weight: 2 },
+                  { angle: '20-45°', color: '#FFA500', weight: 2 },
+                  { angle: '↓20°', color: '#808080', weight: 2 },
+                ].map((item, index) => (
+                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 0.3 }}>
+                    <Box
+                      sx={{
+                        width: '12px',
+                        height: '2px',
+                        backgroundColor: item.color,
+                        mr: 0.5,
+                      }}
+                    />
+                    <Typography sx={{ fontSize: '0.8rem' }}>
+                      {item.angle}
+                    </Typography>
+                  </Box>
+                ))}
+              </AccordionDetails>
+            </Accordion>
+
+            {/* レイヤー設定セクション */}
+            <Accordion
+              defaultExpanded={showLayers}
+              disableGutters
+              elevation={0}
+              sx={{
+                backgroundColor: 'transparent',
+                '&:before': { display: 'none' },
+                mb: 1
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{
+                  minHeight: '36px',
+                  padding: '0 8px',
+                  '& .MuiAccordionSummary-content': { margin: '6px 0' }
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  レイヤー設定
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ padding: '0 16px 8px' }}>
+                {layers.map((layer) => (
+                  <Box
+                    key={layer.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      mb: 1,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          backgroundColor: layer.color || 'primary.main',
+                          borderRadius: '2px',
+                        }}
+                      />
+                      <Tooltip title={layer.description || ''}>
+                        <Typography variant="body2">{layer.name}</Typography>
+                      </Tooltip>
+                    </Box>
+                    <Switch
+                      size="small"
+                      checked={layer.isVisible}
+                      onChange={() => toggleLayer(layer.id)}
+                    />
+                  </Box>
+                ))}
+              </AccordionDetails>
+            </Accordion>
 
             {/* 衛星が選択されていない場合のメッセージ */}
             {!satellite && !currentPosition && orbitPaths.length === 0 && (
