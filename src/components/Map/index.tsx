@@ -60,8 +60,10 @@ interface InnerMapProps {
   handleSeek: (time: Date) => void;
   handleSpeedChange: (speed: number) => void;
   handlePositionUpdate: (position: AnimationState['currentPosition']) => void;
-  panelState?: PanelState;
-  onToggleInfo?: () => void;
+  panelState: PanelState;
+  onToggleInfo: () => void;
+  onToggleLegend: () => void;
+  onToggleLayers: () => void;
 }
 
 /**
@@ -77,31 +79,15 @@ const InnerMap: React.FC<InnerMapProps> = ({
   animationState,
   satellitePosition,
   handlePositionUpdate,
+  panelState,
+  onToggleInfo,
+  onToggleLegend,
+  onToggleLayers
 }) => {
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
   // モード管理コンテキストを使用
   const { currentMode } = useMapMode();
-
-  // パネル表示状態
-  const [panelState, setPanelState] = useState<PanelState>({
-    info: false,
-    legend: false,
-    layers: false
-  });
-
-  // パネル表示切替ハンドラー
-  const handleToggleInfo = useCallback(() => {
-    setPanelState(prev => ({ ...prev, info: !prev.info }));
-  }, []);
-
-  const handleToggleLegend = useCallback(() => {
-    setPanelState(prev => ({ ...prev, legend: !prev.legend }));
-  }, []);
-
-  const handleToggleLayers = useCallback(() => {
-    setPanelState(prev => ({ ...prev, layers: !prev.layers }));
-  }, []);
 
   // レスポンシブ対応のためのメディアクエリ
   const theme = useTheme();
@@ -116,9 +102,9 @@ const InnerMap: React.FC<InnerMapProps> = ({
             position="topright"
             currentCenter={center}
             defaultZoom={defaultZoom}
-            onToggleInfo={handleToggleInfo}
-            onToggleLayers={handleToggleLayers}
-            onToggleLegend={handleToggleLegend}
+            onToggleInfo={onToggleInfo}
+            onToggleLayers={onToggleLayers}
+            onToggleLegend={onToggleLegend}
           />
           <MapModeSelector position="topleft" />
         </>
@@ -176,7 +162,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
         mapCenter={center}
         mapZoom={defaultZoom}
         isOpen={panelState.info}
-        onClose={handleToggleInfo}
+        onClose={onToggleInfo}
       />
 
       {/* 通常モードパネル */}
@@ -186,7 +172,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
           center={center}
           orbitPaths={orbitPaths}
           isOpen={panelState.info}
-          onClose={handleToggleInfo}
+          onClose={onToggleInfo}
         />
       </ModeRenderer>
 
@@ -198,7 +184,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
           animationState={animationState}
           satellitePosition={satellitePosition}
           isOpen={panelState.info}
-          onClose={handleToggleInfo}
+          onClose={onToggleInfo}
         />
       </ModeRenderer>
     </MapView>
@@ -215,7 +201,14 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
 
   return (
     <>
-      <InnerMap {...props} handlePositionUpdate={props.handlePositionUpdate} />
+      <InnerMap
+        {...props}
+        handlePositionUpdate={props.handlePositionUpdate}
+        panelState={props.panelState}
+        onToggleInfo={props.onToggleInfo}
+        onToggleLegend={props.onToggleLegend}
+        onToggleLayers={props.onToggleLayers}
+      />
 
       {/* モードに応じたコントロールパネルを表示 */}
       <ModeRenderer mode={MapMode.ANIMATION}>
@@ -271,6 +264,26 @@ const MapWithModeContext: React.FC<MapProps> = ({
 
   // 衛星位置情報
   const [satellitePosition, setSatellitePosition] = useState<AnimationState['currentPosition']>();
+
+  // パネル表示状態
+  const [panelState, setPanelState] = useState<PanelState>({
+    info: false,
+    legend: false,
+    layers: false
+  });
+
+  // パネル表示切替ハンドラー
+  const handleToggleInfo = useCallback(() => {
+    setPanelState(prev => ({ ...prev, info: !prev.info }));
+  }, []);
+
+  const handleToggleLegend = useCallback(() => {
+    setPanelState(prev => ({ ...prev, legend: !prev.legend }));
+  }, []);
+
+  const handleToggleLayers = useCallback(() => {
+    setPanelState(prev => ({ ...prev, layers: !prev.layers }));
+  }, []);
 
   // モード変更通知
   const [modeChangeNotification, setModeChangeNotification] = useState<{
@@ -482,6 +495,8 @@ const MapWithModeContext: React.FC<MapProps> = ({
           handlePositionUpdate={handlePositionUpdate}
           panelState={panelState}
           onToggleInfo={handleToggleInfo}
+          onToggleLegend={handleToggleLegend}
+          onToggleLayers={handleToggleLayers}
         />
 
         {/* モード変更通知 */}
