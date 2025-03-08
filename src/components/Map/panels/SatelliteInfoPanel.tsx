@@ -1,14 +1,13 @@
 import React from 'react';
 import {
   Paper, Typography, Box, IconButton, Collapse, Divider, Chip,
-  Accordion, AccordionSummary, AccordionDetails, useTheme, useMediaQuery, Switch, Tooltip
+  Accordion, AccordionSummary, AccordionDetails, useTheme, useMediaQuery
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { Satellite, Location, OrbitPath } from '@/types';
 import type { AnimationState } from '../panels/AnimationControlPanel';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from '../layers/VisibilityCircleLayer';
-import { useLayerManager } from '../layers/LayerManager';
 
 interface SatelliteInfoPanelProps {
   position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' | 'center';
@@ -33,7 +32,6 @@ interface SatelliteInfoPanelProps {
   minElevation?: number;
   orbitTypes?: OrbitType[];
   showLegend?: boolean;
-  showLayers?: boolean;
 }
 
 /**
@@ -56,11 +54,9 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   minElevation = 10,
   orbitTypes = DEFAULT_ORBIT_TYPES,
   showLegend = false,
-  showLayers = false,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { layers, toggleLayer } = useLayerManager();
 
   // ポジションに応じたスタイルを設定
   const getPositionStyle = () => {
@@ -502,77 +498,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
               </AccordionDetails>
             </Accordion>
 
-            {/* レイヤー設定セクション */}
-            <Accordion
-              expanded={showLayers}
-              disableGutters
-              elevation={0}
-              sx={{
-                backgroundColor: 'transparent',
-                '&:before': { display: 'none' },
-                mb: 1
-              }}
-              onWheel={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-              onChange={onClose} // onCloseはレイヤー設定の場合、実際にはonToggleLayersとして機能
-            >
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                sx={{
-                  minHeight: '36px',
-                  padding: '0 8px',
-                  '& .MuiAccordionSummary-content': { margin: '6px 0' }
-                }}
-                onWheel={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                  レイヤー設定
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails
-                sx={{ padding: '0 16px 8px' }}
-                onWheel={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-              >
-                {layers.map((layer) => (
-                  <Box
-                    key={layer.id}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mb: 1,
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box
-                        sx={{
-                          width: 12,
-                          height: 12,
-                          backgroundColor: layer.color || 'primary.main',
-                          borderRadius: '2px',
-                        }}
-                      />
-                      <Tooltip title={layer.description || ''}>
-                        <Typography variant="body2">{layer.name}</Typography>
-                      </Tooltip>
-                    </Box>
-                    <Switch
-                      size="small"
-                      checked={layer.isVisible}
-                      onChange={() => toggleLayer(layer.id)}
-                    />
-                  </Box>
-                ))}
-              </AccordionDetails>
-            </Accordion>
+=======
 
             {/* 衛星が選択されていない場合のメッセージ */}
             {!satellite && !currentPosition && orbitPaths.length === 0 && (

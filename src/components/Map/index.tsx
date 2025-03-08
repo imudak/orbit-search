@@ -13,6 +13,7 @@ import VisibilityCircleLayer from './layers/VisibilityCircleLayer';
 import SatelliteOrbitLayer from './layers/SatelliteOrbitLayer';
 import SatelliteAnimationLayer from './layers/SatelliteAnimationLayer';
 import SatelliteInfoPanel from './panels/SatelliteInfoPanel';
+import LayerSettingsPanel from './panels/LayerSettingsPanel';
 import AnimationControlPanel from './panels/AnimationControlPanel';
 import { AnimationState } from './panels/AnimationControlPanel';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from './layers/VisibilityCircleLayer';
@@ -28,7 +29,7 @@ interface PanelState {
   info: boolean;      // 衛星情報パネル
   modePanel: boolean; // 各モードのパネル
   legend: boolean;
-  layers: boolean;
+  layerSettings: boolean; // レイヤー設定パネル
 }
 
 // マップコンポーネントのプロパティ
@@ -64,7 +65,7 @@ interface InnerMapProps {
   onToggleInfo: () => void;
   onToggleModePanel: () => void;
   onToggleLegend: () => void;
-  onToggleLayers: () => void;
+  onToggleLayerSettings: () => void;
 }
 
 /**
@@ -84,7 +85,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
   onToggleInfo,
   onToggleModePanel,
   onToggleLegend,
-  onToggleLayers
+  onToggleLayerSettings
 }) => {
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
@@ -106,7 +107,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
             defaultZoom={defaultZoom}
             onToggleInfo={onToggleInfo}
             onToggleModePanel={onToggleModePanel}
-            onToggleLayers={onToggleLayers}
+            onToggleLayerSettings={onToggleLayerSettings}
           />
           <MapModeSelector position="topleft" />
         </>
@@ -160,7 +161,13 @@ const InnerMap: React.FC<InnerMapProps> = ({
         minElevation={minElevation}
         orbitTypes={orbitTypes}
         showLegend={panelState.legend}
-        showLayers={panelState.layers}
+      />
+
+      {/* レイヤー設定パネル */}
+      <LayerSettingsPanel
+        position="topright"
+        isOpen={panelState.layerSettings}
+        onClose={onToggleLayerSettings}
       />
 
       {/* 通常モードパネル */}
@@ -206,7 +213,7 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
         onToggleInfo={props.onToggleInfo}
         onToggleModePanel={props.onToggleModePanel}
         onToggleLegend={props.onToggleLegend}
-        onToggleLayers={props.onToggleLayers}
+        onToggleLayerSettings={props.onToggleLayerSettings}
       />
 
       {/* モードに応じたコントロールパネルを表示 */}
@@ -269,7 +276,7 @@ const MapWithModeContext: React.FC<MapProps> = ({
     info: false,
     modePanel: true,  // モードパネルは初期表示
     legend: false,
-    layers: false
+    layerSettings: false
   });
 
   // パネル表示切替ハンドラー
@@ -285,11 +292,10 @@ const MapWithModeContext: React.FC<MapProps> = ({
     setPanelState(prev => ({ ...prev, legend: !prev.legend }));
   }, []);
 
-  const handleToggleLayers = useCallback(() => {
+  const handleToggleLayerSettings = useCallback(() => {
     setPanelState(prev => ({
       ...prev,
-      layers: !prev.layers,
-      info: true // レイヤー設定を表示するときは情報パネルも表示する
+      layerSettings: !prev.layerSettings
     }));
   }, []);
 
@@ -509,7 +515,7 @@ const MapWithModeContext: React.FC<MapProps> = ({
           onToggleInfo={handleToggleInfo}
           onToggleModePanel={handleToggleModePanel}
           onToggleLegend={handleToggleLegend}
-          onToggleLayers={handleToggleLayers}
+          onToggleLayerSettings={handleToggleLayerSettings}
         />
 
         {/* モード変更通知 */}
