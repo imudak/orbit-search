@@ -7,6 +7,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import LayersIcon from '@mui/icons-material/Layers';
 import InfoIcon from '@mui/icons-material/Info';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { Location } from '@/types';
@@ -16,6 +17,7 @@ interface MapControlIconsProps {
   currentCenter?: Location;
   defaultZoom?: number;
   onToggleInfo?: () => void;
+  onToggleModePanel?: () => void;
   onToggleLayers?: () => void;
   onToggleLegend?: () => void;
 }
@@ -28,6 +30,7 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
   currentCenter,
   defaultZoom = 5,
   onToggleInfo,
+  onToggleModePanel,
   onToggleLayers,
   onToggleLegend,
 }) => {
@@ -123,6 +126,13 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
         <Tooltip title="衛星情報" placement="left">
           <IconButton size="small" onClick={onToggleInfo}>
             <InfoIcon />
+          </IconButton>
+        </Tooltip>
+      )}
+      {onToggleModePanel && (
+        <Tooltip title="モードパネル" placement="left">
+          <IconButton size="small" onClick={onToggleModePanel}>
+            <DashboardIcon />
           </IconButton>
         </Tooltip>
       )}

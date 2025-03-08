@@ -26,7 +26,8 @@ import AnimationPanel from './modes/AnimationPanel';
 
 // パネル表示状態の型定義
 interface PanelState {
-  info: boolean;
+  info: boolean;      // 衛星情報パネル
+  modePanel: boolean; // 各モードのパネル
   legend: boolean;
   layers: boolean;
 }
@@ -62,6 +63,7 @@ interface InnerMapProps {
   handlePositionUpdate: (position: AnimationState['currentPosition']) => void;
   panelState: PanelState;
   onToggleInfo: () => void;
+  onToggleModePanel: () => void;
   onToggleLegend: () => void;
   onToggleLayers: () => void;
 }
@@ -81,6 +83,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
   handlePositionUpdate,
   panelState,
   onToggleInfo,
+  onToggleModePanel,
   onToggleLegend,
   onToggleLayers
 }) => {
@@ -103,6 +106,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
             currentCenter={center}
             defaultZoom={defaultZoom}
             onToggleInfo={onToggleInfo}
+            onToggleModePanel={onToggleModePanel}
             onToggleLayers={onToggleLayers}
             onToggleLegend={onToggleLegend}
           />
@@ -171,8 +175,8 @@ const InnerMap: React.FC<InnerMapProps> = ({
           position="bottomleft"
           center={center}
           orbitPaths={orbitPaths}
-          isOpen={panelState.info}
-          onClose={onToggleInfo}
+          isOpen={panelState.modePanel}
+          onClose={onToggleModePanel}
         />
       </ModeRenderer>
 
@@ -183,8 +187,8 @@ const InnerMap: React.FC<InnerMapProps> = ({
           orbitPaths={orbitPaths}
           animationState={animationState}
           satellitePosition={satellitePosition}
-          isOpen={panelState.info}
-          onClose={onToggleInfo}
+          isOpen={panelState.modePanel}
+          onClose={onToggleModePanel}
         />
       </ModeRenderer>
     </MapView>
@@ -206,6 +210,7 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
         handlePositionUpdate={props.handlePositionUpdate}
         panelState={props.panelState}
         onToggleInfo={props.onToggleInfo}
+        onToggleModePanel={props.onToggleModePanel}
         onToggleLegend={props.onToggleLegend}
         onToggleLayers={props.onToggleLayers}
       />
@@ -227,8 +232,8 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
         <AnalysisPanel
           position="bottom"
           orbitPaths={props.orbitPaths}
-          isOpen={props.panelState?.info}
-          onClose={props.onToggleInfo}
+          isOpen={props.panelState?.modePanel}
+          onClose={props.onToggleModePanel}
         />
       </ModeRenderer>
     </>
@@ -268,6 +273,7 @@ const MapWithModeContext: React.FC<MapProps> = ({
   // パネル表示状態
   const [panelState, setPanelState] = useState<PanelState>({
     info: false,
+    modePanel: true,  // モードパネルは初期表示
     legend: false,
     layers: false
   });
@@ -275,6 +281,10 @@ const MapWithModeContext: React.FC<MapProps> = ({
   // パネル表示切替ハンドラー
   const handleToggleInfo = useCallback(() => {
     setPanelState(prev => ({ ...prev, info: !prev.info }));
+  }, []);
+
+  const handleToggleModePanel = useCallback(() => {
+    setPanelState(prev => ({ ...prev, modePanel: !prev.modePanel }));
   }, []);
 
   const handleToggleLegend = useCallback(() => {
@@ -495,6 +505,7 @@ const MapWithModeContext: React.FC<MapProps> = ({
           handlePositionUpdate={handlePositionUpdate}
           panelState={panelState}
           onToggleInfo={handleToggleInfo}
+          onToggleModePanel={handleToggleModePanel}
           onToggleLegend={handleToggleLegend}
           onToggleLayers={handleToggleLayers}
         />
