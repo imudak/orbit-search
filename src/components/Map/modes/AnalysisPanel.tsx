@@ -20,13 +20,15 @@ import {
   LinearProgress,
   Card,
   CardContent,
-  Grid
+  Grid,
+  Collapse
 } from '@mui/material';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import CloseIcon from '@mui/icons-material/Close';
 import type { OrbitPath } from '@/types';
 
 interface AnalysisPanelProps {
@@ -670,7 +672,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               borderRadius: '8px',
               boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
               border: '1px solid rgba(0, 100, 0, 0.1)',
-              maxHeight: '60vh',
+              height: 'auto',
+              maxHeight: 'none',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column'
