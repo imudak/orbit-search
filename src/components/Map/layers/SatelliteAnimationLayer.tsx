@@ -24,7 +24,7 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
 
   // 衛星アイコンの設定
   const satelliteIcon = L.icon({
-    iconUrl: '/satellite.svg',
+    iconUrl: import.meta.env.BASE_URL + 'satellite.svg', // Viteの環境変数を使用してベースパスを取得
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -16]
