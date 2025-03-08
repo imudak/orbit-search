@@ -1,5 +1,6 @@
 import React from 'react';
-import { Paper, Typography, Box, Divider } from '@mui/material';
+import { Paper, Typography, Box, Divider, IconButton, Collapse } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import type { OrbitPath } from '@/types';
 import { AnimationState } from '../panels/AnimationControlPanel';
 
@@ -8,6 +9,8 @@ interface AnimationPanelProps {
   orbitPaths: OrbitPath[];
   animationState: AnimationState;
   satellitePosition?: AnimationState['currentPosition'];
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 /**
@@ -18,7 +21,9 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
   position = 'bottomleft',
   orbitPaths,
   animationState,
-  satellitePosition
+  satellitePosition,
+  isOpen = true,
+  onClose
 }) => {
   // ポジションに応じたスタイルを設定
   const getPositionStyle = () => {
@@ -46,32 +51,6 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
     }
   };
 
-  // 軌道パスがない場合
-  if (orbitPaths.length === 0) {
-    return (
-      <Paper
-        sx={{
-          position: 'absolute',
-          ...getPositionStyle(),
-          zIndex: 1000,
-          padding: '10px',
-          backgroundColor: 'rgba(25, 118, 210, 0.9)', // 青色の背景（アニメーションモードを強調）
-          color: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-          border: '1px solid rgba(0, 0, 100, 0.1)',
-        }}
-      >
-        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-          アニメーション情報
-        </Typography>
-        <Typography variant="body2">
-          アニメーションするための軌道データがありません。衛星を選択してください。
-        </Typography>
-      </Paper>
-    );
-  }
-
   // 時間をフォーマットする関数
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -83,66 +62,91 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
   };
 
   return (
-    <Paper
-      sx={{
-        position: 'absolute',
-        ...getPositionStyle(),
-        zIndex: 1000,
-        padding: '10px',
-        backgroundColor: 'rgba(25, 118, 210, 0.9)', // 青色の背景（アニメーションモードを強調）
-        color: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-        border: '1px solid rgba(0, 0, 100, 0.1)',
-        maxWidth: '300px',
-        maxHeight: '300px',
-        overflowY: 'auto',
-      }}
-    >
-      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderBottom: '1px solid rgba(255, 255, 255, 0.2)', pb: 0.5 }}>
-        アニメーション情報
-      </Typography>
-
-      {/* 時間情報 */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-          時間情報
-        </Typography>
-        <Typography variant="body2">
-          現在時刻: {formatDate(animationState.currentTime)} {formatTime(animationState.currentTime)}<br />
-          開始時刻: {formatDate(animationState.startTime)} {formatTime(animationState.startTime)}<br />
-          終了時刻: {formatDate(animationState.endTime)} {formatTime(animationState.endTime)}<br />
-          再生速度: {animationState.playbackSpeed}倍速
-        </Typography>
-      </Box>
-
-      {/* 衛星位置情報（位置情報がある場合） */}
-      {satellitePosition && (
-        <>
-          <Divider sx={{ my: 1 }} />
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-              衛星位置情報
+    <Box sx={{
+      position: 'absolute',
+      ...getPositionStyle(),
+      zIndex: 1000,
+    }}>
+      <Collapse in={isOpen}>
+        <Paper
+          sx={{
+            padding: '10px',
+            backgroundColor: 'rgba(25, 118, 210, 0.9)', // 青色の背景（アニメーションモードを強調）
+            color: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+            border: '1px solid rgba(0, 0, 100, 0.1)',
+            maxWidth: '300px',
+            maxHeight: '300px',
+            overflowY: 'auto',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, borderBottom: '1px solid rgba(255, 255, 255, 0.2)', pb: 0.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+              アニメーション情報
             </Typography>
-            <Typography variant="body2">
-              衛星ID: {orbitPaths[0]?.satelliteId}<br />
-              緯度: {satellitePosition.lat.toFixed(6)}°<br />
-              経度: {satellitePosition.lng.toFixed(6)}°<br />
-              仰角: {satellitePosition.elevation.toFixed(2)}°<br />
-              方位角: {satellitePosition.azimuth.toFixed(2)}°<br />
-              距離: {satellitePosition.range.toFixed(2)} km
-            </Typography>
+            {onClose && (
+              <IconButton
+                size="small"
+                onClick={onClose}
+                sx={{ padding: '2px', color: 'white' }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            )}
           </Box>
-        </>
-      )}
 
-      {/* 位置情報がない場合 */}
-      {!satellitePosition && (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          衛星の位置情報はまだ利用できません。アニメーションを開始してください。
-        </Typography>
-      )}
-    </Paper>
+          {/* 軌道パスがない場合 */}
+          {orbitPaths.length === 0 ? (
+            <Typography variant="body2">
+              アニメーションするための軌道データがありません。衛星を選択してください。
+            </Typography>
+          ) : (
+            <>
+              {/* 時間情報 */}
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  時間情報
+                </Typography>
+                <Typography variant="body2">
+                  現在時刻: {formatDate(animationState.currentTime)} {formatTime(animationState.currentTime)}<br />
+                  開始時刻: {formatDate(animationState.startTime)} {formatTime(animationState.startTime)}<br />
+                  終了時刻: {formatDate(animationState.endTime)} {formatTime(animationState.endTime)}<br />
+                  再生速度: {animationState.playbackSpeed}倍速
+                </Typography>
+              </Box>
+
+              {/* 衛星位置情報（位置情報がある場合） */}
+              {satellitePosition && (
+                <>
+                  <Divider sx={{ my: 1 }} />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                      衛星位置情報
+                    </Typography>
+                    <Typography variant="body2">
+                      衛星ID: {orbitPaths[0]?.satelliteId}<br />
+                      緯度: {satellitePosition.lat.toFixed(6)}°<br />
+                      経度: {satellitePosition.lng.toFixed(6)}°<br />
+                      仰角: {satellitePosition.elevation.toFixed(2)}°<br />
+                      方位角: {satellitePosition.azimuth.toFixed(2)}°<br />
+                      距離: {satellitePosition.range.toFixed(2)} km
+                    </Typography>
+                  </Box>
+                </>
+              )}
+
+              {/* 位置情報がない場合 */}
+              {!satellitePosition && (
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  衛星の位置情報はまだ利用できません。アニメーションを開始してください。
+                </Typography>
+              )}
+            </>
+          )}
+        </Paper>
+      </Collapse>
+    </Box>
   );
 };
 

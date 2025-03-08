@@ -32,6 +32,8 @@ import type { OrbitPath } from '@/types';
 interface AnalysisPanelProps {
   position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' | 'bottom';
   orbitPaths: OrbitPath[];
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 // 分析タブの種類
@@ -47,7 +49,9 @@ enum AnalysisTab {
  */
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   position = 'bottom',
-  orbitPaths
+  orbitPaths,
+  isOpen = true,
+  onClose
 }) => {
   const [currentTab, setCurrentTab] = useState<AnalysisTab>(AnalysisTab.SUMMARY);
   const [showHelp, setShowHelp] = useState(false);
@@ -91,38 +95,57 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     }
   };
 
+  // 軌道パスがない場合の表示内容
+  const renderEmptyContent = () => (
+    <Box sx={{
+      position: 'absolute',
+      ...getPositionStyle(),
+      zIndex: 1000,
+    }}>
+      <Collapse in={isOpen}>
+        <Paper
+          sx={{
+            padding: '10px',
+            backgroundColor: 'rgba(76, 175, 80, 0.9)', // 緑色の背景（分析モードを強調）
+            color: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+            border: '1px solid rgba(0, 100, 0, 0.1)',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <AssessmentIcon sx={{ mr: 1 }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                軌道分析モード
+              </Typography>
+            </Box>
+            {onClose && (
+              <IconButton
+                size="small"
+                onClick={onClose}
+                sx={{ padding: '2px', color: 'white' }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            分析するための軌道データがありません。衛星を選択してください。
+          </Typography>
+          <Box sx={{ mt: 1, p: 1, backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: '4px' }}>
+            <Typography variant="caption">
+              このモードでは、衛星の軌道を詳細に分析し、可視性や軌道特性を評価できます。
+            </Typography>
+          </Box>
+        </Paper>
+      </Collapse>
+    </Box>
+  );
+
   // 軌道パスがない場合
   if (orbitPaths.length === 0) {
-    return (
-      <Paper
-        sx={{
-          position: 'absolute',
-          ...getPositionStyle(),
-          zIndex: 1000,
-          padding: '10px',
-          backgroundColor: 'rgba(76, 175, 80, 0.9)', // 緑色の背景（分析モードを強調）
-          color: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-          border: '1px solid rgba(0, 100, 0, 0.1)',
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <AssessmentIcon sx={{ mr: 1 }} />
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-            軌道分析モード
-          </Typography>
-        </Box>
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          分析するための軌道データがありません。衛星を選択してください。
-        </Typography>
-        <Box sx={{ mt: 1, p: 1, backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: '4px' }}>
-          <Typography variant="caption">
-            このモードでは、衛星の軌道を詳細に分析し、可視性や軌道特性を評価できます。
-          </Typography>
-        </Box>
-      </Paper>
-    );
+    return renderEmptyContent();
   }
 
   // 軌道パスの統計情報を計算
@@ -633,97 +656,113 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
   return (
     <>
-      <Paper
-        sx={{
-          position: 'absolute',
-          ...getPositionStyle(),
-          zIndex: 1000,
-          padding: '10px',
-          backgroundColor: 'rgba(76, 175, 80, 0.9)', // 緑色の背景（分析モードを強調）
-          color: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-          border: '1px solid rgba(0, 100, 0, 0.1)',
-          maxHeight: '60vh',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <AssessmentIcon sx={{ mr: 1 }} />
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
-            軌道分析
-          </Typography>
-          <Tooltip title="分析ヘルプを表示">
-            <IconButton
-              size="small"
-              onClick={() => setShowHelp(!showHelp)}
-              sx={{ color: 'white', opacity: 0.8, '&:hover': { opacity: 1 } }}
+      <Box sx={{
+        position: 'absolute',
+        ...getPositionStyle(),
+        zIndex: 1000,
+      }}>
+        <Collapse in={isOpen}>
+          <Paper
+            sx={{
+              padding: '10px',
+              backgroundColor: 'rgba(76, 175, 80, 0.9)', // 緑色の背景（分析モードを強調）
+              color: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+              border: '1px solid rgba(0, 100, 0, 0.1)',
+              maxHeight: '60vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <AssessmentIcon sx={{ mr: 1 }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
+                軌道分析
+              </Typography>
+              <Box sx={{ display: 'flex' }}>
+                <Tooltip title="分析ヘルプを表示">
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowHelp(!showHelp)}
+                    sx={{ color: 'white', opacity: 0.8, '&:hover': { opacity: 1 } }}
+                  >
+                    <HelpOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                {onClose && (
+                  <IconButton
+                    size="small"
+                    onClick={onClose}
+                    sx={{ color: 'white', opacity: 0.8, '&:hover': { opacity: 1 }, ml: 0.5 }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            </Box>
+
+            <Tabs
+              value={currentTab}
+              onChange={handleTabChange}
+              variant="fullWidth"
+              sx={{
+                minHeight: '36px',
+                '& .MuiTab-root': {
+                  minHeight: '36px',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  '&.Mui-selected': {
+                    color: 'white',
+                  }
+                },
+                '& .MuiTabs-indicator': {
+                  backgroundColor: 'white',
+                }
+              }}
             >
-              <HelpOutlineIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
+              <Tab
+                icon={<BarChartIcon fontSize="small" />}
+                label="サマリー"
+                value={AnalysisTab.SUMMARY}
+                sx={{ fontSize: '0.75rem' }}
+              />
+              <Tab
+                icon={<AssessmentIcon fontSize="small" />}
+                label="詳細"
+                value={AnalysisTab.DETAILS}
+                sx={{ fontSize: '0.75rem' }}
+              />
+              <Tab
+                icon={<TimelineIcon fontSize="small" />}
+                label="可視性"
+                value={AnalysisTab.VISIBILITY}
+                sx={{ fontSize: '0.75rem' }}
+              />
+            </Tabs>
 
-        <Tabs
-          value={currentTab}
-          onChange={handleTabChange}
-          variant="fullWidth"
-          sx={{
-            minHeight: '36px',
-            '& .MuiTab-root': {
-              minHeight: '36px',
-              color: 'rgba(255, 255, 255, 0.7)',
-              '&.Mui-selected': {
-                color: 'white',
+            <Box sx={{
+              overflowY: 'auto',
+              flex: '1 1 auto',
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'rgba(0,0,0,0.1)',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                borderRadius: '4px',
               }
-            },
-            '& .MuiTabs-indicator': {
-              backgroundColor: 'white',
-            }
-          }}
-        >
-          <Tab
-            icon={<BarChartIcon fontSize="small" />}
-            label="サマリー"
-            value={AnalysisTab.SUMMARY}
-            sx={{ fontSize: '0.75rem' }}
-          />
-          <Tab
-            icon={<AssessmentIcon fontSize="small" />}
-            label="詳細"
-            value={AnalysisTab.DETAILS}
-            sx={{ fontSize: '0.75rem' }}
-          />
-          <Tab
-            icon={<TimelineIcon fontSize="small" />}
-            label="可視性"
-            value={AnalysisTab.VISIBILITY}
-            sx={{ fontSize: '0.75rem' }}
-          />
-        </Tabs>
-
-        <Box sx={{
-          overflowY: 'auto',
-          flex: '1 1 auto',
-          '&::-webkit-scrollbar': {
-            width: '8px',
-          },
-          '&::-webkit-scrollbar-track': {
-            backgroundColor: 'rgba(0,0,0,0.1)',
-            borderRadius: '4px',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: 'rgba(255,255,255,0.3)',
-            borderRadius: '4px',
-          }
-        }}>
-          {currentTab === AnalysisTab.SUMMARY && renderSummaryTab()}
-          {currentTab === AnalysisTab.DETAILS && renderDetailsTab()}
-          {currentTab === AnalysisTab.VISIBILITY && renderVisibilityTab()}
-        </Box>
-      </Paper>
+            }}>
+              {currentTab === AnalysisTab.SUMMARY && renderSummaryTab()}
+              {currentTab === AnalysisTab.DETAILS && renderDetailsTab()}
+              {currentTab === AnalysisTab.VISIBILITY && renderVisibilityTab()}
+            </Box>
+          </Paper>
+        </Collapse>
+      </Box>
       {renderHelpPanel()}
     </>
   );

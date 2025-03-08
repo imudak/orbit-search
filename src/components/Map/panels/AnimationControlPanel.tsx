@@ -23,7 +23,8 @@ import FastRewindIcon from '@mui/icons-material/FastRewind';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 // 衛星アニメーションの状態を表す型
 export interface AnimationState {
@@ -47,6 +48,7 @@ interface AnimationControlPanelProps {
   onPlayPause: () => void;
   onSeek: (time: Date) => void;
   onSpeedChange: (speed: number) => void;
+  isCompact?: boolean;
 }
 
 /**
@@ -57,11 +59,12 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
   animationState,
   onPlayPause,
   onSeek,
-  onSpeedChange
+  onSpeedChange,
+  isCompact: initialIsCompact = false
 }) => {
   const { isPlaying, currentTime, startTime, endTime, playbackSpeed } = animationState;
   const [showHelp, setShowHelp] = useState(false);
-  const [showTimeInfo, setShowTimeInfo] = useState(false);
+  const [isCompact, setIsCompact] = useState(initialIsCompact);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -72,14 +75,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
   const totalDuration = endTimeValue - startTimeValue;
   const progress = ((currentTimeValue - startTimeValue) / totalDuration) * 100;
 
-  // 初回表示時にヘルプを表示
-  useEffect(() => {
-    setShowHelp(true);
-    const timer = setTimeout(() => {
-      setShowHelp(false);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
+  // 初回表示時のヘルプ表示は不要なので削除
 
   // ポジションに応じたスタイルを設定
   const getPositionStyle = () => {
@@ -166,13 +162,13 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
               sx={{ ml: 1, backgroundColor: 'rgba(255, 255, 255, 0.3)', color: 'white' }}
             />
           </Typography>
-          <Tooltip title="時間情報を表示">
+          <Tooltip title="コンパクト表示切替">
             <IconButton
               size="small"
-              onClick={() => setShowTimeInfo(!showTimeInfo)}
+              onClick={() => setIsCompact(!isCompact)}
               sx={{ color: 'white', opacity: 0.8, '&:hover': { opacity: 1 } }}
             >
-              <AccessTimeIcon fontSize="small" />
+              {isCompact ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
           <Tooltip title="操作ヘルプを表示">
@@ -186,8 +182,8 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
           </Tooltip>
         </Box>
 
-        {/* 時間情報 */}
-        <Fade in={showTimeInfo}>
+        {/* コンパクト表示でない場合のみ時間情報を表示 */}
+        {!isCompact && (
           <Box sx={{ mb: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', p: 1, borderRadius: '4px' }}>
             <Typography variant="caption" sx={{ display: 'block' }}>
               開始: {formatDate(startTime)} {formatTime(startTime)}
@@ -199,33 +195,38 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
               終了: {formatDate(endTime)} {formatTime(endTime)}
             </Typography>
           </Box>
-        </Fade>
+        )}
 
         {/* コントロール部分 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: '4px' }}>
-          {/* 開始位置にジャンプ */}
-          <Tooltip title="開始位置にジャンプ">
-            <IconButton
-              onClick={() => handleJump(true)}
-              size="small"
-              sx={{ color: 'white' }}
-            >
-              <SkipPreviousIcon />
-            </IconButton>
-          </Tooltip>
+          {/* コンパクト表示でない場合のみ表示 */}
+          {!isCompact && (
+            <>
+              {/* 開始位置にジャンプ */}
+              <Tooltip title="開始位置にジャンプ">
+                <IconButton
+                  onClick={() => handleJump(true)}
+                  size="small"
+                  sx={{ color: 'white' }}
+                >
+                  <SkipPreviousIcon />
+                </IconButton>
+              </Tooltip>
 
-          {/* 30分前にスキップ */}
-          <Tooltip title="30分前にスキップ">
-            <IconButton
-              onClick={() => handleSkip(-30)}
-              size="small"
-              sx={{ color: 'white' }}
-            >
-              <FastRewindIcon />
-            </IconButton>
-          </Tooltip>
+              {/* 30分前にスキップ */}
+              <Tooltip title="30分前にスキップ">
+                <IconButton
+                  onClick={() => handleSkip(-30)}
+                  size="small"
+                  sx={{ color: 'white' }}
+                >
+                  <FastRewindIcon />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
 
-          {/* 再生/一時停止 */}
+          {/* 再生/一時停止 - 常に表示 */}
           <IconButton
             onClick={onPlayPause}
             size="medium"
@@ -238,29 +239,34 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
             {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
           </IconButton>
 
-          {/* 30分後にスキップ */}
-          <Tooltip title="30分後にスキップ">
-            <IconButton
-              onClick={() => handleSkip(30)}
-              size="small"
-              sx={{ color: 'white' }}
-            >
-              <FastForwardIcon />
-            </IconButton>
-          </Tooltip>
+          {/* コンパクト表示でない場合のみ表示 */}
+          {!isCompact && (
+            <>
+              {/* 30分後にスキップ */}
+              <Tooltip title="30分後にスキップ">
+                <IconButton
+                  onClick={() => handleSkip(30)}
+                  size="small"
+                  sx={{ color: 'white' }}
+                >
+                  <FastForwardIcon />
+                </IconButton>
+              </Tooltip>
 
-          {/* 終了位置にジャンプ */}
-          <Tooltip title="終了位置にジャンプ">
-            <IconButton
-              onClick={() => handleJump(false)}
-              size="small"
-              sx={{ color: 'white' }}
-            >
-              <SkipNextIcon />
-            </IconButton>
-          </Tooltip>
+              {/* 終了位置にジャンプ */}
+              <Tooltip title="終了位置にジャンプ">
+                <IconButton
+                  onClick={() => handleJump(false)}
+                  size="small"
+                  sx={{ color: 'white' }}
+                >
+                  <SkipNextIcon />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
 
-          {/* 再生速度選択 */}
+          {/* 再生速度選択 - 常に表示 */}
           <FormControl
             size="small"
             sx={{
@@ -300,8 +306,8 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
           </FormControl>
         </Box>
 
-        {/* 進行状況表示 */}
-        <Box sx={{ position: 'relative', height: '4px', backgroundColor: 'rgba(255, 255, 255, 0.3)', borderRadius: '2px', mb: 1 }}>
+        {/* 進行状況表示 - 常に表示 */}
+        <Box sx={{ position: 'relative', height: '4px', backgroundColor: 'rgba(255, 255, 255, 0.3)', borderRadius: '2px', mb: isCompact ? 0 : 1 }}>
           <Box
             sx={{
               position: 'absolute',
@@ -315,42 +321,46 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
           />
         </Box>
 
-        {/* タイムスライダー */}
-        <Slider
-          value={currentTimeValue}
-          min={startTimeValue}
-          max={endTimeValue}
-          onChange={(_, value) => {
-            onSeek(new Date(value as number));
-          }}
-          valueLabelDisplay="auto"
-          valueLabelFormat={value => formatTime(new Date(value as number))}
-          sx={{
-            mt: 1,
-            color: 'white',
-            '& .MuiSlider-thumb': {
-              backgroundColor: 'white',
-            },
-            '& .MuiSlider-rail': {
-              backgroundColor: 'rgba(255, 255, 255, 0.3)',
-            },
-            '& .MuiSlider-track': {
-              backgroundColor: 'white',
-            },
-            '& .MuiSlider-valueLabel': {
-              backgroundColor: 'rgba(25, 118, 210, 0.9)',
-            }
-          }}
-        />
+        {/* コンパクト表示でない場合のみタイムスライダーを表示 */}
+        {!isCompact && (
+          <>
+            <Slider
+              value={currentTimeValue}
+              min={startTimeValue}
+              max={endTimeValue}
+              onChange={(_, value) => {
+                onSeek(new Date(value as number));
+              }}
+              valueLabelDisplay="auto"
+              valueLabelFormat={value => formatTime(new Date(value as number))}
+              sx={{
+                mt: 1,
+                color: 'white',
+                '& .MuiSlider-thumb': {
+                  backgroundColor: 'white',
+                },
+                '& .MuiSlider-rail': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                },
+                '& .MuiSlider-track': {
+                  backgroundColor: 'white',
+                },
+                '& .MuiSlider-valueLabel': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.9)',
+                }
+              }}
+            />
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-            {formatTime(startTime)}
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-            {formatTime(endTime)}
-          </Typography>
-        </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                {formatTime(startTime)}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                {formatTime(endTime)}
+              </Typography>
+            </Box>
+          </>
+        )}
       </Paper>
 
       {/* ヘルプパネル */}
@@ -387,8 +397,8 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
               <Typography variant="caption">開始/終了位置にジャンプ</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <AccessTimeIcon fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="caption">時間情報の表示/非表示</Typography>
+              <ExpandLessIcon fontSize="small" sx={{ mr: 1 }} />
+              <Typography variant="caption">コンパクト表示の切り替え</Typography>
             </Box>
           </Box>
           <Button

@@ -60,6 +60,8 @@ interface InnerMapProps {
   handleSeek: (time: Date) => void;
   handleSpeedChange: (speed: number) => void;
   handlePositionUpdate: (position: AnimationState['currentPosition']) => void;
+  panelState?: PanelState;
+  onToggleInfo?: () => void;
 }
 
 /**
@@ -183,16 +185,20 @@ const InnerMap: React.FC<InnerMapProps> = ({
           position="bottomleft"
           center={center}
           orbitPaths={orbitPaths}
+          isOpen={panelState.info}
+          onClose={handleToggleInfo}
         />
       </ModeRenderer>
 
       {/* アニメーションモードパネル */}
       <ModeRenderer mode={MapMode.ANIMATION}>
         <AnimationPanel
-          position="bottomleft"
+          position="topright"
           orbitPaths={orbitPaths}
           animationState={animationState}
           satellitePosition={satellitePosition}
+          isOpen={panelState.info}
+          onClose={handleToggleInfo}
         />
       </ModeRenderer>
     </MapView>
@@ -228,6 +234,8 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
         <AnalysisPanel
           position="bottom"
           orbitPaths={props.orbitPaths}
+          isOpen={props.panelState?.info}
+          onClose={props.onToggleInfo}
         />
       </ModeRenderer>
     </>
@@ -472,6 +480,8 @@ const MapWithModeContext: React.FC<MapProps> = ({
           handleSeek={handleSeek}
           handleSpeedChange={handleSpeedChange}
           handlePositionUpdate={handlePositionUpdate}
+          panelState={panelState}
+          onToggleInfo={handleToggleInfo}
         />
 
         {/* モード変更通知 */}
