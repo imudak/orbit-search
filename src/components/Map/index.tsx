@@ -183,7 +183,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
       {/* アニメーションモードパネル */}
       <ModeRenderer mode={MapMode.ANIMATION}>
         <AnimationPanel
-          position="topright"
+          position="bottomleft"
           orbitPaths={orbitPaths}
           animationState={animationState}
           satellitePosition={satellitePosition}
@@ -219,7 +219,7 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
       <ModeRenderer mode={MapMode.ANIMATION}>
         {props.orbitPaths.length > 0 && (
           <AnimationControlPanel
-            position="bottom"
+            position="bottomright"
             animationState={props.animationState}
             onPlayPause={props.handlePlayPause}
             onSeek={props.handleSeek}
