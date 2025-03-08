@@ -55,7 +55,8 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
           ...getPositionStyle(),
           zIndex: 1000,
           padding: '10px',
-          backgroundColor: 'rgba(240, 240, 255, 0.95)',
+          backgroundColor: 'rgba(25, 118, 210, 0.9)', // 青色の背景（アニメーションモードを強調）
+          color: 'white',
           borderRadius: '8px',
           boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
           border: '1px solid rgba(0, 0, 100, 0.1)',
@@ -88,7 +89,8 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
         ...getPositionStyle(),
         zIndex: 1000,
         padding: '10px',
-        backgroundColor: 'rgba(240, 240, 255, 0.95)',
+        backgroundColor: 'rgba(25, 118, 210, 0.9)', // 青色の背景（アニメーションモードを強調）
+        color: 'white',
         borderRadius: '8px',
         boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
         border: '1px solid rgba(0, 0, 100, 0.1)',
@@ -97,7 +99,7 @@ const AnimationPanel: React.FC<AnimationPanelProps> = ({
         overflowY: 'auto',
       }}
     >
-      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.1)', pb: 0.5 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, borderBottom: '1px solid rgba(255, 255, 255, 0.2)', pb: 0.5 }}>
         アニメーション情報
       </Typography>
 

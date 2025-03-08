@@ -1,5 +1,15 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { MapLayer } from '../controls/LayerControls';
+
+// マップレイヤーの型定義
+export interface MapLayer {
+  id: string;
+  name: string;
+  description: string;
+  isVisible: boolean;
+  color: string;
+  icon?: string;
+  order?: number;
+}
 
 // レイヤー管理のためのコンテキスト型
 interface LayerContextType {

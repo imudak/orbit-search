@@ -1,9 +1,12 @@
-import React from 'react';
-import { IconButton, Box, Tooltip } from '@mui/material';
+import React, { useState } from 'react';
+import { IconButton, Box, Tooltip, Divider } from '@mui/material';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import HomeIcon from '@mui/icons-material/Home';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import LayersIcon from '@mui/icons-material/Layers';
+import InfoIcon from '@mui/icons-material/Info';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { Location } from '@/types';
@@ -12,6 +15,9 @@ interface MapControlIconsProps {
   position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
   currentCenter?: Location;
   defaultZoom?: number;
+  onToggleInfo?: () => void;
+  onToggleLayers?: () => void;
+  onToggleLegend?: () => void;
 }
 
 /**
@@ -21,6 +27,9 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
   position = 'topright',
   currentCenter,
   defaultZoom = 5,
+  onToggleInfo,
+  onToggleLayers,
+  onToggleLegend,
 }) => {
   const map = useMap();
 
@@ -80,6 +89,7 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
         },
       }}
     >
+      {/* 地図操作アイコン */}
       <Tooltip title="拡大" placement="left">
         <IconButton size="small" onClick={handleZoomIn}>
           <ZoomInIcon />
@@ -104,6 +114,32 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
           <HomeIcon />
         </IconButton>
       </Tooltip>
+
+      {/* 区切り線 */}
+      <Divider sx={{ my: 0.5 }} />
+
+      {/* 情報表示アイコン */}
+      {onToggleInfo && (
+        <Tooltip title="衛星情報" placement="left">
+          <IconButton size="small" onClick={onToggleInfo}>
+            <InfoIcon />
+          </IconButton>
+        </Tooltip>
+      )}
+      {onToggleLayers && (
+        <Tooltip title="レイヤー設定" placement="left">
+          <IconButton size="small" onClick={onToggleLayers}>
+            <LayersIcon />
+          </IconButton>
+        </Tooltip>
+      )}
+      {onToggleLegend && (
+        <Tooltip title="凡例" placement="left">
+          <IconButton size="small" onClick={onToggleLegend}>
+            <InfoOutlinedIcon />
+          </IconButton>
+        </Tooltip>
+      )}
     </Box>
   );
 };

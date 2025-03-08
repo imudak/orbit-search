@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Paper, Typography, Box, IconButton, Collapse, Divider, Chip,
   Accordion, AccordionSummary, AccordionDetails, useTheme, useMediaQuery
 } from '@mui/material';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { Satellite, Location, OrbitPath } from '@/types';
 import type { AnimationState } from '../panels/AnimationControlPanel';
 
 interface SatelliteInfoPanelProps {
-  position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
+  position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' | 'center';
   satellite?: Satellite;
   currentPosition?: {
     lat: number;
@@ -26,13 +25,15 @@ interface SatelliteInfoPanelProps {
   orbitPaths?: OrbitPath[];
   mapZoom?: number;
   mapCenter?: Location;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 /**
  * 衛星情報を表示するパネルコンポーネント
  */
 const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
-  position = 'bottomleft',
+  position = 'center',
   satellite,
   currentPosition,
   currentTime = new Date(),
@@ -42,13 +43,22 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   orbitPaths = [],
   mapZoom,
   mapCenter,
+  isOpen = false,
+  onClose,
 }) => {
-  const [isOpen, setIsOpen] = useState(true);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // ポジションに応じたスタイルを設定
   const getPositionStyle = () => {
+    if (position === 'center') {
+      return {
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      };
+    }
+
     switch (position) {
       case 'topleft':
         return { top: '10px', left: '10px' };
@@ -95,33 +105,19 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
       zIndex: 1000,
       display: 'flex',
       flexDirection: 'column',
-      alignItems: position.includes('right') ? 'flex-end' : 'flex-start',
-      minWidth: '250px', // 最小幅を設定
-      maxWidth: isMobile ? '90vw' : '350px', // モバイルでは画面幅の90%に制限
+      alignItems: position === 'center' ? 'center' : position.includes('right') ? 'flex-end' : 'flex-start',
+      minWidth: position === 'center' ? '600px' : '250px', // 最小幅を設定
+      maxWidth: position === 'center' ? '80%' : (isMobile ? '90vw' : '350px'), // モバイルでは画面幅の90%に制限
     }}>
-      <Box>
-        <IconButton
-          size="small"
-          onClick={() => setIsOpen(!isOpen)}
-          sx={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            '&:hover': { backgroundColor: 'rgba(255, 255, 255, 1)' },
-          }}
-        >
-          <InfoOutlinedIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
       <Collapse in={isOpen} sx={{ width: '100%' }}>
         <Paper
           sx={{
-            mt: 1,
             padding: '10px',
             backgroundColor: 'rgba(240, 240, 255, 0.95)',
             borderRadius: '8px',
             boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
             border: '1px solid rgba(0, 0, 100, 0.1)',
-            minWidth: '250px',
+            minWidth: position === 'center' ? '600px' : '250px',
             width: '100%',
             maxHeight: isMobile ? '50vh' : '60vh', // 最大高さを調整
             display: 'flex',
@@ -140,13 +136,15 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
             <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
               {satellite ? `衛星情報: ${satellite.name}` : '基本情報'}
             </Typography>
-            <IconButton
-              size="small"
-              onClick={() => setIsOpen(false)}
-              sx={{ padding: '2px' }}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
+            {onClose && (
+              <IconButton
+                size="small"
+                onClick={onClose}
+                sx={{ padding: '2px' }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            )}
           </Box>
 
           {/* スクロール可能なコンテンツエリア */}

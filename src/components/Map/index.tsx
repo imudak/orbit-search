@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
-import { Box, Button, useTheme, useMediaQuery } from '@mui/material';
+import { Box, Button, useTheme, useMediaQuery, Snackbar, Alert, Fade } from '@mui/material';
 import type { Location, OrbitPath, SearchFilters } from '@/types';
 
 // コンポーネントのインポート
@@ -17,11 +17,19 @@ import SatelliteInfoPanel from './panels/SatelliteInfoPanel';
 import AnimationControlPanel from './panels/AnimationControlPanel';
 import { AnimationState } from './panels/AnimationControlPanel';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from './layers/VisibilityCircleLayer';
-import { MapLayer } from './controls/LayerControls';
-import { LayerProvider, useLayerManager, LayerRenderer } from './layers/LayerManager';
+import { LayerProvider, useLayerManager, LayerRenderer, MapLayer } from './layers/LayerManager';
 import MapModeSelectorDefault, { ModeProvider, useMapMode, ModeRenderer, MapMode } from './modes/MapModeSelector';
 const MapModeSelector = MapModeSelectorDefault.MapModeSelector;
 import AnalysisPanel from './modes/AnalysisPanel';
+import NormalPanel from './modes/NormalPanel';
+import AnimationPanel from './modes/AnimationPanel';
+
+// パネル表示状態の型定義
+interface PanelState {
+  info: boolean;
+  legend: boolean;
+  layers: boolean;
+}
 
 // マップコンポーネントのプロパティ
 interface MapProps {
@@ -70,6 +78,28 @@ const InnerMap: React.FC<InnerMapProps> = ({
 }) => {
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
+  // モード管理コンテキストを使用
+  const { currentMode } = useMapMode();
+
+  // パネル表示状態
+  const [panelState, setPanelState] = useState<PanelState>({
+    info: false,
+    legend: false,
+    layers: false
+  });
+
+  // パネル表示切替ハンドラー
+  const handleToggleInfo = useCallback(() => {
+    setPanelState(prev => ({ ...prev, info: !prev.info }));
+  }, []);
+
+  const handleToggleLegend = useCallback(() => {
+    setPanelState(prev => ({ ...prev, legend: !prev.legend }));
+  }, []);
+
+  const handleToggleLayers = useCallback(() => {
+    setPanelState(prev => ({ ...prev, layers: !prev.layers }));
+  }, []);
 
   // レスポンシブ対応のためのメディアクエリ
   const theme = useTheme();
@@ -84,6 +114,9 @@ const InnerMap: React.FC<InnerMapProps> = ({
             position="topright"
             currentCenter={center}
             defaultZoom={defaultZoom}
+            onToggleInfo={handleToggleInfo}
+            onToggleLayers={handleToggleLayers}
+            onToggleLegend={handleToggleLegend}
           />
           <MapModeSelector position="topleft" />
         </>
@@ -108,9 +141,9 @@ const InnerMap: React.FC<InnerMapProps> = ({
         {orbitPaths.length > 0 && <SatelliteOrbitLayer paths={orbitPaths} />}
       </LayerRenderer>
 
-      {/* 衛星アニメーション */}
+      {/* 衛星アニメーション - アニメーションモードでのみ表示 */}
       <LayerRenderer layerId="satellite-animation">
-        {orbitPaths.length > 0 && (
+        {orbitPaths.length > 0 && currentMode === MapMode.ANIMATION && (
           <SatelliteAnimationLayer
             path={orbitPaths[0]}
             animationState={animationState}
@@ -119,11 +152,49 @@ const InnerMap: React.FC<InnerMapProps> = ({
         )}
       </LayerRenderer>
 
-      {/* 凡例を地図上にオーバーレイ */}
+      {/* 凡例パネル */}
       <LegendPanel
+        position="center"
         minElevation={minElevation}
         orbitTypes={orbitTypes}
+        isLegendOpen={panelState.legend}
+        isLayersOpen={panelState.layers}
       />
+
+      {/* 衛星情報パネル */}
+      <SatelliteInfoPanel
+        position="center"
+        satellite={orbitPaths.length > 0 ? { name: orbitPaths[0].satelliteId } as any : undefined}
+        currentPosition={satellitePosition}
+        currentTime={animationState.currentTime}
+        animationState={animationState}
+        satelliteId={orbitPaths[0]?.satelliteId}
+        center={center}
+        orbitPaths={orbitPaths}
+        mapCenter={center}
+        mapZoom={defaultZoom}
+        isOpen={panelState.info}
+        onClose={handleToggleInfo}
+      />
+
+      {/* 通常モードパネル */}
+      <ModeRenderer mode={MapMode.NORMAL}>
+        <NormalPanel
+          position="bottomleft"
+          center={center}
+          orbitPaths={orbitPaths}
+        />
+      </ModeRenderer>
+
+      {/* アニメーションモードパネル */}
+      <ModeRenderer mode={MapMode.ANIMATION}>
+        <AnimationPanel
+          position="bottomleft"
+          orbitPaths={orbitPaths}
+          animationState={animationState}
+          satellitePosition={satellitePosition}
+        />
+      </ModeRenderer>
     </MapView>
   );
 };
@@ -140,11 +211,11 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
     <>
       <InnerMap {...props} handlePositionUpdate={props.handlePositionUpdate} />
 
-      {/* モードに応じたパネルを表示 */}
+      {/* モードに応じたコントロールパネルを表示 */}
       <ModeRenderer mode={MapMode.ANIMATION}>
         {props.orbitPaths.length > 0 && (
           <AnimationControlPanel
-            position="bottomleft"
+            position="bottom"
             animationState={props.animationState}
             onPlayPause={props.handlePlayPause}
             onSeek={props.handleSeek}
@@ -159,17 +230,15 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
           orbitPaths={props.orbitPaths}
         />
       </ModeRenderer>
-
-      {/* 情報パネル表示切り替えボタンは削除 - UnifiedControlPanelに統合 */}
     </>
   );
 };
 
 /**
- * 地図コンポーネント
- * 地図の表示と各種コントロール、レイヤー、情報パネルを統合
+ * 内部地図コンポーネント
+ * ModeProviderの内部で使用される
  */
-const Map: React.FC<MapProps> = ({
+const MapWithModeContext: React.FC<MapProps> = ({
   center = { lat: 35.6812, lng: 139.7671 }, // デフォルト: 東京
   onLocationSelect,
   orbitPaths = [],
@@ -194,6 +263,57 @@ const Map: React.FC<MapProps> = ({
 
   // 衛星位置情報
   const [satellitePosition, setSatellitePosition] = useState<AnimationState['currentPosition']>();
+
+  // モード変更通知
+  const [modeChangeNotification, setModeChangeNotification] = useState<{
+    open: boolean;
+    mode: MapMode;
+  }>({
+    open: false,
+    mode: MapMode.NORMAL
+  });
+
+  // モード管理コンテキストを使用
+  const { currentMode, setMode } = useMapMode();
+
+  // モード変更時の処理
+  useEffect(() => {
+    // アニメーションモードに切り替えたとき、アニメーションが停止していれば自動的に再生
+    if (currentMode === MapMode.ANIMATION && !animationState.isPlaying && orbitPaths.length > 0) {
+      // 少し遅延させて自動再生（UIが表示された後に再生開始）
+      const timer = setTimeout(() => {
+        setAnimationState(prev => ({
+          ...prev,
+          isPlaying: true
+        }));
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    // アニメーションモードから他のモードに切り替えたとき、アニメーションを停止
+    if (currentMode !== MapMode.ANIMATION && animationState.isPlaying) {
+      setAnimationState(prev => ({
+        ...prev,
+        isPlaying: false
+      }));
+    }
+
+    // モード変更通知を表示
+    setModeChangeNotification({
+      open: true,
+      mode: currentMode
+    });
+
+    // 3秒後に通知を非表示
+    const timer = setTimeout(() => {
+      setModeChangeNotification(prev => ({
+        ...prev,
+        open: false
+      }));
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [currentMode, animationState.isPlaying, orbitPaths.length]);
 
   // 再生/停止の切り替え
   const handlePlayPause = useCallback(() => {
@@ -229,19 +349,27 @@ const Map: React.FC<MapProps> = ({
     if (orbitPaths.length > 0 && animationState.isPlaying) {
       const interval = setInterval(() => {
         // 現在時刻を更新（再生速度に応じて）
-        // 再生速度を10倍に増加
         const newTime = new Date(animationState.currentTime.getTime() + 10000 * animationState.playbackSpeed);
 
-        // 状態を更新
-        setAnimationState(prev => ({
-          ...prev,
-          currentTime: newTime
-        }));
+        // 終了時刻を超えた場合は最初に戻る
+        if (newTime > animationState.endTime) {
+          setAnimationState(prev => ({
+            ...prev,
+            currentTime: prev.startTime,
+            isPlaying: false // 最後まで再生したら停止
+          }));
+        } else {
+          // 状態を更新
+          setAnimationState(prev => ({
+            ...prev,
+            currentTime: newTime
+          }));
+        }
       }, 1000);
 
       return () => clearInterval(interval);
     }
-  }, [orbitPaths, animationState.isPlaying, animationState.currentTime, animationState.playbackSpeed]);
+  }, [orbitPaths, animationState.isPlaying, animationState.currentTime, animationState.playbackSpeed, animationState.endTime, animationState.startTime]);
 
   // 衛星データから軌道種類ごとの高度を集計
   const orbitTypes = useMemo(() => {
@@ -291,47 +419,89 @@ const Map: React.FC<MapProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // モード変更通知のメッセージ
+  const getModeChangeMessage = (mode: MapMode) => {
+    switch (mode) {
+      case MapMode.NORMAL:
+        return '通常モードに切り替えました。基本的な衛星情報を表示します。';
+      case MapMode.ANIMATION:
+        return 'アニメーションモードに切り替えました。衛星の軌道をアニメーションで確認できます。';
+      case MapMode.ANALYSIS:
+        return '分析モードに切り替えました。衛星の軌道を詳細に分析できます。';
+      default:
+        return 'モードを切り替えました。';
+    }
+  };
+
+  // モード変更通知の色
+  const getModeChangeColor = (mode: MapMode) => {
+    switch (mode) {
+      case MapMode.NORMAL:
+        return 'info';
+      case MapMode.ANIMATION:
+        return 'primary';
+      case MapMode.ANALYSIS:
+        return 'success';
+      default:
+        return 'info';
+    }
+  };
+
+  return (
+    <LayerProvider>
+      <ResponsiveMapLayout
+        controls={
+          isMobile ? (
+            <MobileControls
+              currentCenter={center}
+              defaultZoom={defaultZoom}
+            />
+          ) : null
+        }
+        // satelliteInfoプロパティは削除（InnerMapコンポーネント内で直接表示）
+      >
+        <InnerMapWithModes
+          center={center}
+          defaultZoom={defaultZoom}
+          minElevation={minElevation}
+          orbitTypes={orbitTypes}
+          orbitPaths={orbitPaths}
+          animationState={animationState}
+          satellitePosition={satellitePosition}
+          handlePlayPause={handlePlayPause}
+          handleSeek={handleSeek}
+          handleSpeedChange={handleSpeedChange}
+          handlePositionUpdate={handlePositionUpdate}
+        />
+
+        {/* モード変更通知 */}
+        <Snackbar
+          open={modeChangeNotification.open}
+          autoHideDuration={3000}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          TransitionComponent={Fade}
+        >
+          <Alert
+            severity={getModeChangeColor(modeChangeNotification.mode) as any}
+            variant="filled"
+            sx={{ width: '100%' }}
+          >
+            {getModeChangeMessage(modeChangeNotification.mode)}
+          </Alert>
+        </Snackbar>
+      </ResponsiveMapLayout>
+    </LayerProvider>
+  );
+};
+
+/**
+ * 地図コンポーネント
+ * 地図の表示と各種コントロール、レイヤー、情報パネルを統合
+ */
+const Map: React.FC<MapProps> = (props) => {
   return (
     <ModeProvider>
-      <LayerProvider>
-        <ResponsiveMapLayout
-          controls={
-            isMobile ? (
-              <MobileControls
-                currentCenter={center}
-                defaultZoom={defaultZoom}
-              />
-            ) : null
-          }
-          satelliteInfo={
-            <SatelliteInfoPanel
-              satellite={selectedSatellite}
-              currentPosition={satellitePosition}
-              currentTime={animationState.currentTime}
-              animationState={animationState}
-              satelliteId={orbitPaths[0]?.satelliteId}
-              center={center}
-              orbitPaths={orbitPaths}
-              mapCenter={center}
-              mapZoom={defaultZoom}
-            />
-          }
-        >
-          <InnerMapWithModes
-            center={center}
-            defaultZoom={defaultZoom}
-            minElevation={minElevation}
-            orbitTypes={orbitTypes}
-            orbitPaths={orbitPaths}
-            animationState={animationState}
-            satellitePosition={satellitePosition}
-            handlePlayPause={handlePlayPause}
-            handleSeek={handleSeek}
-            handleSpeedChange={handleSpeedChange}
-            handlePositionUpdate={handlePositionUpdate}
-          />
-        </ResponsiveMapLayout>
-      </LayerProvider>
+      <MapWithModeContext {...props} />
     </ModeProvider>
   );
 };

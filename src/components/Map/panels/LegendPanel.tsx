@@ -1,72 +1,64 @@
-import React, { useState } from 'react';
-import { Paper, Typography, Box, IconButton, Collapse, Switch, Tooltip } from '@mui/material';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import LayersIcon from '@mui/icons-material/Layers';
+import React from 'react';
+import { Paper, Typography, Box, Collapse, Switch, Tooltip } from '@mui/material';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from '../layers/VisibilityCircleLayer';
 import { useLayerManager } from '../layers/LayerManager';
 
 interface LegendPanelProps {
-  position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
+  position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' | 'center';
   minElevation: number;
   orbitTypes?: OrbitType[];
+  isLegendOpen?: boolean;
+  isLayersOpen?: boolean;
 }
 
 /**
  * 地図の凡例を表示するパネルコンポーネント
  */
 const LegendPanel: React.FC<LegendPanelProps> = ({
-  position = 'bottomright',
+  position = 'center',
   minElevation,
-  orbitTypes = DEFAULT_ORBIT_TYPES
+  orbitTypes = DEFAULT_ORBIT_TYPES,
+  isLegendOpen = false,
+  isLayersOpen = false
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [showLayers, setShowLayers] = useState(false);
   const { layers, toggleLayer } = useLayerManager();
+
+  // ポジションに応じたスタイルを設定
+  const getPositionStyle = () => {
+    if (position === 'center') {
+      return {
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      };
+    }
+
+    return {
+      ...(position.includes('top') ? { top: '10px' } : { bottom: '10px' }),
+      ...(position.includes('right') ? { right: '10px' } : { left: '10px' }),
+    };
+  };
 
   return (
     <Box sx={{
       position: 'absolute',
-      ...(position.includes('top') ? { top: '10px' } : { bottom: '10px' }),
-      ...(position.includes('right') ? { right: '10px' } : { left: '10px' }),
+      ...getPositionStyle(),
       zIndex: 1000,
       display: 'flex',
       flexDirection: 'column',
-      alignItems: position.includes('right') ? 'flex-end' : 'flex-start',
+      alignItems: position === 'center' ? 'center' : position.includes('right') ? 'flex-end' : 'flex-start',
       gap: 1
     }}>
-      <Box sx={{ display: 'flex', gap: 1 }}>
-        <IconButton
-          size="small"
-          onClick={() => setIsOpen(!isOpen)}
-          sx={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            '&:hover': { backgroundColor: 'rgba(255, 255, 255, 1)' },
-          }}
-        >
-          <InfoOutlinedIcon fontSize="small" />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => setShowLayers(!showLayers)}
-          sx={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            '&:hover': { backgroundColor: 'rgba(255, 255, 255, 1)' },
-          }}
-        >
-          <LayersIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
-      <Collapse in={isOpen} sx={{ minWidth: 0 }}>
+      <Collapse in={isLegendOpen} sx={{ minWidth: 0 }}>
         <Paper
           elevation={2}
           sx={{
             padding: '4px 6px',
             backgroundColor: 'rgba(255, 255, 255, 0.85)',
             borderRadius: '4px',
-            width: 'fit-content',
+            width: position === 'center' ? '400px' : 'fit-content',
             minWidth: '120px',
-            maxWidth: '180px',
+            maxWidth: position === 'center' ? '80%' : '180px',
             fontSize: '0.75rem',
             '&:hover': {
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -121,7 +113,7 @@ const LegendPanel: React.FC<LegendPanelProps> = ({
       </Paper>
     </Collapse>
 
-    <Collapse in={showLayers} sx={{ minWidth: 0 }}>
+    <Collapse in={isLayersOpen} sx={{ minWidth: 0 }}>
       <Paper
         elevation={2}
         sx={{
