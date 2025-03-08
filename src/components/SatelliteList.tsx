@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   List,
   ListItem,
@@ -12,8 +12,18 @@ import {
   Box,
   Chip,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material';
-import { Download as DownloadIcon, Timeline as TimelineIcon } from '@mui/icons-material';
+import {
+  Download as DownloadIcon,
+  Timeline as TimelineIcon,
+  Info as InfoIcon,
+  Close as CloseIcon
+} from '@mui/icons-material';
 import type { Satellite, Pass } from '@/types';
 
 // TLEデータから軌道種類を判断する関数
@@ -75,6 +85,8 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
   isLoading = false,
   searchPanel,
 }) => {
+  // 軌道情報ダイアログの状態
+  const [infoDialogOpen, setInfoDialogOpen] = useState<boolean>(false);
   if (isLoading) {
     return (
       <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -159,23 +171,35 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
           {/* ヘッダー部分 */}
           <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" component="h2" sx={{
-                fontWeight: 'bold',
-                color: '#1976d2',
-                display: 'flex',
-                alignItems: 'center',
-                '&::before': {
-                  content: '""',
-                  display: 'inline-block',
-                  width: '4px',
-                  height: '24px',
-                  backgroundColor: '#1976d2',
-                  marginRight: '8px',
-                  borderRadius: '2px'
-                }
-              }}>
-                可視衛星リスト
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="h6" component="h2" sx={{
+                  fontWeight: 'bold',
+                  color: '#1976d2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  '&::before': {
+                    content: '""',
+                    display: 'inline-block',
+                    width: '4px',
+                    height: '24px',
+                    backgroundColor: '#1976d2',
+                    marginRight: '8px',
+                    borderRadius: '2px'
+                  }
+                }}>
+                  可視衛星リスト
+                </Typography>
+                <Tooltip title="軌道種類と最大仰角について">
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => setInfoDialogOpen(true)}
+                    sx={{ ml: 1 }}
+                  >
+                    <InfoIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
               <Chip
                 label={`合計: ${satellites.length}件`}
                 color="primary"
@@ -186,25 +210,6 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
 
             {/* 検索パネル */}
             {searchPanel}
-
-            {/* 衛星情報の説明 */}
-            <Box sx={{
-              mb: 2,
-              p: 1,
-              backgroundColor: 'rgba(25, 118, 210, 0.05)',
-              borderRadius: '4px',
-              border: '1px solid rgba(25, 118, 210, 0.1)'
-            }}>
-              <Typography variant="body2" color="text.secondary" component="div">
-                ※衛星の軌道種類と最大仰角を表示しています
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                <Chip size="small" label="LEO: 低軌道" color="error" />
-                <Chip size="small" label="MEO: 中軌道" color="success" />
-                <Chip size="small" label="GEO: 静止軌道" color="primary" />
-                <Chip size="small" label="HEO: 高楕円軌道" color="warning" />
-              </Box>
-            </Box>
           </Box>
 
           {/* 衛星リスト */}
@@ -319,6 +324,67 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
           </List>
         </Box>
       </Paper>
+
+      {/* 軌道情報ダイアログ */}
+      <Dialog
+        open={infoDialogOpen}
+        onClose={() => setInfoDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          pb: 1
+        }}>
+          衛星の軌道種類と最大仰角について
+          <IconButton
+            size="small"
+            onClick={() => setInfoDialogOpen(false)}
+            aria-label="close"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            衛星リストでは、各衛星の軌道種類と最大仰角を表示しています。
+          </Typography>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+            軌道種類:
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip size="small" label="LEO" color="error" />
+              <Typography variant="body2">低軌道 (Low Earth Orbit) - 高度2,000km以下</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip size="small" label="MEO" color="success" />
+              <Typography variant="body2">中軌道 (Medium Earth Orbit) - 高度2,000km〜35,786km</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip size="small" label="GEO" color="primary" />
+              <Typography variant="body2">静止軌道 (Geostationary Orbit) - 高度約35,786km</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip size="small" label="HEO" color="warning" />
+              <Typography variant="body2">高楕円軌道 (Highly Elliptical Orbit) - 楕円形の軌道</Typography>
+            </Box>
+          </Box>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+            最大仰角:
+          </Typography>
+          <Typography variant="body2">
+            観測地点から見た衛星の最も高い角度（地平線からの角度）です。90°が真上になります。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInfoDialogOpen(false)} color="primary">
+            閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
