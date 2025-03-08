@@ -112,17 +112,30 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   if (!center && !satellite && !animationState) return null;
 
   return (
-    <Box sx={{
-      position: 'absolute',
-      ...getPositionStyle(),
-      zIndex: 1000,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: position === 'center' ? 'center' : position.includes('right') ? 'flex-end' : 'flex-start',
-      minWidth: position === 'center' ? '600px' : '250px', // 最小幅を設定
-      maxWidth: position === 'center' ? '80%' : (isMobile ? '90vw' : '350px'), // モバイルでは画面幅の90%に制限
-    }}>
-      <Collapse in={isOpen} sx={{ width: '100%' }}>
+    <Box
+      sx={{
+        position: 'absolute',
+        ...getPositionStyle(),
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: position === 'center' ? 'center' : position.includes('right') ? 'flex-end' : 'flex-start',
+        minWidth: position === 'center' ? '600px' : '250px', // 最小幅を設定
+        maxWidth: position === 'center' ? '80%' : (isMobile ? '90vw' : '350px'), // モバイルでは画面幅の90%に制限
+      }}
+      onWheel={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      }}
+    >
+      <Collapse
+        in={isOpen}
+        sx={{ width: '100%' }}
+        onWheel={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
         <Paper
           sx={{
             padding: '10px',
@@ -135,6 +148,12 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
             maxHeight: isMobile ? '50vh' : '60vh', // 最大高さを調整
             display: 'flex',
             flexDirection: 'column',
+          }}
+          onWheel={(e) => {
+            // マウスホイールイベントが伝播しないようにする
+            e.stopPropagation();
+            // デフォルトの動作も防止
+            e.preventDefault();
           }}
         >
           {/* ヘッダー部分 */}
@@ -161,23 +180,27 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
           </Box>
 
           {/* スクロール可能なコンテンツエリア */}
-          <Box sx={{
-            overflowY: 'auto',
-            flex: '1 1 auto',
-            pr: 1, // スクロールバー用の余白
-            // スクロールバーのスタイル
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              backgroundColor: 'rgba(0,0,0,0.05)',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(0,0,0,0.2)',
-              borderRadius: '4px',
-            }
-          }}>
+          <Box
+            sx={{
+              overflowY: 'auto',
+              flex: '1 1 auto',
+              pr: 1, // スクロールバー用の余白
+              maxHeight: isMobile ? 'calc(50vh - 60px)' : 'calc(60vh - 60px)', // 最大高さを明示的に設定
+              // スクロールバーのスタイル
+              '&::-webkit-scrollbar': {
+                width: '8px',
+                display: 'block', // スクロールバーを常に表示
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'rgba(0,0,0,0.05)',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(0,0,0,0.2)',
+                borderRadius: '4px',
+              }
+            }}
+          >
             {/* 観測地点情報 */}
             {center && (
               <Accordion defaultExpanded disableGutters elevation={0}
@@ -402,6 +425,10 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                 '&:before': { display: 'none' },
                 mb: 1
               }}
+              onWheel={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
             >
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
@@ -410,12 +437,22 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                   padding: '0 8px',
                   '& .MuiAccordionSummary-content': { margin: '6px 0' }
                 }}
+                onWheel={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
               >
                 <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                   凡例情報
                 </Typography>
               </AccordionSummary>
-              <AccordionDetails sx={{ padding: '0 16px 8px' }}>
+              <AccordionDetails
+                sx={{ padding: '0 16px 8px' }}
+                onWheel={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+              >
                 {/* 軌道の種類と高度 */}
                 <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 0.5 }}>
                   軌道の種類と高度
@@ -474,6 +511,10 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                 '&:before': { display: 'none' },
                 mb: 1
               }}
+              onWheel={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
             >
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
@@ -482,12 +523,22 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                   padding: '0 8px',
                   '& .MuiAccordionSummary-content': { margin: '6px 0' }
                 }}
+                onWheel={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
               >
                 <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                   レイヤー設定
                 </Typography>
               </AccordionSummary>
-              <AccordionDetails sx={{ padding: '0 16px 8px' }}>
+              <AccordionDetails
+                sx={{ padding: '0 16px 8px' }}
+                onWheel={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+              >
                 {layers.map((layer) => (
                   <Box
                     key={layer.id}

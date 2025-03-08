@@ -107,7 +107,6 @@ const InnerMap: React.FC<InnerMapProps> = ({
             onToggleInfo={onToggleInfo}
             onToggleModePanel={onToggleModePanel}
             onToggleLayers={onToggleLayers}
-            onToggleLegend={onToggleLegend}
           />
           <MapModeSelector position="topleft" />
         </>

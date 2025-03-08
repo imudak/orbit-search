@@ -19,7 +19,6 @@ interface MapControlIconsProps {
   onToggleInfo?: () => void;
   onToggleModePanel?: () => void;
   onToggleLayers?: () => void;
-  onToggleLegend?: () => void;
 }
 
 /**
@@ -32,7 +31,6 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
   onToggleInfo,
   onToggleModePanel,
   onToggleLayers,
-  onToggleLegend,
 }) => {
   const map = useMap();
 
@@ -140,13 +138,6 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
         <Tooltip title="レイヤー設定" placement="left">
           <IconButton size="small" onClick={onToggleLayers}>
             <LayersIcon />
-          </IconButton>
-        </Tooltip>
-      )}
-      {onToggleLegend && (
-        <Tooltip title="凡例" placement="left">
-          <IconButton size="small" onClick={onToggleLegend}>
-            <InfoOutlinedIcon />
           </IconButton>
         </Tooltip>
       )}
