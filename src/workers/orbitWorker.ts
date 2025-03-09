@@ -185,7 +185,11 @@ function calculatePasses(
       const distanceFactor = Math.max(0, 1 - greatCircleDistance / 90);
 
       // 仰角と距離の両方を考慮した実効的な角度を計算
-      const effectiveAngle = elevation * distanceFactor;
+      // 仰角がマイナスの場合（地平線の下にある場合）は、
+      // 観測地点から遠くに表示されるように非常に小さな値を設定
+      const effectiveAngle = elevation >= 0
+        ? elevation * distanceFactor
+        : elevation * 0.01; // 仰角がマイナスの場合は非常に小さな係数を掛ける
 
       // 新しいセグメントの開始点として追加
       orbitPoints.push({
