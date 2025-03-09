@@ -161,6 +161,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
         minElevation={minElevation}
         orbitTypes={orbitTypes}
         showLegend={panelState.legend}
+        onToggleLegend={onToggleLegend}
       />
 
       {/* レイヤー設定パネル */}

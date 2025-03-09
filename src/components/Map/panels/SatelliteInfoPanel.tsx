@@ -32,6 +32,7 @@ interface SatelliteInfoPanelProps {
   minElevation?: number;
   orbitTypes?: OrbitType[];
   showLegend?: boolean;
+  onToggleLegend?: () => void;
 }
 
 /**
@@ -54,6 +55,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   minElevation = 10,
   orbitTypes = DEFAULT_ORBIT_TYPES,
   showLegend = false,
+  onToggleLegend = () => {},
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -425,7 +427,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                 e.stopPropagation();
                 e.preventDefault();
               }}
-              onChange={onClose} // onCloseはレイヤー設定の場合、実際にはonToggleLegendとして機能
+              onChange={onToggleLegend} // 凡例の表示/非表示を切り替える
             >
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
