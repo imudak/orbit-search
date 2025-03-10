@@ -21,10 +21,7 @@ ctx.addEventListener('message', (event: MessageEvent<CalculatePassesMessage>) =>
   if (event.data.type === 'calculatePasses') {
     try {
       const { tle, location, filters, requestId } = event.data;
-      // ログ出力を抑制
-      if (process.env.NODE_ENV === 'development' && requestId % 10 === 0) {
-        console.log(`Processing TLE (requestId: ${requestId})`);
-      }
+      // ログ出力を完全に抑制
 
       // TLEデータの検証
       if (!validateTLE(tle)) {
@@ -33,10 +30,6 @@ ctx.addEventListener('message', (event: MessageEvent<CalculatePassesMessage>) =>
       }
 
       const passes = calculatePasses(tle, location, filters);
-      // ログ出力を抑制
-      if (process.env.NODE_ENV === 'development' && requestId % 10 === 0) {
-        console.log(`Calculated passes (requestId: ${requestId}): ${passes.length} passes`);
-      }
 
       // リクエストIDを含めてレスポンスを返す
       ctx.postMessage({ type: 'passes', requestId, data: passes });
@@ -66,7 +59,10 @@ function validateTLE(tle: TLEData): boolean {
     const positionAndVelocity = satellite.propagate(satrec, testDate);
     return !!(positionAndVelocity.position && typeof positionAndVelocity.position !== 'boolean');
   } catch (error) {
-    console.warn('TLE validation failed:', error);
+    // TLE検証エラーログを抑制
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
+      console.warn('TLE validation failed');
+    }
     return false;
   }
 }
@@ -79,28 +75,13 @@ function calculatePasses(
   location: Location,
   filters: SearchFilters
 ): Pass[] {
-  // ログ出力を抑制（開発環境でのみ出力）
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Orbit calculation settings:', {
-      location: {
-        lat: location.lat.toFixed(4),
-        lng: location.lng.toFixed(4)
-      }
-    });
-  }
+  // ログ出力を完全に抑制
 
   // 入力された日時はローカルタイム（ブラウザのタイムゾーン）
   // 衛星位置計算はUTC時間を使用するため、タイムゾーンを考慮する必要がある
   // 日時をそのまま使用し、satellite.jsの内部でUTC変換が適切に行われるようにする
   const startTime = (filters.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000)).getTime();
   const endTime = (filters.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).getTime();
-
-  // デバッグ用ログを抑制（開発環境でのみ出力）
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Time conversion check:', {
-      timeZoneOffset: new Date().getTimezoneOffset() // タイムゾーンオフセット（分）
-    });
-  }
 
   const minElevation = filters.minElevation || 0;
 
@@ -251,13 +232,7 @@ function calculatePasses(
         // 日付変更線をまたぐ場合の閾値を調整（170度）
         if (Math.abs(diff) > 170) {
           isDiscontinuous = true;
-          if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
-            console.log('Discontinuous point detected:', {
-              prevLon,
-              currentLon: displayLon,
-              diff
-            });
-          }
+          // デバッグログを完全に抑制
         }
       }
 
@@ -285,24 +260,7 @@ function calculatePasses(
         }
       }
 
-      // デバッグログ（開発環境でのみ出力）
-      if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
-        console.log('Elevation calculation:', {
-          elevation: elevation.toFixed(2),
-          effectiveAngle: effectiveAngle.toFixed(2),
-          greatCircleDistance: greatCircleDistance.toFixed(2)
-        });
-      }
-
-      // デバッグ用ログを抑制
-      // if (process.env.NODE_ENV === 'development' && lonDiff > 170 && Math.random() < 0.001) {
-      //   console.log('Large longitude difference detected:', {
-      //     originalLon: satelliteLon,
-      //     displayLon: displayLon,
-      //     observerLon: observerLongitude,
-      //     diff: lonDiff
-      //   });
-      // }
+      // デバッグログを完全に抑制
 
       // 新しいセグメントの開始点として追加
       // 重要: 表示用の経度(displayLon)を使用
@@ -313,7 +271,7 @@ function calculatePasses(
         range: rangeSat,
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
         lat: satelliteLat,
-        lng: satelliteLon, // 実際の経度を使用
+        lng: displayLon, // 表示用の経度を使用（重要な修正）
         relLng: lonDiff, // 相対経度も保存（必要に応じて使用可能）
         isNewSegment: isDiscontinuous, // 不連続点かどうかを記録
         effectiveAngle // 観測地点からの実効的な角度
@@ -323,7 +281,10 @@ function calculatePasses(
       maxElevation = Math.max(maxElevation, elevation);
 
     } catch (error) {
-      console.warn('Error during orbit calculation:', error);
+      // エラーログを抑制（重要なエラーのみ出力）
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
+        console.warn('Error during orbit calculation');
+      }
     }
 
     currentTime += stepSize;

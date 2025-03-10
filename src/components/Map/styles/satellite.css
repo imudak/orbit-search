@@ -1,0 +1,7 @@
+/* 衛星アイコンのスタイル */
+.satellite-icon {
+  /* 常に表示されるようにする */
+  opacity: 1 !important;
+  /* 他の要素より前面に表示 */
+  z-index: 1000 !important;
+}
