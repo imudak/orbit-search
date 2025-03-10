@@ -5,13 +5,15 @@ import type { OrbitPath } from '@/types';
 
 interface SatelliteOrbitLayerProps {
   paths: OrbitPath[];
+  observerLocation?: { lat: number; lng: number }; // 観測地点の座標（オプション）
 }
 
 /**
  * 衛星軌道を表示するレイヤーコンポーネント
  */
 const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
-  paths
+  paths,
+  observerLocation
 }) => {
   const map = useMap();
 
@@ -44,8 +46,8 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // すべての軌道点を表示する
 
           // 相対経度を絶対経度に変換（orbitWorker.tsで相対経度を使用しているため）
-          // 観測地点の経度を取得
-          const observerLongitude = mapCenter.lng;
+          // 観測地点の経度を取得（propsから渡された値を優先、なければ地図の中心点を使用）
+          const observerLongitude = observerLocation ? observerLocation.lng : mapCenter.lng;
 
           // 相対経度に観測地点の経度を加算して絶対経度に変換
           let absoluteLng1 = point1.lng + observerLongitude;
@@ -70,7 +72,8 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
               relLng: point1.lng,
               obsLng: observerLongitude,
               absLng: absoluteLng1,
-              lat: point1.lat
+              lat: point1.lat,
+              source: observerLocation ? 'fixed observer' : 'map center'
             });
           }
 

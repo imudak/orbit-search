@@ -135,7 +135,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
       </LayerRenderer>
 
       <LayerRenderer layerId="orbit-paths">
-        {orbitPaths.length > 0 && <SatelliteOrbitLayer paths={orbitPaths} />}
+        {orbitPaths.length > 0 && <SatelliteOrbitLayer paths={orbitPaths} observerLocation={center} />}
       </LayerRenderer>
 
       {/* 衛星アニメーション - アニメーションモードでのみ表示 */}

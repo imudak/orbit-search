@@ -66,30 +66,62 @@ const segmentPoints = [
   2. このデータがLeafletマップにそのまま渡される
   3. Leafletは標準的な地理座標系（絶対座標）を使用するため、相対座標として計算された経度がそのまま使われると表示位置が不正確になる
 
-## 修正案
+## 修正試行
 
-1. **orbitWorker.tsの修正（推奨）**:
+### 試行1: orbitWorker.tsの修正
+最初に、orbitWorker.tsで相対経度ではなく実際の経度を使用するように修正しました。
 ```javascript
-// 問題箇所:
+// 修正前:
 let displayLon = lonDiff; // 経度差を使用
 
-// 修正案:
+// 修正後:
 let displayLon = satelliteLon; // 実際の経度をそのまま使用
 ```
 
-2. **SatelliteOrbitLayer.tsxで修正する場合**:
+結果: 軌道がロサンゼルス付近に表示されるようになり、まだ正しい位置に表示されませんでした。
+
+### 試行2: SatelliteOrbitLayer.tsxでの座標変換
+次に、元のorbitWorker.tsの設計（相対経度を使用）を維持し、SatelliteOrbitLayer.tsxで座標変換を行うアプローチを試しました。
+
 ```javascript
-// 必要な変換を行ってから地図に表示
-const observerLongitude = map.getCenter().lng;
+// 相対経度を絶対経度に変換
+const observerLongitude = mapCenter.lng;
+let absoluteLng1 = point1.lng + observerLongitude;
+let absoluteLng2 = point2.lng + observerLongitude;
+
+// 経度を-180〜180度の範囲に正規化
+if (absoluteLng1 > 180) absoluteLng1 -= 360;
+else if (absoluteLng1 < -180) absoluteLng1 += 360;
+
+// セグメントのポイントを作成（変換後の経度を使用）
 const segmentPoints = [
-  new LatLng(point1.lat, observerLongitude + point1.lng),
-  new LatLng(point2.lat, observerLongitude + point2.lng)
+  new LatLng(point1.lat, absoluteLng1),
+  new LatLng(point2.lat, absoluteLng2)
 ];
 ```
 
-## 推奨ステップ
-1. orbitWorker.tsの修正を実装（表示用の経度として衛星の実際の経度を使用）
-2. 修正後にテスト実行し、軌道表示が観測地点を中心に正しく表示されることを確認
-3. 日付変更線をまたぐ場合の処理も確認（lngDiff > 170の条件判定）
+結果: 地図の拡大率によって軌道表示位置がずれる問題が発生しました。これは、地図の中心点（mapCenter）が拡大率によって変わるためです。
 
-以上の修正により、衛星軌道は観測地点に対して正しい位置に表示されるようになると考えられます。
+### 試行3: 固定の観測地点座標を使用
+地図の拡大率に依存しないよう、SatelliteOrbitLayer.tsxを修正して固定の観測地点座標を使用するようにしました。
+
+```javascript
+// SatelliteOrbitLayerにobserverLocationプロパティを追加
+interface SatelliteOrbitLayerProps {
+  paths: OrbitPath[];
+  observerLocation?: { lat: number; lng: number }; // 観測地点の座標
+}
+
+// 観測地点の経度を取得（propsから渡された値を優先）
+const observerLongitude = observerLocation ? observerLocation.lng : mapCenter.lng;
+```
+
+結果: 拡大縮小によるブレはなくなりましたが、軌道位置はまだ正しく表示されていません。
+
+## 今後の調査方針
+1. 座標変換の数学的検証: 相対座標から絶対座標への変換ロジックを再検討
+2. 日付変更線をまたぐケースの特別処理の見直し
+3. 軌道計算の根本的な見直し: satellite.jsライブラリの使用方法が正しいか確認
+4. 地図投影法とLeafletの座標系の整合性確認
+
+引き続き調査と修正を進めます。
