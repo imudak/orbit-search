@@ -140,58 +140,101 @@ function calculatePasses(
         continue;
       }
 
+      // 観測地点からの衛星の見かけの位置を計算
+      const positionEci = positionAndVelocity.position;
+
       // グリニッジ恒星時を計算
       const gmst = satellite.gstime(date);
 
-      // 観測地点からの衛星の見かけの位置を計算
-      const positionEci = positionAndVelocity.position;
-      const lookAngles = satellite.ecfToLookAngles(observerGd, positionEci);
-
-      // 地平座標系での位置を取得
-      const elevation = satellite.degreesLat(lookAngles.elevation);
-      const azimuth = (lookAngles.azimuth * 180 / Math.PI + 360) % 360;
-      const rangeSat = lookAngles.rangeSat;
-
       // 衛星の地理座標を計算
-      // 注意: eciToGeodeticは地心直交座標系（ECI）から地理座標系への変換を行う
-      // gmstは地球の自転を考慮するために使用される
       const satelliteGd = satellite.eciToGeodetic(positionEci, gmst);
       const satelliteLat = satellite.degreesLat(satelliteGd.latitude);
       let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
+      const satelliteAlt = satelliteGd.height; // 衛星の高度（km）
 
       // 経度を-180〜180度の範囲に正規化
-      // 複数回の正規化が必要な場合に対応
       while (satelliteLon > 180) satelliteLon -= 360;
       while (satelliteLon < -180) satelliteLon += 360;
 
       // 観測地点の経度
       const observerLongitude = location.lng;
 
-      // 経度調整の根本的な修正（第5版）
-      // 問題: Leafletの地図では相対座標系を使用する必要がある
-
-      // 新しい解決策: 観測地点を中心（0度）とした相対座標系に変換
-      // 1. 経度差を計算
+      // 経度差を計算
       let lonDiff = satelliteLon - observerLongitude;
 
-      // 2. 経度差を-180度から180度の範囲に正規化
-      // 複数回の正規化が必要な場合に対応
+      // 経度差を-180度から180度の範囲に正規化
       while (lonDiff > 180) lonDiff -= 360;
       while (lonDiff < -180) lonDiff += 360;
 
-      // 3. 表示用の経度を計算
-      // 相対経度と実際の経度の両方を保存し、表示時に選択できるようにする
+      // 表示用の経度
       let displayLon = satelliteLon;
 
-      // 調査用ログを抑制
-      // console.log('Orbit calculation debug:', {
-      //   satelliteLon: satelliteLon.toFixed(2),
-      //   observerLon: observerLongitude.toFixed(2),
-      //   lonDiff: lonDiff.toFixed(2),
-      //   displayLon: displayLon.toFixed(2),
-      //   elevation: elevation.toFixed(2),
-      //   date: date.toISOString()
-      // });
+      // 観測地点と衛星の3次元座標を計算（地球中心を原点とする）
+      // 地球の半径（km）
+      const EARTH_RADIUS = 6371;
+
+      // 観測地点の3次元座標（地心直交座標系）
+      const observerLat = location.lat * DEG_TO_RAD;
+      const observerLon = location.lng * DEG_TO_RAD;
+      const observerX = EARTH_RADIUS * Math.cos(observerLat) * Math.cos(observerLon);
+      const observerY = EARTH_RADIUS * Math.cos(observerLat) * Math.sin(observerLon);
+      const observerZ = EARTH_RADIUS * Math.sin(observerLat);
+
+      // 衛星の3次元座標（地心直交座標系）
+      const satLat = satelliteLat * DEG_TO_RAD;
+      const satLon = satelliteLon * DEG_TO_RAD;
+      const satRadius = EARTH_RADIUS + satelliteAlt;
+      const satX = satRadius * Math.cos(satLat) * Math.cos(satLon);
+      const satY = satRadius * Math.cos(satLat) * Math.sin(satLon);
+      const satZ = satRadius * Math.sin(satLat);
+
+      // 観測地点から衛星へのベクトル
+      const vecX = satX - observerX;
+      const vecY = satY - observerY;
+      const vecZ = satZ - observerZ;
+
+      // 観測地点の地平面（接平面）の法線ベクトル（=観測地点の位置ベクトル）
+      const normX = observerX;
+      const normY = observerY;
+      const normZ = observerZ;
+      const normLength = Math.sqrt(normX * normX + normY * normY + normZ * normZ);
+
+      // 観測地点から衛星へのベクトルの長さ
+      const vecLength = Math.sqrt(vecX * vecX + vecY * vecY + vecZ * vecZ);
+
+      // 内積から仰角を計算
+      const dotProduct = vecX * normX + vecY * normY + vecZ * normZ;
+      const cosAngle = dotProduct / (vecLength * normLength);
+
+      // 仰角（度）= 90度 - ベクトル間の角度
+      // 地平線上なら0度、真上なら90度、地平線下ならマイナス
+      const elevation = 90 - Math.acos(cosAngle) * RAD_TO_DEG;
+
+      // 方位角の計算（北を0度として時計回り）
+      // 観測地点の東西南北方向のベクトルを計算
+      const eastX = -Math.sin(observerLon);
+      const eastY = Math.cos(observerLon);
+      const eastZ = 0;
+
+      const northX = -Math.sin(observerLat) * Math.cos(observerLon);
+      const northY = -Math.sin(observerLat) * Math.sin(observerLon);
+      const northZ = Math.cos(observerLat);
+
+      // 衛星方向ベクトルの東西南北成分
+      const eastComponent = vecX * eastX + vecY * eastY + vecZ * eastZ;
+      const northComponent = vecX * northX + vecY * northY + vecZ * northZ;
+
+      // 方位角を計算（ラジアン）
+      const azimuthRad = Math.atan2(eastComponent, northComponent);
+
+      // 方位角を度に変換（0-360度）
+      const azimuth = (azimuthRad * RAD_TO_DEG + 360) % 360;
+
+      // 距離を計算（km）
+      const rangeSat = vecLength;
+
+      // 大圏距離を計算（度）
+      const greatCircleDistance = Math.acos(cosAngle) * RAD_TO_DEG;
 
       // 前のポイントとの経度の連続性を確認
       let isDiscontinuous = false;
@@ -200,17 +243,14 @@ function calculatePasses(
         const prevLon = prevPoint.lng!;
 
         // 経度の差を計算（-180〜180度の範囲で最短経路）
-        // 重要: 表示用の経度(displayLon)を使用
         let diff = displayLon - prevLon;
         // 複数回の正規化が必要な場合に対応
         while (diff > 180) diff -= 360;
         while (diff < -180) diff += 360;
 
-        // 相対座標を使用する場合は、不連続点の判定を緩和する
-        // 日付変更線をまたぐ場合の閾値を調整（150度→170度）
+        // 日付変更線をまたぐ場合の閾値を調整（170度）
         if (Math.abs(diff) > 170) {
           isDiscontinuous = true;
-          // デバッグログを抑制
           if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
             console.log('Discontinuous point detected:', {
               prevLon,
@@ -221,26 +261,38 @@ function calculatePasses(
         }
       }
 
-      // 観測地点から衛星までの大圏距離を計算（ラジアン）
-      const observerLat = satellite.degreesToRadians(location.lat);
-      const observerLng = satellite.degreesToRadians(location.lng);
-      const satLat = satellite.degreesToRadians(satelliteLat);
-      const satLng = satellite.degreesToRadians(satelliteLon);
+      // 仰角の計算を修正
+      // 地球の曲率を考慮して、大圏距離に基づいて仰角を調整
+      let effectiveAngle = elevation;
 
-      // Haversine formulaによる大圏距離の計算
-      const dlat = satLat - observerLat;
-      const dlng = satLng - observerLng;
-      const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
-                Math.cos(observerLat) * Math.cos(satLat) *
-                Math.sin(dlng/2) * Math.sin(dlng/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      // 地球の曲率を考慮した仰角の補正
+      // 大圏距離が大きくなるほど、仰角は低くなるはず
+      if (greatCircleDistance > 0) {
+        // 地平線の角度を計算（観測地点の高度を0mと仮定）
+        // 地平線は大圏距離約90度で仰角0度
+        const horizonDistance = 90; // 地平線までの大圏距離（度）
 
-      // 大圏距離を度に変換（0-180度の範囲）
-      const greatCircleDistance = c * RAD_TO_DEG;
+        // 大圏距離が地平線距離に近づくにつれて仰角を下げる
+        // 大圏距離が90度を超える場合は負の値になる
+        if (greatCircleDistance >= horizonDistance) {
+          // 地平線より遠い場合は負の値
+          effectiveAngle = -Math.abs(elevation);
+        } else if (greatCircleDistance > 70) {
+          // 地平線に近づくにつれて仰角を下げる（70度〜90度の範囲で調整）
+          // 70度で元の仰角、90度で0度になるように線形補間
+          const factor = (greatCircleDistance - 70) / (horizonDistance - 70);
+          effectiveAngle = elevation * (1 - factor);
+        }
+      }
 
-      // 実効的な角度の概念を完全に削除
-      // 仰角をそのまま使用する
-      const effectiveAngle = elevation; // 仰角をそのまま使用
+      // デバッグログ（開発環境でのみ出力）
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
+        console.log('Elevation calculation:', {
+          elevation: elevation.toFixed(2),
+          effectiveAngle: effectiveAngle.toFixed(2),
+          greatCircleDistance: greatCircleDistance.toFixed(2)
+        });
+      }
 
       // デバッグ用ログを抑制
       // if (process.env.NODE_ENV === 'development' && lonDiff > 170 && Math.random() < 0.001) {
