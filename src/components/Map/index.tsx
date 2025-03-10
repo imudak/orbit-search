@@ -15,6 +15,7 @@ import SatelliteOrbitLayer from './layers/SatelliteOrbitLayer';
 import SatelliteAnimationLayer from './layers/SatelliteAnimationLayer';
 import SatelliteInfoPanel from './panels/SatelliteInfoPanel';
 import AnimationControlPanel from './panels/AnimationControlPanel';
+import OrbitControlPanel from './panels/OrbitControlPanel';
 import { AnimationState } from './panels/AnimationControlPanel';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from './layers/VisibilityCircleLayer';
 import { LayerProvider, useLayerManager, LayerRenderer } from './layers/LayerManager';
@@ -75,11 +76,17 @@ const Map: React.FC<MapProps> = ({
     endTime: filters?.endDate || new Date(Date.now() + 24 * 60 * 60 * 1000), // デフォルトは24時間後
     playbackSpeed: 10, // デフォルトは10倍速
   });
+// 衛星位置情報
+const [satellitePosition, setSatellitePosition] = useState<AnimationState['currentPosition']>();
 
-  // 衛星位置情報
-  const [satellitePosition, setSatellitePosition] = useState<AnimationState['currentPosition']>();
+// 軌道表示設定
+const [orbitVisibility, setOrbitVisibility] = useState({
+  showOrbits: true,
+  showFootprints: true,
+});
 
-  // レイヤー管理コンテキストを使用
+// レイヤー管理コンテキストを使用
+const { layers, toggleLayer } = useLayerManager();
   const { layers, toggleLayer } = useLayerManager();
 
   // 再生/停止の切り替え
@@ -221,15 +228,14 @@ const Map: React.FC<MapProps> = ({
 
   // 軌道タブコンポーネント
   const orbitTabContent = (
-    <Box sx={{ p: 2 }}>
-      <AnimationControlPanel
-        animationState={animationState}
-        onPlayPause={handlePlayPause}
-        onSeek={handleSeek}
-        onSpeedChange={handleSpeedChange}
-        position="bottomleft" // 左下に配置
-      />
-    </Box>
+    <OrbitControlPanel
+      animationState={animationState}
+      onPlayPause={handlePlayPause}
+      onSeek={handleSeek}
+      onSpeedChange={handleSpeedChange}
+      orbitVisibility={orbitVisibility}
+      onOrbitVisibilityChange={setOrbitVisibility}
+    />
   );
 
   // 分析タブコンポーネント
@@ -292,7 +298,7 @@ const Map: React.FC<MapProps> = ({
           </LayerRenderer>
 
           <LayerRenderer layerId="visibility-circles">
-            {center && (
+            {center && orbitVisibility.showFootprints && (
               <VisibilityCircleLayer
                 center={center}
                 minElevation={minElevation}
@@ -302,7 +308,9 @@ const Map: React.FC<MapProps> = ({
           </LayerRenderer>
 
           <LayerRenderer layerId="orbit-paths">
-            {orbitPaths.length > 0 && <SatelliteOrbitLayer paths={orbitPaths} observerLocation={center} />}
+            {orbitPaths.length > 0 && orbitVisibility.showOrbits && (
+              <SatelliteOrbitLayer paths={orbitPaths} observerLocation={center} />
+            )}
           </LayerRenderer>
 
           {/* 衛星アニメーション */}

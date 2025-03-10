@@ -1,30 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  FormControl,
-  FormControlLabel,
-  Checkbox,
-  Slider,
   Typography,
   Box,
   TextField,
   Tooltip,
   IconButton,
   Button,
+  Slider,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
   Alert,
+  Paper,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import SearchIcon from '@mui/icons-material/Search';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import EditLocationIcon from '@mui/icons-material/EditLocation';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import type { SearchFilters } from '@/types';
+import type { SearchFilters, Location } from '@/types';
 
 interface SearchPanelProps {
   filters: SearchFilters;
@@ -48,6 +43,10 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+/**
+ * 改良版検索パネル
+ * 人間工学に基づいた設計で使いやすさを向上
+ */
 const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) => {
   // 内部状態
   const [sliderValue, setSliderValue] = useState<number>(filters.minElevation);
@@ -58,7 +57,6 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [dateError, setDateError] = useState<boolean>(false);
-  const [expanded, setExpanded] = useState<boolean>(true);
 
   // ローカルタイムゾーンを取得
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -190,151 +188,171 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
     setSliderValue(value as number);
   };
 
+  // 地図から観測地点を選択するハンドラー
+  const handleLocationEdit = () => {
+    // 実際の実装では、地図上での選択モードに切り替える処理を追加
+    console.log('地図から観測地点を選択します');
+  };
+
   return (
-    <Accordion
-      defaultExpanded={true}
-      expanded={expanded}
-      onChange={(_, isExpanded) => setExpanded(isExpanded)}
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2,
+        backgroundColor: 'white',
+        borderRadius: '8px',
+      }}
     >
-      <AccordionSummary
-        expandIcon={<ExpandMoreIcon />}
-        aria-controls="search-panel-content"
-        id="search-panel-header"
-        sx={{
-          minHeight: '40px',
-          py: 0,
-          backgroundColor: 'rgba(25, 118, 210, 0.08)',
-          '&:hover': {
-            backgroundColor: 'rgba(25, 118, 210, 0.12)',
-          },
-          borderRadius: '4px',
-          border: '1px solid rgba(25, 118, 210, 0.2)',
-          my: 1
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <SearchIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
-          <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'primary.main' }}>
-            検索条件を設定
-          </Typography>
-          <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
-            (クリックして{expanded ? '閉じる' : '開く'})
-          </Typography>
-        </Box>
-      </AccordionSummary>
-      <AccordionDetails sx={{ py: 1, px: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        衛星検索
+      </Typography>
+
+      {/* 観測地点設定 */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          観測地点
+        </Typography>
         <Box sx={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
+          alignItems: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.03)',
+          p: 1,
+          borderRadius: '4px',
+          border: '1px solid rgba(0, 0, 0, 0.1)'
         }}>
-          {/* 期間選択 - 日時表示エリアを広げて幅を統一 */}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Box sx={{ width: '220px' }}>
-              <DateTimePicker
-                label={`開始 (${timeZoneAbbr})`}
-                value={localStartDate}
-                onChange={handleStartDateChange}
-                renderInput={(props) => (
-                  <TextField
-                    {...props}
-                    fullWidth
-                    size="small"
-                    error={dateError}
-                    helperText={dateError ? '開始日時は終了日時より前に' : ''}
-                    sx={{
-                      backgroundColor: 'white',
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '4px'
-                      }
-                    }}
-                  />
-                )}
-                inputFormat="yyyy/MM/dd HH:mm"
-                ampm={false}
-              />
-            </Box>
-            <Box sx={{ width: '220px' }}>
-              <DateTimePicker
-                label={`終了 (${timeZoneAbbr})`}
-                value={localEndDate}
-                onChange={handleEndDateChange}
-                renderInput={(props) => (
-                  <TextField
-                    {...props}
-                    fullWidth
-                    size="small"
-                    error={dateError}
-                    helperText={dateError ? '終了日時は開始日時より後に' : ''}
-                    sx={{
-                      backgroundColor: 'white',
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '4px'
-                      }
-                    }}
-                  />
-                )}
-                inputFormat="yyyy/MM/dd HH:mm"
-                ampm={false}
-              />
-            </Box>
-            {/* 検索ボタンを同じ行に配置 */}
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              startIcon={<SearchIcon />}
-              onClick={handleSearch}
-              disabled={isSearchButtonDisabled()}
-              sx={{ height: '40px', alignSelf: 'flex-start', mt: '4px' }}
-            >
-              {isSearching ? '検索中...' : '検索'}
-            </Button>
+          <Typography variant="body2" sx={{ flexGrow: 1 }}>
+            緯度: {filters.location.lat.toFixed(6)}°, 経度: {filters.location.lng.toFixed(6)}°
+          </Typography>
+          <Button
+            startIcon={<EditLocationIcon />}
+            onClick={handleLocationEdit}
+            size="small"
+            variant="outlined"
+          >
+            地図から選択
+          </Button>
+        </Box>
+      </Box>
+
+      {/* 日時設定 */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          観測期間
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: 1, minWidth: '200px' }}>
+            <DateTimePicker
+              label={`開始 (${timeZoneAbbr})`}
+              value={localStartDate}
+              onChange={handleStartDateChange}
+              renderInput={(props) => (
+                <TextField
+                  {...props}
+                  fullWidth
+                  size="small"
+                  error={dateError}
+                  helperText={dateError ? '開始日時は終了日時より前に' : ''}
+                  sx={{
+                    backgroundColor: 'white',
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px'
+                    }
+                  }}
+                />
+              )}
+              inputFormat="yyyy/MM/dd HH:mm"
+              ampm={false}
+            />
           </Box>
-
-          {/* 警告メッセージ */}
-          {dateError && (
-            <Alert severity="error" sx={{ py: 0.5, px: 1 }}>
-              開始日時は終了日時より前に設定してください。
-            </Alert>
-          )}
-          {showWarning && (
-            <Alert severity="warning" sx={{ py: 0.5, px: 1 }}>
-              選択された期間は{calculateDateDifference(localStartDate, localEndDate)}日間です。長期間の検索は計算に時間がかかる場合があります。
-            </Alert>
-          )}
-
-          {/* 最低仰角設定 - よりコンパクトに */}
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="body2" gutterBottom>
-              最低仰角: {sliderValue}°
-              <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
-                <IconButton size="small" sx={{ ml: 0.5, p: 0.5 }}>
-                  <HelpOutlineIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Typography>
-            <Slider
-              value={sliderValue}
-              onChange={handleMinElevationChange}
-              min={0}
-              max={90}
-              step={1}
-              marks={[
-                { value: 0, label: '0°' },
-                { value: 10, label: '10°' },
-                { value: 20, label: '20°' },
-                { value: 30, label: '30°' },
-                { value: 45, label: '45°' },
-                { value: 60, label: '60°' },
-                { value: 75, label: '75°' },
-                { value: 90, label: '90°' },
-              ]}
-              valueLabelDisplay="auto"
+          <Box sx={{ flex: 1, minWidth: '200px' }}>
+            <DateTimePicker
+              label={`終了 (${timeZoneAbbr})`}
+              value={localEndDate}
+              onChange={handleEndDateChange}
+              renderInput={(props) => (
+                <TextField
+                  {...props}
+                  fullWidth
+                  size="small"
+                  error={dateError}
+                  helperText={dateError ? '終了日時は開始日時より後に' : ''}
+                  sx={{
+                    backgroundColor: 'white',
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px'
+                    }
+                  }}
+                />
+              )}
+              inputFormat="yyyy/MM/dd HH:mm"
+              ampm={false}
             />
           </Box>
         </Box>
-      </AccordionDetails>
+      </Box>
+
+      {/* 仰角設定 */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          最低仰角: {sliderValue}°
+          <Tooltip title="地平線からの角度。値が大きいほど、空の高い位置にある衛星のみが表示されます。">
+            <IconButton size="small" sx={{ ml: 0.5, p: 0.5 }}>
+              <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Typography>
+        <Slider
+          value={sliderValue}
+          onChange={handleMinElevationChange}
+          min={0}
+          max={90}
+          step={1}
+          marks={[
+            { value: 0, label: '0°' },
+            { value: 45, label: '45°' },
+            { value: 90, label: '90°' },
+          ]}
+          valueLabelDisplay="auto"
+          sx={{
+            '& .MuiSlider-valueLabel': {
+              backgroundColor: 'primary.main',
+            }
+          }}
+        />
+      </Box>
+
+      {/* 警告メッセージ */}
+      {dateError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          開始日時は終了日時より前に設定してください。
+        </Alert>
+      )}
+      {showWarning && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          選択された期間は{calculateDateDifference(localStartDate, localEndDate)}日間です。長期間の検索は計算に時間がかかる場合があります。
+        </Alert>
+      )}
+
+      {/* 検索ボタン */}
+      <Button
+        variant="contained"
+        color="primary"
+        startIcon={<SearchIcon />}
+        onClick={handleSearch}
+        disabled={isSearchButtonDisabled()}
+        size="large"
+        fullWidth
+        sx={{
+          py: 1.5,
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          '&:hover': {
+            boxShadow: '0 6px 8px rgba(0, 0, 0, 0.15)',
+          }
+        }}
+      >
+        {isSearching ? '検索中...' : '検索'}
+      </Button>
 
       {/* 確認ダイアログ */}
       <Dialog
@@ -356,7 +374,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
           </Button>
         </DialogActions>
       </Dialog>
-    </Accordion>
+    </Paper>
   );
 };
 
