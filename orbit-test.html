@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>衛星軌道計算テスト</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/4.0.0/satellite.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    .result {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      padding: 15px;
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>衛星軌道計算テスト</h1>
+    <p>このツールは、TLEデータから衛星の軌道を計算し、結果を表示します。</p>
+
+    <div class="form-group">
+      <label for="tle1">TLE 1行目:</label>
+      <input type="text" id="tle1" value="1 25544U 98067A   21156.30527927  .00003432  00000-0  70541-4 0  9993">
+    </div>
+
+    <div class="form-group">
+      <label for="tle2">TLE 2行目:</label>
+      <input type="text" id="tle2" value="2 25544  51.6455 351.2142 0003438  83.9735 276.1975 15.48957524286754">
+    </div>
+
+    <div class="form-group">
+      <label for="observerLat">観測地点の緯度:</label>
+      <input type="number" id="observerLat" value="35.681200" step="0.000001">
+    </div>
+
+    <div class="form-group">
+      <label for="observerLng">観測地点の経度:</label>
+      <input type="number" id="observerLng" value="139.767100" step="0.000001">
+    </div>
+
+    <div class="form-group">
+      <label for="startTime">開始時刻 (ISO形式):</label>
+      <input type="text" id="startTime" value="">
+    </div>
+
+    <div class="form-group">
+      <label for="endTime">終了時刻 (ISO形式):</label>
+      <input type="text" id="endTime" value="">
+    </div>
+
+    <div class="form-group">
+      <label for="stepSize">計算間隔 (秒):</label>
+      <input type="number" id="stepSize" value="60">
+    </div>
+
+    <button onclick="calculateOrbit()">軌道を計算</button>
+
+    <div id="result" class="result" style="display: none;">
+      <h2>計算結果</h2>
+      <div id="summary"></div>
+      <div style="overflow-x: auto;">
+        <table id="orbitTable">
+          <thead>
+            <tr>
+              <th>時刻</th>
+              <th>衛星緯度</th>
+              <th>衛星経度</th>
+              <th>仰角</th>
+              <th>方位角</th>
+              <th>距離 (km)</th>
+            </tr>
+          </thead>
+          <tbody id="orbitData"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 現在時刻から1時間後までをデフォルト値として設定
+    document.addEventListener('DOMContentLoaded', function() {
+      const now = new Date();
+      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+
+      document.getElementById('startTime').value = now.toISOString();
+      document.getElementById('endTime').value = oneHourLater.toISOString();
+    });
+
+    function calculateOrbit() {
+      // 入力値を取得
+      const tle1 = document.getElementById('tle1').value;
+      const tle2 = document.getElementById('tle2').value;
+      const observerLat = parseFloat(document.getElementById('observerLat').value);
+      const observerLng = parseFloat(document.getElementById('observerLng').value);
+      const startTimeStr = document.getElementById('startTime').value;
+      const endTimeStr = document.getElementById('endTime').value;
+      const stepSizeSec = parseInt(document.getElementById('stepSize').value);
+
+      // 時刻をDateオブジェクトに変換
+      const startTime = new Date(startTimeStr);
+      const endTime = new Date(endTimeStr);
+
+      // TLEデータからsatrecオブジェクトを生成
+      const satrec = satellite.twoline2satrec(tle1, tle2);
+
+      // 観測地点の位置を地心直交座標系（ECI）に変換するためのデータを準備
+      const observerGd = {
+        latitude: satellite.degreesToRadians(observerLat),
+        longitude: satellite.degreesToRadians(observerLng),
+        height: 0.0 // 地上高（km）
+      };
+
+      // 軌道の全ポイントを計算
+      const orbitPoints = [];
+      let currentTime = startTime.getTime();
+      let maxElevation = -90;
+
+      while (currentTime <= endTime.getTime()) {
+        const date = new Date(currentTime);
+
+        try {
+          // 衛星の位置と速度を計算
+          const positionAndVelocity = satellite.propagate(satrec, date);
+          if (!positionAndVelocity.position) {
+            currentTime += stepSizeSec * 1000;
+            continue;
+          }
+
+          // グリニッジ恒星時を計算
+          const gmst = satellite.gstime(date);
+
+          // 観測地点からの衛星の見かけの位置を計算
+          const positionEci = positionAndVelocity.position;
+          const lookAngles = satellite.ecfToLookAngles(observerGd, positionEci);
+
+          // 地平座標系での位置を取得
+          const elevation = satellite.degreesLat(lookAngles.elevation);
+          const azimuth = (lookAngles.azimuth * 180 / Math.PI + 360) % 360;
+          const rangeSat = lookAngles.rangeSat;
+
+          // 衛星の地理座標を計算
+          const satelliteGd = satellite.eciToGeodetic(positionEci, gmst);
+          const satelliteLat = satellite.degreesLat(satelliteGd.latitude);
+          let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
+
+          // 経度を-180〜180度の範囲に正規化
+          while (satelliteLon > 180) satelliteLon -= 360;
+          while (satelliteLon < -180) satelliteLon += 360;
+
+          // 観測地点の経度
+          const observerLongitude = observerLng;
+
+          // 経度差を計算
+          let lonDiff = satelliteLon - observerLongitude;
+
+          // 経度差を-180度から180度の範囲に正規化
+          while (lonDiff > 180) lonDiff -= 360;
+          while (lonDiff < -180) lonDiff += 360;
+
+          // 軌道点を追加
+          orbitPoints.push({
+            time: date,
+            elevation,
+            azimuth,
+            range: rangeSat,
+            lat: satelliteLat,
+            lng: satelliteLon,
+            relLng: lonDiff
+          });
+
+          // 最大仰角を更新
+          maxElevation = Math.max(maxElevation, elevation);
+
+        } catch (error) {
+          console.warn('Error during orbit calculation:', error);
+        }
+
+        currentTime += stepSizeSec * 1000;
+      }
+
+      // 結果を表示
+      displayResults(orbitPoints, maxElevation);
+    }
+
+    function displayResults(orbitPoints, maxElevation) {
+      // 結果表示エリアを表示
+      document.getElementById('result').style.display = 'block';
+
+      // サマリー情報を表示
+      const summaryDiv = document.getElementById('summary');
+      summaryDiv.innerHTML = `
+        <p><strong>計算ポイント数:</strong> ${orbitPoints.length}</p>
+        <p><strong>最大仰角:</strong> ${maxElevation.toFixed(2)}°</p>
+      `;
+
+      // 軌道データをテーブルに表示
+      const tableBody = document.getElementById('orbitData');
+      tableBody.innerHTML = '';
+
+      orbitPoints.forEach(point => {
+        const row = document.createElement('tr');
+
+        // 仰角に基づいて行の色を変更
+        if (point.elevation >= 0) {
+          row.style.backgroundColor = point.elevation >= 10 ? '#e6ffe6' : '#f0f0f0';
+        }
+
+        row.innerHTML = `
+          <td>${point.time.toISOString()}</td>
+          <td>${point.lat.toFixed(6)}°</td>
+          <td>${point.lng.toFixed(6)}° (相対: ${point.relLng.toFixed(6)}°)</td>
+          <td>${point.elevation.toFixed(2)}°</td>
+          <td>${point.azimuth.toFixed(2)}°</td>
+          <td>${point.range.toFixed(2)} km</td>
+        `;
+
+        tableBody.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>

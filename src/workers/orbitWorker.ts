@@ -21,12 +21,10 @@ ctx.addEventListener('message', (event: MessageEvent<CalculatePassesMessage>) =>
   if (event.data.type === 'calculatePasses') {
     try {
       const { tle, location, filters, requestId } = event.data;
-      console.log(`Processing TLE (requestId: ${requestId}):`, {
-        line1: tle.line1,
-        line2: tle.line2,
-        location,
-        filters
-      });
+      // ログ出力を抑制
+      if (process.env.NODE_ENV === 'development' && requestId % 10 === 0) {
+        console.log(`Processing TLE (requestId: ${requestId})`);
+      }
 
       // TLEデータの検証
       if (!validateTLE(tle)) {
@@ -35,11 +33,10 @@ ctx.addEventListener('message', (event: MessageEvent<CalculatePassesMessage>) =>
       }
 
       const passes = calculatePasses(tle, location, filters);
-      console.log(`Calculated passes (requestId: ${requestId}):`, {
-        count: passes.length,
-        firstPass: passes[0] || null,
-        filters
-      });
+      // ログ出力を抑制
+      if (process.env.NODE_ENV === 'development' && requestId % 10 === 0) {
+        console.log(`Calculated passes (requestId: ${requestId}): ${passes.length} passes`);
+      }
 
       // リクエストIDを含めてレスポンスを返す
       ctx.postMessage({ type: 'passes', requestId, data: passes });
@@ -82,29 +79,35 @@ function calculatePasses(
   location: Location,
   filters: SearchFilters
 ): Pass[] {
-  console.log('Orbit calculation settings:', {
-    location: {
-      lat: location.lat.toFixed(4),
-      lng: location.lng.toFixed(4)
-    },
-    startDate: filters.startDate?.toISOString(),
-    endDate: filters.endDate?.toISOString(),
-  });
+  // ログ出力を抑制（開発環境でのみ出力）
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Orbit calculation settings:', {
+      location: {
+        lat: location.lat.toFixed(4),
+        lng: location.lng.toFixed(4)
+      }
+    });
+  }
 
   // 入力された日時はローカルタイム（ブラウザのタイムゾーン）
-  // JavaScriptのDate objectは内部的にUTCとして処理
+  // 衛星位置計算はUTC時間を使用するため、タイムゾーンを考慮する必要がある
+  // 日時をそのまま使用し、satellite.jsの内部でUTC変換が適切に行われるようにする
   const startTime = (filters.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000)).getTime();
   const endTime = (filters.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).getTime();
 
-  // デバッグ用：時刻変換の確認
-  console.log('Time conversion check:', {
-    startLocal: filters.startDate?.toLocaleString(),
-    startUTC: filters.startDate?.toUTCString(),
-    endLocal: filters.endDate?.toLocaleString(),
-    endUTC: filters.endDate?.toUTCString()
-  });
+  // デバッグ用ログを抑制（開発環境でのみ出力）
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Time conversion check:', {
+      timeZoneOffset: new Date().getTimezoneOffset() // タイムゾーンオフセット（分）
+    });
+  }
+
   const minElevation = filters.minElevation || 0;
-  const stepSize = filters.stepSize || 30 * 1000; // デフォルトは30秒
+
+  // 計算間隔を調整
+  // 軌道表示の滑らかさを向上させるために時間間隔を短縮
+  const isDetailedView = filters.stepSize !== undefined;
+  const stepSize = filters.stepSize || (isDetailedView ? 30 * 1000 : 2 * 60 * 1000); // デフォルトは2分、詳細表示の場合は30秒
 
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
   if (!satrec) {
@@ -125,9 +128,12 @@ function calculatePasses(
 
   while (currentTime <= endTime) {
     try {
+      // 時刻を正確に処理するために新しいDateオブジェクトを作成
+      // currentTimeはミリ秒単位のタイムスタンプ
       const date = new Date(currentTime);
 
       // 衛星の位置と速度を計算
+      // satellite.jsはUTC時間を使用するため、Dateオブジェクトをそのまま渡す
       const positionAndVelocity = satellite.propagate(satrec, date);
       if (!positionAndVelocity.position || typeof positionAndVelocity.position === 'boolean') {
         currentTime += stepSize;
@@ -147,20 +153,71 @@ function calculatePasses(
       const rangeSat = lookAngles.rangeSat;
 
       // 衛星の地理座標を計算
+      // 注意: eciToGeodeticは地心直交座標系（ECI）から地理座標系への変換を行う
+      // gmstは地球の自転を考慮するために使用される
       const satelliteGd = satellite.eciToGeodetic(positionEci, gmst);
       const satelliteLat = satellite.degreesLat(satelliteGd.latitude);
       let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
+
+      // 経度を-180〜180度の範囲に正規化
+      // 複数回の正規化が必要な場合に対応
+      while (satelliteLon > 180) satelliteLon -= 360;
+      while (satelliteLon < -180) satelliteLon += 360;
+
+      // 観測地点の経度
+      const observerLongitude = location.lng;
+
+      // 経度調整の根本的な修正（第5版）
+      // 問題: Leafletの地図では相対座標系を使用する必要がある
+
+      // 新しい解決策: 観測地点を中心（0度）とした相対座標系に変換
+      // 1. 経度差を計算
+      let lonDiff = satelliteLon - observerLongitude;
+
+      // 2. 経度差を-180度から180度の範囲に正規化
+      // 複数回の正規化が必要な場合に対応
+      while (lonDiff > 180) lonDiff -= 360;
+      while (lonDiff < -180) lonDiff += 360;
+
+      // 3. 表示用の経度を計算
+      // 相対経度と実際の経度の両方を保存し、表示時に選択できるようにする
+      let displayLon = satelliteLon;
+
+      // 調査用ログを抑制
+      // console.log('Orbit calculation debug:', {
+      //   satelliteLon: satelliteLon.toFixed(2),
+      //   observerLon: observerLongitude.toFixed(2),
+      //   lonDiff: lonDiff.toFixed(2),
+      //   displayLon: displayLon.toFixed(2),
+      //   elevation: elevation.toFixed(2),
+      //   date: date.toISOString()
+      // });
 
       // 前のポイントとの経度の連続性を確認
       let isDiscontinuous = false;
       if (orbitPoints.length > 0) {
         const prevPoint = orbitPoints[orbitPoints.length - 1];
         const prevLon = prevPoint.lng!;
-        const diff = Math.abs(satelliteLon - prevLon);
 
-        // 経度の差が180度を超える場合は不連続点とする
-        if (diff > 180) {
+        // 経度の差を計算（-180〜180度の範囲で最短経路）
+        // 重要: 表示用の経度(displayLon)を使用
+        let diff = displayLon - prevLon;
+        // 複数回の正規化が必要な場合に対応
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
+
+        // 相対座標を使用する場合は、不連続点の判定を緩和する
+        // 日付変更線をまたぐ場合の閾値を調整（150度→170度）
+        if (Math.abs(diff) > 170) {
           isDiscontinuous = true;
+          // デバッグログを抑制
+          if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
+            console.log('Discontinuous point detected:', {
+              prevLon,
+              currentLon: displayLon,
+              diff
+            });
+          }
         }
       }
 
@@ -181,17 +238,22 @@ function calculatePasses(
       // 大圏距離を度に変換（0-180度の範囲）
       const greatCircleDistance = c * RAD_TO_DEG;
 
-      // 大圏距離に基づく減衰係数を計算（距離が大きいほど小さくなる）
-      const distanceFactor = Math.max(0, 1 - greatCircleDistance / 90);
+      // 実効的な角度の概念を完全に削除
+      // 仰角をそのまま使用する
+      const effectiveAngle = elevation; // 仰角をそのまま使用
 
-      // 仰角と距離の両方を考慮した実効的な角度を計算
-      // 仰角がマイナスの場合（地平線の下にある場合）は、
-      // 観測地点から遠くに表示されるように非常に小さな値を設定
-      const effectiveAngle = elevation >= 0
-        ? elevation * distanceFactor
-        : elevation * 0.01; // 仰角がマイナスの場合は非常に小さな係数を掛ける
+      // デバッグ用ログを抑制
+      // if (process.env.NODE_ENV === 'development' && lonDiff > 170 && Math.random() < 0.001) {
+      //   console.log('Large longitude difference detected:', {
+      //     originalLon: satelliteLon,
+      //     displayLon: displayLon,
+      //     observerLon: observerLongitude,
+      //     diff: lonDiff
+      //   });
+      // }
 
       // 新しいセグメントの開始点として追加
+      // 重要: 表示用の経度(displayLon)を使用
       orbitPoints.push({
         time: date,
         elevation,
@@ -199,7 +261,8 @@ function calculatePasses(
         range: rangeSat,
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
         lat: satelliteLat,
-        lng: satelliteLon,
+        lng: satelliteLon, // 実際の経度を使用
+        relLng: lonDiff, // 相対経度も保存（必要に応じて使用可能）
         isNewSegment: isDiscontinuous, // 不連続点かどうかを記録
         effectiveAngle // 観測地点からの実効的な角度
       });
@@ -245,7 +308,11 @@ function calculateIsDaylight(lat: number, lon: number, date: Date): boolean {
   const declination = Math.asin(Math.sin(epsilon * DEG_TO_RAD) * Math.sin(lambda * DEG_TO_RAD)) * RAD_TO_DEG;
 
   // 時角を計算
+  // UTCの時間を使用して太陽の位置を計算
+  // 経度1度あたり4分（15度あたり1時間）の時差があるため、
+  // 経度に応じた時角の調整を行う
   const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
+  // 経度に基づく時角調整（東経は正、西経は負）
   const hourAngle = (utcHours - 12) * 15 + lon;
 
   // 太陽高度を計算

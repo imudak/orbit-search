@@ -5,18 +5,23 @@ import type { OrbitPath } from '@/types';
 
 interface SatelliteOrbitLayerProps {
   paths: OrbitPath[];
+  observerLocation?: { lat: number; lng: number }; // 観測地点の座標（オプション）
 }
 
 /**
  * 衛星軌道を表示するレイヤーコンポーネント
  */
 const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
-  paths
+  paths,
+  observerLocation
 }) => {
   const map = useMap();
 
   useEffect(() => {
     if (!paths.length) return;
+
+    // 観測地点の位置を取得（地図の中心点）
+    const mapCenter = map.getCenter();
 
     // 軌道パスの描画
     const lines = paths.flatMap((path, pathIndex) => {
@@ -30,13 +35,66 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           const point2 = segment.points[i + 1];
           const effectiveAngle = segment.effectiveAngles[i];
 
-          // セグメントのポイントを作成
+          // 日付変更線をまたぐ場合の処理
+          // 経度の差が極端に大きい場合は日付変更線をまたいでいると判断
+          let lngDiff = Math.abs(point1.lng - point2.lng);
+          if (lngDiff > 170) { // 170度以上の差がある場合は日付変更線をまたいでいる
+            // 日付変更線をまたぐ場合は線を引かない
+            continue;
+          }
+
+          // 観測地点からの距離制限を撤廃
+          // すべての軌道点を表示する
+
+          // 経度を-180〜180度の範囲に正規化
+          let lng1 = point1.lng;
+          let lng2 = point2.lng;
+
+          // 経度を-180〜180度の範囲に正規化
+          while (lng1 > 180) lng1 -= 360;
+          while (lng1 < -180) lng1 += 360;
+
+          while (lng2 > 180) lng2 -= 360;
+          while (lng2 < -180) lng2 += 360;
+
+          // 相対座標を計算
+          let lng1ForPoint = lng1;
+          let lng2ForPoint = lng2;
+
+          if (observerLocation) {
+            // 観測地点からの相対経度を計算
+            let relLng1 = lng1 - observerLocation.lng;
+            let relLng2 = lng2 - observerLocation.lng;
+
+            // -180〜180度の範囲に正規化
+            while (relLng1 > 180) relLng1 -= 360;
+            while (relLng1 < -180) relLng1 += 360;
+
+            while (relLng2 > 180) relLng2 -= 360;
+            while (relLng2 < -180) relLng2 += 360;
+
+            // 相対座標を使用
+            lng1ForPoint = observerLocation.lng + relLng1;
+            lng2ForPoint = observerLocation.lng + relLng2;
+          }
+
           const segmentPoints = [
-            new LatLng(point1.lat, point1.lng),
-            new LatLng(point2.lat, point2.lng)
+            new LatLng(point1.lat, lng1ForPoint),
+            new LatLng(point2.lat, lng2ForPoint)
           ];
 
-          // 実効的な角度に基づいてスタイルを設定
+          // デバッグログを抑制
+          // if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
+          //   console.log('Orbit display coordinates:', {
+          //     lng: lng1,
+          //     lat: point1.lat,
+          //     elevation: effectiveAngle,
+          //     source: observerLocation ? 'fixed observer' : 'map center'
+          //   });
+          // }
+
+          // 仰角に基づいてスタイルを設定
+          // effectiveAngleは現在、orbitWorker.tsで仰角そのものに設定されている
           let color: string;
           let weight: number;
           let opacity: number;
@@ -55,9 +113,14 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             // 低仰角: 青系
             color = '#0000FF';
             weight = 2;
-            opacity = 0.5;
+            opacity = 0.6; // 低仰角の可視性を少し上げる
+          } else if (effectiveAngle >= 0) {
+            // 極低仰角: 青系（薄め）
+            color = '#0000FF';
+            weight = 1.5;
+            opacity = 0.4; // 極低仰角でも少し見えるように
           } else {
-            // 極低仰角: グレー系
+            // 地平線以下: グレー系
             color = '#808080';
             weight = 1;
             opacity = 0.3;
@@ -71,9 +134,9 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             bubblingMouseEvents: true,
           }).addTo(map);
 
-          // マウスオーバー時に実効的な角度を表示
+          // マウスオーバー時に仰角を表示
           line.bindTooltip(
-            `実効的な角度: ${effectiveAngle.toFixed(1)}°`
+            `仰角: ${effectiveAngle.toFixed(1)}°`
           );
           lines.push(line);
         }

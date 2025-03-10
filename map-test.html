@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>地図表示テスト</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/4.0.0/satellite.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #map {
+      height: 500px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .panel {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 15px;
+      background-color: #f9f9f9;
+    }
+    .flex-container {
+      display: flex;
+      gap: 20px;
+    }
+    .left-panel {
+      flex: 1;
+    }
+    .right-panel {
+      flex: 1;
+    }
+    .orbit-point {
+      margin-bottom: 5px;
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+    #orbitPoints {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+    }
+    .legend {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #fff;
+      border: 1px solid #ddd;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 10px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>地図表示テスト</h1>
+    <p>このツールは、衛星の軌道データを地図上に表示し、表示方法の問題を検証します。</p>
+
+    <div class="flex-container">
+      <div class="left-panel">
+        <div class="panel">
+          <h2>観測地点設定</h2>
+          <div class="form-group">
+            <label for="observerLat">観測地点の緯度:</label>
+            <input type="number" id="observerLat" value="35.681200" step="0.000001">
+          </div>
+          <div class="form-group">
+            <label for="observerLng">観測地点の経度:</label>
+            <input type="number" id="observerLng" value="139.767100" step="0.000001">
+          </div>
+          <button onclick="setObserver()">観測地点を設定</button>
+        </div>
+
+        <div class="panel">
+          <h2>軌道データ入力</h2>
+          <div class="form-group">
+            <label for="orbitData">軌道データ (JSON形式):</label>
+            <textarea id="orbitData" rows="10" placeholder='[{"lat": 35.0, "lng": 140.0}, {"lat": 36.0, "lng": 141.0}, ...]'></textarea>
+          </div>
+          <div class="form-group">
+            <label for="displayMode">表示モード:</label>
+            <select id="displayMode">
+              <option value="absolute">絶対座標（実際の緯度経度）</option>
+              <option value="relative">相対座標（観測地点からの相対位置）</option>
+            </select>
+          </div>
+          <div class="controls">
+            <button onclick="displayOrbit()">軌道を表示</button>
+            <button onclick="clearOrbit()">軌道をクリア</button>
+            <button onclick="generateSampleData()">サンプルデータ生成</button>
+            <button onclick="calculateFromTLE()">TLEから計算</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>TLEデータ入力</h2>
+          <div class="form-group">
+            <label for="tle1">TLE 1行目:</label>
+            <input type="text" id="tle1" value="1 25544U 98067A   21156.30527927  .00003432  00000-0  70541-4 0  9993">
+          </div>
+          <div class="form-group">
+            <label for="tle2">TLE 2行目:</label>
+            <input type="text" id="tle2" value="2 25544  51.6455 351.2142 0003438  83.9735 276.1975 15.48957524286754">
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div id="map"></div>
+        <div class="legend">
+          <h3>凡例</h3>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: blue;"></div>
+            <span>軌道（絶対座標）</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: red;"></div>
+            <span>軌道（相対座標）</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: green; border-radius: 50%;"></div>
+            <span>観測地点</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>軌道ポイント</h2>
+      <div id="orbitPoints"></div>
+    </div>
+  </div>
+
+  <script>
+    // グローバル変数
+    let map;
+    let observerMarker;
+    let orbitLayer;
+    let relativeOrbitLayer;
+
+    // 地図の初期化
+    function initMap() {
+      map = L.map('map').setView([35.681200, 139.767100], 3);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // 観測地点のマーカーを追加
+      observerMarker = L.marker([35.681200, 139.767100]).addTo(map);
+      observerMarker.bindPopup("観測地点").openPopup();
+
+      // 軌道レイヤーを初期化
+      orbitLayer = L.layerGroup().addTo(map);
+      relativeOrbitLayer = L.layerGroup().addTo(map);
+    }
+
+    // 観測地点を設定
+    function setObserver() {
+      const lat = parseFloat(document.getElementById('observerLat').value);
+      const lng = parseFloat(document.getElementById('observerLng').value);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        alert('有効な緯度・経度を入力してください');
+        return;
+      }
+
+      // マーカーの位置を更新
+      observerMarker.setLatLng([lat, lng]);
+      map.setView([lat, lng], map.getZoom());
+
+      // ポップアップを更新
+      observerMarker.bindPopup(`観測地点 (${lat.toFixed(6)}, ${lng.toFixed(6)})`).openPopup();
+    }
+
+    // 軌道を表示
+    function displayOrbit() {
+      // 既存の軌道をクリア
+      clearOrbit();
+
+      // 軌道データを取得
+      const orbitDataStr = document.getElementById('orbitData').value;
+      let orbitData;
+
+      try {
+        orbitData = JSON.parse(orbitDataStr);
+      } catch (error) {
+        alert('有効なJSON形式で軌道データを入力してください');
+        return;
+      }
+
+      if (!Array.isArray(orbitData)) {
+        alert('軌道データは配列形式で入力してください');
+        return;
+      }
+
+      // 表示モードを取得
+      const displayMode = document.getElementById('displayMode').value;
+
+      // 観測地点の座標を取得
+      const observerLat = parseFloat(document.getElementById('observerLat').value);
+      const observerLng = parseFloat(document.getElementById('observerLng').value);
+
+      // 軌道ポイントを表示
+      displayOrbitPoints(orbitData);
+
+      // 軌道を描画
+      const absolutePoints = [];
+      const relativePoints = [];
+
+      for (let i = 0; i < orbitData.length; i++) {
+        const point = orbitData[i];
+
+        if (!point.lat || !point.lng) {
+          console.warn('無効な軌道ポイント:', point);
+          continue;
+        }
+
+        // 絶対座標
+        absolutePoints.push([point.lat, point.lng]);
+
+        // 相対座標（観測地点からの相対位置）
+        let relLng = point.relLng;
+        if (relLng === undefined) {
+          // relLngが指定されていない場合は計算
+          relLng = point.lng - observerLng;
+          // -180〜180度の範囲に正規化
+          while (relLng > 180) relLng -= 360;
+          while (relLng < -180) relLng += 360;
+        }
+
+        relativePoints.push([point.lat, observerLng + relLng]);
+      }
+
+      // 絶対座標の軌道を描画
+      if (displayMode === 'absolute' || displayMode === 'both') {
+        const polyline = L.polyline(absolutePoints, {
+          color: 'blue',
+          weight: 2,
+          opacity: 0.7
+        }).addTo(orbitLayer);
+
+        // 軌道の範囲に地図を合わせる
+        if (absolutePoints.length > 0) {
+          map.fitBounds(polyline.getBounds());
+        }
+      }
+
+      // 相対座標の軌道を描画
+      if (displayMode === 'relative' || displayMode === 'both') {
+        L.polyline(relativePoints, {
+          color: 'red',
+          weight: 2,
+          opacity: 0.7,
+          dashArray: '5, 5'
+        }).addTo(relativeOrbitLayer);
+      }
+    }
+
+    // 軌道ポイントを表示
+    function displayOrbitPoints(orbitData) {
+      const container = document.getElementById('orbitPoints');
+      container.innerHTML = '';
+
+      // 観測地点の座標を取得
+      const observerLat = parseFloat(document.getElementById('observerLat').value);
+      const observerLng = parseFloat(document.getElementById('observerLng').value);
+
+      orbitData.forEach((point, index) => {
+        // 相対経度を計算
+        let relLng = point.relLng;
+        if (relLng === undefined) {
+          relLng = point.lng - observerLng;
+          // -180〜180度の範囲に正規化
+          while (relLng > 180) relLng -= 360;
+          while (relLng < -180) relLng += 360;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'orbit-point';
+        div.innerHTML = `
+          <strong>ポイント ${index + 1}:</strong>
+          緯度: ${point.lat.toFixed(6)}°,
+          経度: ${point.lng.toFixed(6)}°
+          (相対経度: ${relLng.toFixed(6)}°)
+          ${point.elevation !== undefined ? `, 仰角: ${point.elevation.toFixed(2)}°` : ''}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // 軌道をクリア
+    function clearOrbit() {
+      orbitLayer.clearLayers();
+      relativeOrbitLayer.clearLayers();
+      document.getElementById('orbitPoints').innerHTML = '';
+    }
+
+    // サンプルデータを生成
+    function generateSampleData() {
+      const observerLat = parseFloat(document.getElementById('observerLat').value);
+      const observerLng = parseFloat(document.getElementById('observerLng').value);
+
+      // 観測地点を中心とした円軌道を生成
+      const radius = 20; // 半径（度）
+      const points = 36; // ポイント数
+      const orbitData = [];
+
+      for (let i = 0; i < points; i++) {
+        const angle = (i / points) * 2 * Math.PI;
+        const lat = observerLat + radius * Math.sin(angle);
+        const lng = observerLng + radius * Math.cos(angle);
+
+        // 相対経度を計算
+        let relLng = lng - observerLng;
+        // -180〜180度の範囲に正規化
+        while (relLng > 180) relLng -= 360;
+        while (relLng < -180) relLng += 360;
+
+        orbitData.push({
+          lat,
+          lng,
+          relLng,
+          elevation: 10 * Math.sin(angle) // サンプルの仰角
+        });
+      }
+
+      document.getElementById('orbitData').value = JSON.stringify(orbitData, null, 2);
+    }
+
+    // TLEデータから軌道を計算
+    function calculateFromTLE() {
+      const tle1 = document.getElementById('tle1').value;
+      const tle2 = document.getElementById('tle2').value;
+      const observerLat = parseFloat(document.getElementById('observerLat').value);
+      const observerLng = parseFloat(document.getElementById('observerLng').value);
+
+      if (!tle1 || !tle2) {
+        alert('TLEデータを入力してください');
+        return;
+      }
+
+      try {
+        // TLEデータからsatrecオブジェクトを生成
+        const satrec = satellite.twoline2satrec(tle1, tle2);
+
+        // 観測地点の位置を地心直交座標系（ECI）に変換するためのデータを準備
+        const observerGd = {
+          latitude: satellite.degreesToRadians(observerLat),
+          longitude: satellite.degreesToRadians(observerLng),
+          height: 0.0 // 地上高（km）
+        };
+
+        // 現在時刻から1時間分の軌道を計算
+        const now = new Date();
+        const orbitData = [];
+        const stepSize = 2 * 60 * 1000; // 2分間隔
+
+        for (let i = 0; i < 30; i++) {
+          const date = new Date(now.getTime() + i * stepSize);
+
+          // 衛星の位置と速度を計算
+          const positionAndVelocity = satellite.propagate(satrec, date);
+          if (!positionAndVelocity.position) {
+            continue;
+          }
+
+          // グリニッジ恒星時を計算
+          const gmst = satellite.gstime(date);
+
+          // 観測地点からの衛星の見かけの位置を計算
+          const positionEci = positionAndVelocity.position;
+          const lookAngles = satellite.ecfToLookAngles(observerGd, positionEci);
+
+          // 地平座標系での位置を取得
+          const elevation = satellite.degreesLat(lookAngles.elevation);
+          const azimuth = (lookAngles.azimuth * 180 / Math.PI + 360) % 360;
+          const rangeSat = lookAngles.rangeSat;
+
+          // 衛星の地理座標を計算
+          const satelliteGd = satellite.eciToGeodetic(positionEci, gmst);
+          const satelliteLat = satellite.degreesLat(satelliteGd.latitude);
+          let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
+
+          // 経度を-180〜180度の範囲に正規化
+          while (satelliteLon > 180) satelliteLon -= 360;
+          while (satelliteLon < -180) satelliteLon += 360;
+
+          // 経度差を計算
+          let lonDiff = satelliteLon - observerLng;
+
+          // 経度差を-180度から180度の範囲に正規化
+          while (lonDiff > 180) lonDiff -= 360;
+          while (lonDiff < -180) lonDiff += 360;
+
+          orbitData.push({
+            lat: satelliteLat,
+            lng: satelliteLon,
+            relLng: lonDiff,
+            elevation,
+            azimuth,
+            range: rangeSat,
+            time: date.toISOString()
+          });
+        }
+
+        document.getElementById('orbitData').value = JSON.stringify(orbitData, null, 2);
+
+      } catch (error) {
+        alert('TLEデータの処理中にエラーが発生しました: ' + error.message);
+      }
+    }
+
+    // 地図の初期化
+    window.onload = initMap;
+  </script>
+</body>
+</html>
