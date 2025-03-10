@@ -5,6 +5,7 @@ import type { Location, OrbitPath, SearchFilters } from '@/types';
 
 // コンポーネントのインポート
 import MapView from './MapView';
+import MapClickHandler from './MapClickHandler';
 import MobileControls from './controls/MobileControls';
 import MapControlIcons from './controls/MapControlIcons';
 import ResponsiveMapLayout from './layout/ResponsiveMapLayout';
@@ -66,6 +67,7 @@ interface InnerMapProps {
   onToggleModePanel: () => void;
   onToggleLegend: () => void;
   onToggleLayerSettings: () => void;
+  onLocationSelect: (location: Location) => void; // 地図クリック時の位置選択ハンドラー
 }
 
 /**
@@ -85,7 +87,8 @@ const InnerMap: React.FC<InnerMapProps> = ({
   onToggleInfo,
   onToggleModePanel,
   onToggleLegend,
-  onToggleLayerSettings
+  onToggleLayerSettings,
+  onLocationSelect
 }) => {
   // レイヤー管理コンテキストを使用
   const { layers, toggleLayer } = useLayerManager();
@@ -98,6 +101,9 @@ const InnerMap: React.FC<InnerMapProps> = ({
 
   return (
     <MapView center={center} zoom={defaultZoom}>
+      {/* 地図クリックイベントハンドラー */}
+      <MapClickHandler onLocationSelect={onLocationSelect} />
+
       {/* デスクトップ用コントロール（モバイルでは非表示） */}
       {!isMobile && (
         <>
@@ -215,6 +221,7 @@ const InnerMapWithModes: React.FC<InnerMapProps> = (props) => {
         onToggleModePanel={props.onToggleModePanel}
         onToggleLegend={props.onToggleLegend}
         onToggleLayerSettings={props.onToggleLayerSettings}
+        onLocationSelect={props.onLocationSelect}
       />
 
       {/* モードに応じたコントロールパネルを表示 */}
@@ -517,6 +524,7 @@ const MapWithModeContext: React.FC<MapProps> = ({
           onToggleModePanel={handleToggleModePanel}
           onToggleLegend={handleToggleLegend}
           onToggleLayerSettings={handleToggleLayerSettings}
+          onLocationSelect={onLocationSelect}
         />
 
         {/* モード変更通知 */}

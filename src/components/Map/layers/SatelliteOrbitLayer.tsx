@@ -18,6 +18,9 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
   useEffect(() => {
     if (!paths.length) return;
 
+    // 観測地点の位置を取得（地図の中心点）
+    const mapCenter = map.getCenter();
+
     // 軌道パスの描画
     const lines = paths.flatMap((path, pathIndex) => {
       // 各セグメントのパスを作成
@@ -30,13 +33,24 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           const point2 = segment.points[i + 1];
           const effectiveAngle = segment.effectiveAngles[i];
 
+          // 日付変更線をまたぐ場合の処理
+          // 経度の差が極端に大きい場合のみ線を引かない（不連続点）
+          let lngDiff = Math.abs(point1.lng - point2.lng);
+          if (lngDiff > 170) { // 170度以上の差がある場合のみスキップ（ほぼすべての軌道を表示）
+            continue;
+          }
+
+          // 観測地点からの距離制限を撤廃
+          // すべての軌道点を表示する
+
           // セグメントのポイントを作成
           const segmentPoints = [
             new LatLng(point1.lat, point1.lng),
             new LatLng(point2.lat, point2.lng)
           ];
 
-          // 実効的な角度に基づいてスタイルを設定
+          // 仰角に基づいてスタイルを設定
+          // effectiveAngleは現在、orbitWorker.tsで仰角そのものに設定されている
           let color: string;
           let weight: number;
           let opacity: number;
@@ -55,9 +69,14 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             // 低仰角: 青系
             color = '#0000FF';
             weight = 2;
-            opacity = 0.5;
+            opacity = 0.6; // 低仰角の可視性を少し上げる
+          } else if (effectiveAngle >= 0) {
+            // 極低仰角: 青系（薄め）
+            color = '#0000FF';
+            weight = 1.5;
+            opacity = 0.4; // 極低仰角でも少し見えるように
           } else {
-            // 極低仰角: グレー系
+            // 地平線以下: グレー系
             color = '#808080';
             weight = 1;
             opacity = 0.3;
@@ -71,9 +90,9 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             bubblingMouseEvents: true,
           }).addTo(map);
 
-          // マウスオーバー時に実効的な角度を表示
+          // マウスオーバー時に仰角を表示
           line.bindTooltip(
-            `実効的な角度: ${effectiveAngle.toFixed(1)}°`
+            `仰角: ${effectiveAngle.toFixed(1)}°`
           );
           lines.push(line);
         }

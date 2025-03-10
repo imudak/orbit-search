@@ -145,7 +145,7 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
           satelliteMarkerRef.current.bindPopup(`
             <b>衛星位置情報</b><br>
             時刻: ${currentTime.toLocaleString()}<br>
-            実効的な角度: ${effectiveAngle.toFixed(2)}°
+            仰角: ${effectiveAngle.toFixed(2)}°
           `);
         } else {
           // マーカーの位置を更新
@@ -155,7 +155,7 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
           satelliteMarkerRef.current.setPopupContent(`
             <b>衛星位置情報</b><br>
             時刻: ${currentTime.toLocaleString()}<br>
-            実効的な角度: ${effectiveAngle.toFixed(2)}°
+            仰角: ${effectiveAngle.toFixed(2)}°
           `);
         }
 
@@ -164,7 +164,7 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
           onPositionUpdate({
             lat: point.lat,
             lng: point.lng,
-            elevation: effectiveAngle, // 実効的な角度を仰角として使用
+            elevation: effectiveAngle, // 仰角として使用（現在は実際の仰角そのもの）
             azimuth: 0, // 方位角は計算できないため0とする
             range: 0 // 距離は計算できないため0とする
           });
