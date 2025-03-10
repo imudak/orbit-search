@@ -43,11 +43,36 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // 観測地点からの距離制限を撤廃
           // すべての軌道点を表示する
 
-          // セグメントのポイントを作成
+          // 相対経度を絶対経度に変換（orbitWorker.tsで相対経度を使用しているため）
+          // 観測地点の経度を取得
+          const observerLongitude = mapCenter.lng;
+
+          // 相対経度に観測地点の経度を加算して絶対経度に変換
+          let absoluteLng1 = point1.lng + observerLongitude;
+          let absoluteLng2 = point2.lng + observerLongitude;
+
+          // 経度を-180〜180度の範囲に正規化
+          if (absoluteLng1 > 180) absoluteLng1 -= 360;
+          else if (absoluteLng1 < -180) absoluteLng1 += 360;
+
+          if (absoluteLng2 > 180) absoluteLng2 -= 360;
+          else if (absoluteLng2 < -180) absoluteLng2 += 360;
+
+          // セグメントのポイントを作成（変換後の経度を使用）
           const segmentPoints = [
-            new LatLng(point1.lat, point1.lng),
-            new LatLng(point2.lat, point2.lng)
+            new LatLng(point1.lat, absoluteLng1),
+            new LatLng(point2.lat, absoluteLng2)
           ];
+
+          // デバッグログ（開発時のみ表示）
+          if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
+            console.log('Orbit display coordinates:', {
+              relLng: point1.lng,
+              obsLng: observerLongitude,
+              absLng: absoluteLng1,
+              lat: point1.lat
+            });
+          }
 
           // 仰角に基づいてスタイルを設定
           // effectiveAngleは現在、orbitWorker.tsで仰角そのものに設定されている
