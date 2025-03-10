@@ -49,11 +49,62 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // 観測地点の経度を取得（propsから渡された値を優先、なければ地図の中心点を使用）
           const observerLongitude = observerLocation ? observerLocation.lng : mapCenter.lng;
 
-          // 相対経度に観測地点の経度を加算して絶対経度に変換
-          let absoluteLng1 = point1.lng + observerLongitude;
-          let absoluteLng2 = point2.lng + observerLongitude;
+          // 新しい座標変換アプローチ
+          // 1. 相対経度を方位角として扱う（東が正、西が負）
+          // 2. 観測地点を中心とした極座標系で考える
+          // 3. 方位角と仰角から地図上の座標に変換
+
+          // 方位角（相対経度）をラジアンに変換
+          const azimuth1Rad = point1.lng * Math.PI / 180;
+          const azimuth2Rad = point2.lng * Math.PI / 180;
+
+          // 仰角をラジアンに変換
+          const elevation1Rad = effectiveAngle * Math.PI / 180;
+
+          // 地表面上の距離を計算（仰角が高いほど近くに表示）
+          // 90度の場合は観測地点の真上、0度の場合は地平線上
+          // 距離の計算を調整（仰角に応じた非線形な距離計算）
+          const distance1 = Math.max(0, (90 - Math.max(0, effectiveAngle)) / 90) * 10; // 最大10度の距離
+
+          // 極座標から地理座標への変換
+          // 観測地点を中心として、方位角と距離から新しい座標を計算
+          const lat1 = observerLocation ? observerLocation.lat : mapCenter.lat;
+          const lng1 = observerLongitude;
+
+          // 地球の半径（km）
+          const earthRadius = 6371;
+
+          // 距離をラジアンに変換
+          const distanceRad1 = distance1 / earthRadius;
+
+          // 新しい緯度経度を計算
+          const newLat1 = Math.asin(
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(distanceRad1) +
+            Math.cos(lat1 * Math.PI / 180) * Math.sin(distanceRad1) * Math.cos(azimuth1Rad)
+          ) * 180 / Math.PI;
+
+          const newLng1 = lng1 + Math.atan2(
+            Math.sin(azimuth1Rad) * Math.sin(distanceRad1) * Math.cos(lat1 * Math.PI / 180),
+            Math.cos(distanceRad1) - Math.sin(lat1 * Math.PI / 180) * Math.sin(newLat1 * Math.PI / 180)
+          ) * 180 / Math.PI;
+
+          // 同様に2点目も計算
+          const distanceRad2 = distance1 / earthRadius; // 同じ距離を使用
+
+          const newLat2 = Math.asin(
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(distanceRad2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.sin(distanceRad2) * Math.cos(azimuth2Rad)
+          ) * 180 / Math.PI;
+
+          const newLng2 = lng1 + Math.atan2(
+            Math.sin(azimuth2Rad) * Math.sin(distanceRad2) * Math.cos(lat1 * Math.PI / 180),
+            Math.cos(distanceRad2) - Math.sin(lat1 * Math.PI / 180) * Math.sin(newLat2 * Math.PI / 180)
+          ) * 180 / Math.PI;
 
           // 経度を-180〜180度の範囲に正規化
+          let absoluteLng1 = newLng1;
+          let absoluteLng2 = newLng2;
+
           if (absoluteLng1 > 180) absoluteLng1 -= 360;
           else if (absoluteLng1 < -180) absoluteLng1 += 360;
 
@@ -72,7 +123,11 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
               relLng: point1.lng,
               obsLng: observerLongitude,
               absLng: absoluteLng1,
-              lat: point1.lat,
+              newLat: newLat1,
+              origLat: point1.lat,
+              azimuth: point1.lng,
+              elevation: effectiveAngle,
+              distance: distance1,
               source: observerLocation ? 'fixed observer' : 'map center'
             });
           }
