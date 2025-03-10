@@ -49,8 +49,16 @@ const MobileControls: React.FC<MobileControlsProps> = ({
     setOpen(false);
   };
 
+  // SpeedDialのクリックイベントが地図に伝播しないようにするためのラッパー
+  const stopPropagation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   // 全体表示ボタンのクリックハンドラー
-  const handleFullView = () => {
+  const handleFullView = (e: React.MouseEvent<HTMLDivElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
+
     // 日本全体が見えるように表示
     const japanBounds = L.latLngBounds(
       L.latLng(24.0, 122.0), // 南西端（沖縄付近）
@@ -65,7 +73,10 @@ const MobileControls: React.FC<MobileControlsProps> = ({
   };
 
   // 元の縮尺に戻すボタンのクリックハンドラー
-  const handleResetView = () => {
+  const handleResetView = (e: React.MouseEvent<HTMLDivElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
+
     if (currentCenter) {
       // 現在の観測地点を中心に、デフォルトのズームレベルに戻す
       map.setView([currentCenter.lat, currentCenter.lng], defaultZoom);
@@ -74,19 +85,28 @@ const MobileControls: React.FC<MobileControlsProps> = ({
   };
 
   // ズームインボタンのクリックハンドラー
-  const handleZoomIn = () => {
+  const handleZoomIn = (e: React.MouseEvent<HTMLDivElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
+
     map.zoomIn();
     handleClose();
   };
 
   // ズームアウトボタンのクリックハンドラー
-  const handleZoomOut = () => {
+  const handleZoomOut = (e: React.MouseEvent<HTMLDivElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
+
     map.zoomOut();
     handleClose();
   };
 
   // レイヤーダイアログを表示するハンドラー
-  const handleShowLayers = () => {
+  const handleShowLayers = (e: React.MouseEvent<HTMLDivElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
+
     // レイヤーダイアログの表示は未実装
     // 将来的にはモバイル向けのレイヤー選択ダイアログを実装する
     handleClose();
@@ -95,22 +115,23 @@ const MobileControls: React.FC<MobileControlsProps> = ({
   return (
     <Box sx={{ position: 'fixed', bottom: 16, right: 16 }}>
       <Tooltip title="地図コントロール" placement="left">
-        <SpeedDial
-          ariaLabel="地図コントロール"
-          icon={<SpeedDialIcon icon={<MapIcon />} />}
-          onClose={handleClose}
-          onOpen={handleToggle}
-          open={open}
-          direction="up"
-          sx={{
-            '& .MuiSpeedDial-fab': {
-              backgroundColor: 'primary.main',
-              '&:hover': {
-                backgroundColor: 'primary.dark',
+        <Box onClick={stopPropagation}>
+          <SpeedDial
+            ariaLabel="地図コントロール"
+            icon={<SpeedDialIcon icon={<MapIcon />} />}
+            onClose={handleClose}
+            onOpen={handleToggle}
+            open={open}
+            direction="up"
+            sx={{
+              '& .MuiSpeedDial-fab': {
+                backgroundColor: 'primary.main',
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                },
               },
-            },
-          }}
-        >
+            }}
+          >
           <SpeedDialAction
             icon={<ZoomInIcon />}
             tooltipTitle="拡大"
@@ -139,6 +160,7 @@ const MobileControls: React.FC<MobileControlsProps> = ({
             onClick={handleShowLayers}
           />
         </SpeedDial>
+        </Box>
       </Tooltip>
     </Box>
   );

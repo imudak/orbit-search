@@ -51,15 +51,21 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
     }
   };
 
-  const handleZoomIn = () => {
+  const handleZoomIn = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
     map.zoomIn();
   };
 
-  const handleZoomOut = () => {
+  const handleZoomOut = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
     map.zoomOut();
   };
 
-  const handleFullView = () => {
+  const handleFullView = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
     const japanBounds = L.latLngBounds(
       L.latLng(24.0, 122.0), // 南西端（沖縄付近）
       L.latLng(46.0, 146.0)  // 北東端（北海道付近）
@@ -69,7 +75,9 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
     }
   };
 
-  const handleResetView = () => {
+  const handleResetView = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
     if (currentCenter) {
       map.setView([currentCenter.lat, currentCenter.lng], defaultZoom);
     }
@@ -124,21 +132,30 @@ const MapControlIcons: React.FC<MapControlIconsProps> = ({
       {/* 情報表示アイコン */}
       {onToggleInfo && (
         <Tooltip title="衛星情報" placement="left">
-          <IconButton size="small" onClick={onToggleInfo}>
+          <IconButton size="small" onClick={(e) => {
+            e.stopPropagation();
+            onToggleInfo();
+          }}>
             <InfoIcon />
           </IconButton>
         </Tooltip>
       )}
       {onToggleModePanel && (
         <Tooltip title="モードパネル" placement="left">
-          <IconButton size="small" onClick={onToggleModePanel}>
+          <IconButton size="small" onClick={(e) => {
+            e.stopPropagation();
+            onToggleModePanel();
+          }}>
             <DashboardIcon />
           </IconButton>
         </Tooltip>
       )}
       {onToggleLayerSettings && (
         <Tooltip title="レイヤー設定" placement="left">
-          <IconButton size="small" onClick={onToggleLayerSettings}>
+          <IconButton size="small" onClick={(e) => {
+            e.stopPropagation();
+            onToggleLayerSettings();
+          }}>
             <LayersIcon />
           </IconButton>
         </Tooltip>

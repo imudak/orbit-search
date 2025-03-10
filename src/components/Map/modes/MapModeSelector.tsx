@@ -196,14 +196,20 @@ const MapModeSelector: React.FC<MapModeSelectorProps> = ({
   };
 
   // モード変更ハンドラー
-  const handleModeChange = (_: React.MouseEvent<HTMLElement>, newMode: MapMode | null) => {
+  const handleModeChange = (e: React.MouseEvent<HTMLElement>, newMode: MapMode | null) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
+
     if (newMode !== null) {
       setMode(newMode);
     }
   };
 
   // 情報表示ハンドラー
-  const handleInfoClick = () => {
+  const handleInfoClick = (e: React.MouseEvent<HTMLElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
+
     setShowModeInfo(true);
     // 5秒後に情報を非表示
     setTimeout(() => {
@@ -223,17 +229,21 @@ const MapModeSelector: React.FC<MapModeSelectorProps> = ({
           padding: '8px',
           boxShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
         }}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
             表示モード
           </Typography>
           <Tooltip title="モード情報を表示">
-            <InfoOutlinedIcon
-              fontSize="small"
-              sx={{ cursor: 'pointer', color: 'primary.main' }}
-              onClick={handleInfoClick}
-            />
+            <Box component="span" onClick={handleInfoClick} sx={{ display: 'flex', cursor: 'pointer' }}>
+              <InfoOutlinedIcon
+                fontSize="small"
+                sx={{ color: 'primary.main' }}
+              />
+            </Box>
           </Tooltip>
         </Box>
         <ToggleButtonGroup
@@ -242,6 +252,9 @@ const MapModeSelector: React.FC<MapModeSelectorProps> = ({
           onChange={handleModeChange}
           size="small"
           aria-label="map mode"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
         >
           <ToggleButton
             value={MapMode.NORMAL}
@@ -250,6 +263,9 @@ const MapModeSelector: React.FC<MapModeSelectorProps> = ({
               backgroundColor: currentMode === MapMode.NORMAL ? 'rgba(25, 118, 210, 0.1)' : 'transparent',
               borderColor: currentMode === MapMode.NORMAL ? 'primary.main' : 'rgba(0, 0, 0, 0.12)'
             }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <MapIcon fontSize="small" color={currentMode === MapMode.NORMAL ? 'primary' : 'inherit'} />
             <Typography
@@ -270,6 +286,9 @@ const MapModeSelector: React.FC<MapModeSelectorProps> = ({
               backgroundColor: currentMode === MapMode.ANIMATION ? 'rgba(25, 118, 210, 0.1)' : 'transparent',
               borderColor: currentMode === MapMode.ANIMATION ? 'primary.main' : 'rgba(0, 0, 0, 0.12)'
             }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <PlayCircleOutlineIcon
               fontSize="small"
@@ -293,6 +312,9 @@ const MapModeSelector: React.FC<MapModeSelectorProps> = ({
               backgroundColor: currentMode === MapMode.ANALYSIS ? 'rgba(25, 118, 210, 0.1)' : 'transparent',
               borderColor: currentMode === MapMode.ANALYSIS ? 'primary.main' : 'rgba(0, 0, 0, 0.12)'
             }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <AssessmentIcon
               fontSize="small"
