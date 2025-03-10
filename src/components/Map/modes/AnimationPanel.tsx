@@ -18,7 +18,7 @@ interface AnimationPanelProps {
  * 衛星の現在位置と時間情報を表示
  */
 const AnimationPanel: React.FC<AnimationPanelProps> = ({
-  position = 'bottomleft',
+  position = 'topleft',
   orbitPaths,
   animationState,
   satellitePosition,
