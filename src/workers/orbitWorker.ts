@@ -158,8 +158,9 @@ function calculatePasses(
       let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
 
       // 経度を-180〜180度の範囲に正規化
-      if (satelliteLon > 180) satelliteLon -= 360;
-      else if (satelliteLon < -180) satelliteLon += 360;
+      // 複数回の正規化が必要な場合に対応
+      while (satelliteLon > 180) satelliteLon -= 360;
+      while (satelliteLon < -180) satelliteLon += 360;
 
       // 観測地点の経度
       const observerLongitude = location.lng;
@@ -172,12 +173,14 @@ function calculatePasses(
       let lonDiff = satelliteLon - observerLongitude;
 
       // 2. 経度差を-180度から180度の範囲に正規化
-      if (lonDiff > 180) lonDiff -= 360;
-      else if (lonDiff < -180) lonDiff += 360;
+      // 複数回の正規化が必要な場合に対応
+      while (lonDiff > 180) lonDiff -= 360;
+      while (lonDiff < -180) lonDiff += 360;
 
-      // 3. 表示用の経度を計算（相対経度をそのまま使用）
-      // 重要: 相対経度をそのまま使用することで、観測地点が中心（0度）となる
-      let displayLon = lonDiff;
+      // 3. 表示用の経度を計算（実際の経度を使用）
+      // 修正: 相対経度ではなく実際の経度を使用する
+      // ユーザー指示により相対座標は使用しない
+      let displayLon = satelliteLon;
 
       // 調査用ログを出力（重要な情報のみ）
       console.log('Orbit calculation debug:', {
@@ -198,8 +201,9 @@ function calculatePasses(
         // 経度の差を計算（-180〜180度の範囲で最短経路）
         // 重要: 表示用の経度(displayLon)を使用
         let diff = displayLon - prevLon;
-        if (diff > 180) diff -= 360;
-        else if (diff < -180) diff += 360;
+        // 複数回の正規化が必要な場合に対応
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
 
         // 経度の差の絶対値が大きい場合は不連続点とする
         if (Math.abs(diff) > 90) {
@@ -255,7 +259,8 @@ function calculatePasses(
         range: rangeSat,
         isDaylight: calculateIsDaylight(satelliteLat, satelliteLon, date),
         lat: satelliteLat,
-        lng: displayLon, // 元のsatelliteLonではなく、表示用の経度を使用
+        lng: satelliteLon, // 実際の経度を使用
+        relLng: lonDiff, // 相対経度も保存（必要に応じて使用可能）
         isNewSegment: isDiscontinuous, // 不連続点かどうかを記録
         effectiveAngle // 観測地点からの実効的な角度
       });

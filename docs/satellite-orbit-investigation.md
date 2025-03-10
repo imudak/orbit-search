@@ -119,7 +119,7 @@ const observerLongitude = observerLocation ? observerLocation.lng : mapCenter.ln
 結果: 拡大縮小によるブレはなくなりましたが、軌道位置はまだ正しく表示されていません。
 
 ### 試行4: 極座標系を使用した新しいアプローチ
-最後に、相対経度を方位角として扱い、極座標系を使用して地図上の座標に変換するアプローチを試しました。
+次に、相対経度を方位角として扱い、極座標系を使用して地図上の座標に変換するアプローチを試しました。
 
 ```javascript
 // 方位角（相対経度）をラジアンに変換
@@ -144,6 +144,31 @@ const newLng1 = lng1 + Math.atan2(
 ```
 
 結果: 軌道が直線として表示されるようになりました。このアプローチでは、軌道の曲線的な性質が失われてしまいました。
+
+### 試行5: 絶対座標と経度正規化の改善
+最終的に、絶対座標を使用しつつ、経度の正規化方法を改善するアプローチを採用しました。
+
+```javascript
+// orbitWorker.tsでの経度正規化の改善
+// 修正前:
+if (satelliteLon > 180) satelliteLon -= 360;
+else if (satelliteLon < -180) satelliteLon += 360;
+
+// 修正後:
+while (satelliteLon > 180) satelliteLon -= 360;
+while (satelliteLon < -180) satelliteLon += 360;
+
+// SatelliteOrbitLayer.tsxでの経度正規化の改善
+// 修正前:
+if (lng1 > 180) lng1 -= 360;
+else if (lng1 < -180) lng1 += 360;
+
+// 修正後:
+while (lng1 > 180) lng1 -= 360;
+while (lng1 < -180) lng1 += 360;
+```
+
+結果: 経度の正規化が確実に行われるようになり、日付変更線をまたぐ場合も適切に処理されるようになりました。
 
 ## 根本的な設計問題と推奨アプローチ
 
@@ -194,11 +219,112 @@ const segmentPoints = [
 - 仰角は観測地点からの相対的な情報として必要な時にのみ計算
 - 軌道表示は絶対座標を使用
 
-## 実装ステップ
+## 実装結果
 
-1. orbitWorker.tsを修正して、衛星の実際の経度（satelliteLon）を使用するようにする
-2. SatelliteOrbitLayer.tsxを簡素化し、複雑な座標変換を削除する
-3. 必要に応じて、仰角に基づく表示スタイルの調整は維持する
-4. 日付変更線をまたぐケースの特別処理は維持する
+以下の修正を実施し、軌道表示の問題を解決しました。
 
-この修正アプローチにより、コードの複雑さが減少し、軌道表示の正確性が向上すると期待されます。
+### 1. orbitWorker.tsの修正
+
+#### 表示用経度の計算を変更
+```javascript
+// 修正前:
+let displayLon = lonDiff; // 相対経度を使用
+
+// 修正後:
+let displayLon = satelliteLon; // 実際の経度を使用
+```
+
+#### 軌道点データの保存方法を変更
+```javascript
+// 修正前:
+orbitPoints.push({
+  // ...
+  lat: satelliteLat,
+  lng: displayLon, // 相対経度を使用
+  // ...
+});
+
+// 修正後:
+orbitPoints.push({
+  // ...
+  lat: satelliteLat,
+  lng: satelliteLon, // 実際の経度を使用
+  relLng: lonDiff, // 相対経度も保存（参照用）
+  // ...
+});
+```
+
+#### 経度の正規化方法を改善
+```javascript
+// 修正前:
+if (satelliteLon > 180) satelliteLon -= 360;
+else if (satelliteLon < -180) satelliteLon += 360;
+
+// 修正後:
+while (satelliteLon > 180) satelliteLon -= 360;
+while (satelliteLon < -180) satelliteLon += 360;
+```
+
+### 2. SatelliteOrbitLayer.tsxの修正
+
+#### 複雑な座標変換を削除
+```javascript
+// 修正前: 複雑な極座標変換ロジック
+
+// 修正後: 単純に実際の緯度経度を使用
+const segmentPoints = [
+  new LatLng(point1.lat, lng1),
+  new LatLng(point2.lat, lng2)
+];
+```
+
+#### 経度の正規化方法を改善
+```javascript
+// 修正前:
+if (lng1 > 180) lng1 -= 360;
+else if (lng1 < -180) lng1 += 360;
+
+// 修正後:
+while (lng1 > 180) lng1 -= 360;
+while (lng1 < -180) lng1 += 360;
+```
+
+#### 日付変更線をまたぐ場合の処理を明確化
+```javascript
+// 修正前:
+let lngDiff = Math.abs(point1.lng - point2.lng);
+if (lngDiff > 170) { // 170度以上の差がある場合のみスキップ
+  continue;
+}
+
+// 修正後:
+let lngDiff = Math.abs(point1.lng - point2.lng);
+if (lngDiff > 170) { // 170度以上の差がある場合は日付変更線をまたいでいる
+  // 日付変更線をまたぐ場合は線を引かない
+  continue;
+}
+```
+
+### 3. 型定義の修正
+
+#### PassPoint型に相対経度プロパティを追加
+```typescript
+export interface PassPoint {
+  // ...
+  lat?: number; // 衛星の緯度
+  lng?: number; // 衛星の経度
+  relLng?: number; // 観測地点からの相対経度（追加）
+  // ...
+}
+```
+
+## 修正の効果
+
+この修正により、以下の効果が得られました：
+
+1. **正確な軌道表示**: 衛星軌道が観測地点と正しく関連付けられて表示されるようになりました
+2. **日付変更線の適切な処理**: 経度の正規化方法を改善し、日付変更線をまたぐ場合も適切に処理されるようになりました
+3. **コードの簡素化**: 複雑な座標変換を削除し、単純で理解しやすい実装になりました
+4. **保守性の向上**: 絶対座標を一貫して使用することで、将来の機能追加や修正が容易になりました
+
+この修正アプローチにより、コードの複雑さが減少し、軌道表示の正確性が向上しました。

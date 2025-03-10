@@ -66,6 +66,7 @@ export interface PassPoint {
   isDaylight: boolean;
   lat?: number; // 衛星の緯度
   lng?: number; // 衛星の経度
+  relLng?: number; // 観測地点からの相対経度
   isNewSegment?: boolean; // 経度の不連続点かどうか
   effectiveAngle?: number; // 観測地点からの実効的な角度
 }
