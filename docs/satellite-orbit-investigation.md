@@ -328,3 +328,62 @@ export interface PassPoint {
 4. **保守性の向上**: 絶対座標を一貫して使用することで、将来の機能追加や修正が容易になりました
 
 この修正アプローチにより、コードの複雑さが減少し、軌道表示の正確性が向上しました。
+
+## 追加修正
+
+初回の修正後、以下の問題が残っていたため、追加の修正を行いました：
+
+1. 軌道がかくかくしている（時間間隔が適切でない）
+2. コンソールログが多すぎる
+3. 日付変更線をまたぐ場合の処理がまだ最適でない
+
+### 追加修正内容
+
+#### 1. コンソールログの抑制
+```javascript
+// 調査用ログを抑制
+// console.log('Orbit calculation debug:', {
+//   satelliteLon: satelliteLon.toFixed(2),
+//   observerLon: observerLongitude.toFixed(2),
+//   lonDiff: lonDiff.toFixed(2),
+//   displayLon: displayLon.toFixed(2),
+//   elevation: elevation.toFixed(2),
+//   date: date.toISOString()
+// });
+```
+
+#### 2. 軌道の滑らかさの改善
+```javascript
+// 修正前:
+const stepSize = filters.stepSize || (isDetailedView ? 60 * 1000 : 5 * 60 * 1000); // デフォルトは5分、詳細表示の場合は1分
+
+// 修正後:
+const stepSize = filters.stepSize || (isDetailedView ? 30 * 1000 : 2 * 60 * 1000); // デフォルトは2分、詳細表示の場合は30秒
+```
+
+#### 3. 日付変更線をまたぐ場合の処理の改善
+```javascript
+// 修正前:
+if (Math.abs(diff) > 90) { // 不連続点の検出閾値
+  isDiscontinuous = true;
+}
+
+// 修正後:
+if (Math.abs(diff) > 150) { // 不連続点の検出閾値を調整
+  isDiscontinuous = true;
+}
+```
+
+```javascript
+// 修正前:
+if (lngDiff > 170) { // 170度以上の差がある場合は日付変更線をまたいでいる
+  continue;
+}
+
+// 修正後:
+if (lngDiff > 150) { // 150度以上の差がある場合は日付変更線をまたいでいる
+  continue;
+}
+```
+
+これらの追加修正により、軌道表示がより滑らかになり、日付変更線をまたぐ場合の処理が改善されました。また、コンソールログが抑制されたことで、ブラウザのパフォーマンスも向上しました。
