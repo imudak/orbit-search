@@ -35,12 +35,16 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
   };
 
   // ズームインボタンのクリックハンドラー
-  const handleZoomIn = () => {
+  const handleZoomIn = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
     map.zoomIn();
   };
 
   // ズームアウトボタンのクリックハンドラー
-  const handleZoomOut = () => {
+  const handleZoomOut = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // クリックイベントが地図まで伝播しないようにする
+    e.stopPropagation();
     map.zoomOut();
   };
 
