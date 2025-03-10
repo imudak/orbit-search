@@ -60,7 +60,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
   onPlayPause,
   onSeek,
   onSpeedChange,
-  isCompact: initialIsCompact = false
+  isCompact: initialIsCompact = true
 }) => {
   const { isPlaying, currentTime, startTime, endTime, playbackSpeed } = animationState;
   const [showHelp, setShowHelp] = useState(false);

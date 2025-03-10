@@ -191,7 +191,7 @@ const InnerMap: React.FC<InnerMapProps> = ({
       {/* アニメーションモードパネル */}
       <ModeRenderer mode={MapMode.ANIMATION}>
         <AnimationPanel
-          position="bottomleft"
+          position="topleft"
           orbitPaths={orbitPaths}
           animationState={animationState}
           satellitePosition={satellitePosition}
@@ -282,7 +282,7 @@ const MapWithModeContext: React.FC<MapProps> = ({
   // パネル表示状態
   const [panelState, setPanelState] = useState<PanelState>({
     info: false,
-    modePanel: true,  // モードパネルは初期表示
+    modePanel: false,  // モードパネルは初期非表示に変更
     legend: false,
     layerSettings: false
   });
