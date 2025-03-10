@@ -105,9 +105,9 @@ function calculatePasses(
   const minElevation = filters.minElevation || 0;
 
   // 計算間隔を調整
-  // 衛星リスト表示用の場合は5分、詳細表示用の場合は1分
+  // 軌道表示の滑らかさを向上させるために時間間隔を短縮
   const isDetailedView = filters.stepSize !== undefined;
-  const stepSize = filters.stepSize || (isDetailedView ? 60 * 1000 : 5 * 60 * 1000); // デフォルトは5分、詳細表示の場合は1分
+  const stepSize = filters.stepSize || (isDetailedView ? 30 * 1000 : 2 * 60 * 1000); // デフォルトは2分、詳細表示の場合は30秒
 
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
   if (!satrec) {
@@ -182,15 +182,15 @@ function calculatePasses(
       // ユーザー指示により相対座標は使用しない
       let displayLon = satelliteLon;
 
-      // 調査用ログを出力（重要な情報のみ）
-      console.log('Orbit calculation debug:', {
-        satelliteLon: satelliteLon.toFixed(2),
-        observerLon: observerLongitude.toFixed(2),
-        lonDiff: lonDiff.toFixed(2),
-        displayLon: displayLon.toFixed(2),
-        elevation: elevation.toFixed(2),
-        date: date.toISOString()
-      });
+      // 調査用ログを抑制
+      // console.log('Orbit calculation debug:', {
+      //   satelliteLon: satelliteLon.toFixed(2),
+      //   observerLon: observerLongitude.toFixed(2),
+      //   lonDiff: lonDiff.toFixed(2),
+      //   displayLon: displayLon.toFixed(2),
+      //   elevation: elevation.toFixed(2),
+      //   date: date.toISOString()
+      // });
 
       // 前のポイントとの経度の連続性を確認
       let isDiscontinuous = false;
@@ -206,7 +206,8 @@ function calculatePasses(
         while (diff < -180) diff += 360;
 
         // 経度の差の絶対値が大きい場合は不連続点とする
-        if (Math.abs(diff) > 90) {
+        // 日付変更線をまたぐ場合の閾値を調整（170度→150度）
+        if (Math.abs(diff) > 150) {
           isDiscontinuous = true;
           // デバッグログを抑制
           if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
@@ -241,14 +242,14 @@ function calculatePasses(
       const effectiveAngle = elevation; // 仰角をそのまま使用
 
       // デバッグ用ログを抑制
-      if (process.env.NODE_ENV === 'development' && lonDiff > 170 && Math.random() < 0.001) {
-        console.log('Large longitude difference detected:', {
-          originalLon: satelliteLon,
-          displayLon: displayLon,
-          observerLon: observerLongitude,
-          diff: lonDiff
-        });
-      }
+      // if (process.env.NODE_ENV === 'development' && lonDiff > 170 && Math.random() < 0.001) {
+      //   console.log('Large longitude difference detected:', {
+      //     originalLon: satelliteLon,
+      //     displayLon: displayLon,
+      //     observerLon: observerLongitude,
+      //     diff: lonDiff
+      //   });
+      // }
 
       // 新しいセグメントの開始点として追加
       // 重要: 表示用の経度(displayLon)を使用

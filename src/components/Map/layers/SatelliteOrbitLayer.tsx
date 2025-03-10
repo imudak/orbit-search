@@ -38,7 +38,7 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // 日付変更線をまたぐ場合の処理
           // 経度の差が極端に大きい場合は日付変更線をまたいでいると判断
           let lngDiff = Math.abs(point1.lng - point2.lng);
-          if (lngDiff > 170) { // 170度以上の差がある場合は日付変更線をまたいでいる
+          if (lngDiff > 150) { // 150度以上の差がある場合は日付変更線をまたいでいる
             // 日付変更線をまたぐ場合は線を引かない
             continue;
           }
@@ -68,15 +68,15 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             new LatLng(point2.lat, lng2)
           ];
 
-          // デバッグログ（開発時のみ表示）
-          if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
-            console.log('Orbit display coordinates:', {
-              lng: lng1,
-              lat: point1.lat,
-              elevation: effectiveAngle,
-              source: observerLocation ? 'fixed observer' : 'map center'
-            });
-          }
+          // デバッグログを抑制
+          // if (process.env.NODE_ENV === 'development' && Math.random() < 0.01) {
+          //   console.log('Orbit display coordinates:', {
+          //     lng: lng1,
+          //     lat: point1.lat,
+          //     elevation: effectiveAngle,
+          //     source: observerLocation ? 'fixed observer' : 'map center'
+          //   });
+          // }
 
           // 仰角に基づいてスタイルを設定
           // effectiveAngleは現在、orbitWorker.tsで仰角そのものに設定されている
