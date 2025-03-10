@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>先進的ジェスチャーベースUI</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/4.0.0/satellite.min.js"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #2196F3;
+      --accent-color: #FF4081;
+      --background-light: #FFFFFF;
+      --text-light: #212121;
+      --text-light-secondary: #757575;
+      --card-light: #FFFFFF;
+      --background-dark: #121212;
+      --surface-dark: #1E1E1E;
+      --text-dark: #FFFFFF;
+      --text-dark-secondary: #B0B0B0;
+      --card-dark: #2D2D2D;
+      --shadow-light: 0 2px 10px rgba(0,0,0,0.1);
+      --shadow-dark: 0 2px 10px rgba(0,0,0,0.3);
+      --transition-standard: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Hiragino Sans", "Meiryo", -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-light);
+      background-color: var(--background-light);
+      transition: background-color var(--transition-standard);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    body.dark-mode {
+      color: var(--text-dark);
+      background-color: var(--background-dark);
+    }
+
+    .map-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    /* ジェスチャーガイド（半透明で表示） */
+    .gesture-guide {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      border-radius: 10px;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.5s;
+      pointer-events: none;
+      max-width: 80%;
+      text-align: center;
+    }
+
+    .gesture-guide.visible {
+      opacity: 1;
+    }
+
+    /* フローティングアクションボタン */
+    .fab {
+      position: fixed;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background-color: var(--primary-color);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-light);
+      cursor: pointer;
+      z-index: 100;
+      transition: transform 0.3s, background-color var(--transition-standard), box-shadow var(--transition-standard);
+    }
+
+    .dark-mode .fab {
+      box-shadow: var(--shadow-dark);
+    }
+
+    .fab:hover {
+      transform: scale(1.05);
+    }
+
+    .fab-main {
+      bottom: 24px;
+      right: 24px;
+      background-color: var(--accent-color);
+    }
+
+    .fab i {
+      font-size: 24px;
+    }
+
+    /* ダークモード切り替えボタン */
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: var(--card-light);
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-light);
+      cursor: pointer;
+      transition: background-color var(--transition-standard), color var(--transition-standard);
+    }
+
+    .dark-mode .theme-toggle {
+      background-color: var(--card-dark);
+      color: var(--text-dark);
+      box-shadow: var(--shadow-dark);
+    }
+
+    /* オーバーレイメニュー */
+    .overlay-menu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      opacity: 0;
+      visibility: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .overlay-menu.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .menu-content {
+      width: 80%;
+      max-width: 500px;
+      max-height: 80vh;
+      background-color: var(--card-light);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+      overflow-y: auto;
+      transform: translateY(30px);
+      opacity: 0;
+      transition: transform 0.4s, opacity 0.4s;
+    }
+
+    .dark-mode .menu-content {
+      background-color: var(--card-dark);
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .overlay-menu.visible .menu-content {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .menu-title {
+      font-size: 1.5rem;
+      font-weight: 500;
+    }
+
+    .menu-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .menu-close:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .menu-close:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* メニュータブ */
+    .menu-tabs {
+      display: flex;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      margin-bottom: 16px;
+    }
+
+    .dark-mode .menu-tabs {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .menu-tab {
+      padding: 12px 16px;
+      cursor: pointer;
+      position: relative;
+      color: var(--text-light-secondary);
+      transition: color 0.2s;
+    }
+
+    .dark-mode .menu-tab {
+      color: var(--text-dark-secondary);
+    }
+
+    .menu-tab.active {
+      color: var(--primary-color);
+    }
+
+    .menu-tab::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: var(--primary-color);
+      transform: scaleX(0);
+      transition: transform 0.2s;
+    }
+
+    .menu-tab.active::after {
+      transform: scaleX(1);
+    }
+
+    /* タブコンテンツ */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* フォーム要素 */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text-light);
+      transition: color var(--transition-standard);
+    }
+
+    .dark-mode label {
+      color: var(--text-dark);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      font-size: 16px;
+      background-color: var(--background-light);
+      color: var(--text-light);
+      transition: border-color 0.2s, background-color var(--transition-standard), color var(--transition-standard);
+    }
+
+    .dark-mode input,
+    .dark-mode textarea,
+    .dark-mode select {
+      border-color: rgba(255, 255, 255, 0.2);
+      background-color: var(--surface-dark);
+      color: var(--text-dark);
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--primary-color);
+      outline: none;
+    }
+
+    /* ボタン */
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.2s;
+    }
+
+    button:hover {
+      background-color: #1976D2;
+      transform: translateY(-2px);
+    }
+
+    button.secondary {
+      background-color: transparent;
+      color: var(--primary-color);
+      border: 1px solid var(--primary-color);
+    }
+
+    button.secondary:hover {
+      background-color: rgba(33, 150, 243, 0.1);
+    }
+
+    /* サテライトメニュー（フローティングボタンから展開） */
+    .satellite-menu {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 99;
+    }
+
+    .satellite-action {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: var(--primary-color);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-light);
+      transform: scale(0);
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s, background-color var(--transition-standard);
+    }
+
+    .dark-mode .satellite-action {
+      box-shadow: var(--shadow-dark);
+    }
+
+    .satellite-menu.open .satellite-action {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    .satellite-action:nth-child(1) {
+      bottom: 70px;
+      right: 0;
+      transition-delay: 0.05s;
+    }
+
+    .satellite-action:nth-child(2) {
+      bottom: 58px;
+      right: 58px;
+      transition-delay: 0.1s;
+    }
+
+    .satellite-action:nth-child(3) {
+      bottom: 0;
+      right: 70px;
+      transition-delay: 0.15s;
+    }
+
+    /* ボトムシート */
+    .bottom-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: var(--card-light);
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      z-index: 150;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .dark-mode .bottom-sheet {
+      background-color: var(--card-dark);
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+    }
+
+    .bottom-sheet.visible {
+      transform: translateY(0);
+    }
+
+    .sheet-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .dark-mode .sheet-header {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .sheet-title {
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+
+    .sheet-content {
+      padding: 20px;
+    }
+
+    /* 衛星データリスト */
+    .satellite-list {
+      list-style: none;
+    }
+
+    .satellite-item {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background-color: var(--background-light);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s, background-color var(--transition-standard), border-color var(--transition-standard);
+    }
+
+    .dark-mode .satellite-item {
+      background-color: var(--surface-dark);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .satellite-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .satellite-item h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .satellite-item p {
+      font-size: 0.9rem;
+      color: var(--text-light-secondary);
+      margin-bottom: 4px;
+    }
+
+    .dark-mode .satellite-item p {
+      color: var(--text-dark-secondary);
+    }
+
+    /* トースト通知 */
+    .toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 12px 20px;
+      background-color: #323232;
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+
+    .toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* 情報カード */
+    .info-card {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 280px;
+      background-color: var(--card-light);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow-light);
+      z-index: 100;
+      transform: translateX(-300px);
+      opacity: 0;
+      transition: transform 0.4s, opacity 0.4s, background-color var(--transition-standard), box-shadow var(--transition-standard);
+    }
+
+    .dark-mode .info-card {
+      background-color: var(--card-dark);
+      box-shadow: var(--shadow-dark);
+    }
+
+    .info-card.visible {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .info-card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .info-item {
+      display: flex;
+      margin-bottom: 8px;
+    }
+
+    .info-label {
+      font-weight: 500;
+      width: 100px;
+      color: var(--text-light-secondary);
+      transition: color var(--transition-standard);
+    }
+
+    .dark-mode .info-label {
+      color: var(--text-dark-secondary);
+    }
+
+    .info-value {
+      flex: 1;
+    }
+
+    /* 軌道プレビュー */
+    .orbit-preview {
+      margin-top: 16px;
+      height: 120px;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .dark-mode .orbit-preview {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* アニメーションのコントロール */
+    .animation-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+    }
+
+    .animation-slider {
+      flex: 1;
+      margin: 0 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .dark-mode input[type="range"] {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      cursor: pointer;
+    }
+
+    /* ドラッグハンドル */
+    .drag-handle {
+      width: 40px;
+      height: 5px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+      margin: 0 auto;
+      margin-bottom: 8px;
+    }
+
+    .dark-mode .drag-handle {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* 凡例 */
+    .legend {
+      margin-top: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 8px;
+      margin-right: 12px;
+      border-radius: 2px;
+    }
+
+    /* 確認ダイアログ */
+    .dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .dialog.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .dialog-content {
+      width: 90%;
+      max-width: 400px;
+      background-color: var(--card-light);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+      transform: scale(0.9);
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s, background-color var(--transition-standard);
+    }
+
+    .dark-mode .dialog-content {
+      background-color: var(--card-dark);
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .dialog.visible .dialog-content {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    .dialog-title {
+      font-size: 1.3rem;
+      margin-bottom: 16px;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 24px;
+      gap: 12px;
+    }
+
+    /* ジェスチャーエリア */
+    .gesture-area {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+  <div class="map-container">
+    <div id="map"></div>
+
+    <!-- ジェスチャーエリア（透明） -->
+    <div class="gesture-area" id="gestureArea"></div>
+  </div>
+
+  <!-- メインFAB -->
+  <div class="fab fab-main" id="fabMain">
+    <i class="material-icons-round">menu</i>
+  </div>
+
+  <!-- サテライトメニュー -->
+  <div class="satellite-menu" id="satelliteMenu">
+    <div class="satellite-action" id="searchAction" title="衛星検索">
+      <i class="material-icons-round">search</i>
+    </div>
+    <div class="satellite-action" id="infoAction" title="情報表示">
+      <i class="material-icons-round">info</i>
+    </div>
+    <div class="satellite-action" id="settingsAction" title="設定">
+      <i class="material-icons-round">settings</i>
+    </div>
+  </div>
+
+  <!-- ダークモード切り替え -->
+  <div class="theme-toggle" id="themeToggle">
+    <i class="material-icons-round">dark_mode</i>
+  </div>
+
+  <!-- 情報カード -->
+  <div class="info-card" id="infoCard">
+    <h2>
+      衛星情報
+      <i class="material-icons-round" style="cursor: pointer;" id="closeInfoCard">close</i>
+    </h2>
+    <div class="info-item">
+      <div class="info-label">衛星名:</div>
+      <div class="info-value">国際宇宙ステーション (ISS)</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">NORAD ID:</div>
+      <div class="info-value">25544</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">軌道種類:</div>
+      <div class="info-value">LEO (低軌道)</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">軌道高度:</div>
+      <div class="info-value">約400km</div>
+    </div>
+
+    <div class="orbit-preview">
+      <!-- 軌道プレビュー表示 -->
+    </div>
+
+    <div class="animation-controls">
+      <i class="material-icons-round">play_arrow</i>
+      <div class="animation-slider">
+        <input type="range" min="0" max="100" value="0">
+      </div>
+      <i class="material-icons-round">fast_forward</i>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: blue;"></div>
+        <span>軌道（絶対座標）</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background-color: green; border-radius: 50%;"></div>
+        <span>観測地点</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ボトムシート -->
+  <div class="bottom-sheet" id="bottomSheet">
+    <div class="drag-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">衛星検索</div>
+      <div id="closeBottomSheet">
+        <i class="material-icons-round" style="cursor: pointer;">close</i>
+      </div>
+    </div>
+    <div class="sheet-content">
+      <div class="form-group">
+        <label for="satellite-name">衛星名/NORAD ID:</label>
+        <input type="text" id="satellite-name" placeholder="例: ISS (25544)">
+      </div>
+      <div class="form-group">
+        <label for="search-type">検索タイプ:</label>
+        <select id="search-type">
+          <option value="name">名前</option>
+          <option value="id">NORAD ID</option>
+          <option value="type">衛星タイプ</option>
+        </select>
+      </div>
+      <button id="searchButton">検索</button>
+
+      <div style="margin-top: 24px;">
+        <h3 style="margin-bottom: 12px;">検索結果</h3>
+        <ul class="satellite-list">
+          <li class="satellite-item">
+            <h3>ISS (25544)</h3>
+            <p>国際宇宙ステーション</p>
+            <p>LEO (低軌道) - 高度: 約400km</p>
+          </li>
+          <li class="satellite-item">
+            <h3>STARLINK-1234 (48232)</h3>
+            <p>通信衛星</p>
+            <p>LEO (低軌道) - 高度: 約550km</p>
+          </li>
+          <li class="satellite-item">
+            <h3>NOAA-19 (33591)</h3>
+            <p>気象衛星</p>
+            <p>LEO (低軌道) - 高度: 約850km</p>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- オーバーレイメニュー -->
+  <div class="overlay-menu" id="overlayMenu">
+    <div class="menu-content">
+      <div class="menu-header">
+        <div class="menu-title">設定</div>
+        <div class="menu-close" id="closeOverlayMenu">
+          <i class="material-icons-round">close</i>
+        </div>
+      </div>
+
+      <div class="menu-tabs">
+        <div class="menu-tab active" data-tab="observer">観測点</div>
+        <div class="menu-tab" data-tab="orbit">軌道</div>
+        <div class="menu-tab" data-tab="display">表示</div>
+      </div>
+
+      <!-- 観測点タブ -->
+      <div class="tab-content active" id="observer-tab">
+        <div class="form-group">
+          <label for="observer-lat">観測地点の緯度:</label>
+          <input type="number" id="observer-lat" value="35.681200" step="0.000001">
+        </div>
+        <div class="form-group">
+          <label for="observer-lng">観測地点の経度:</label>
+          <input type="number" id="observer-lng" value="139.767100" step="0.000001">
+        </div>
+        <button id="setObserverButton">観測地点を設定</button>
+      </div>
+
+      <!-- 軌道タブ -->
+      <div class="tab-content" id="orbit-tab">
+        <div class="form-group">
+          <label for="tle1">TLE 1行目:</label>
+          <input type="text" id="tle1" value="1 25544U 98067A   21156.30527927  .00003432  00000-0  70541-4 0  9993">
+        </div>
+        <div class="form-group">
+          <label for="tle2">TLE 2行目:</label>
+          <input type="text" id="tle2" value="2 25544  51.6455 351.2142 0003438  83.9735 276.1975 15.48957524286754">
+        </div>
+        <div class="form-group">
+          <label for="orbit-display-mode">表示モード:</label>
+          <select id="orbit-display-mode">
+            <option value="absolute">絶対座標（実際の緯度経度）</option>
+            <option value="relative">相対座標（観測地点からの相対位置）</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button id="displayOrbitButton">軌道を表示</button>
+          <button id="clearOrbitButton" class="secondary">軌道をクリア</button>
+        </div>
+      </div>
+
+      <!-- 表示タブ -->
+      <div class="tab-content" id="display-tab">
+        <div class="form-group">
+          <label for="map-style">地図スタイル:</label>
+          <select id="map-style">
+            <option value="standard">標準</option>
+            <option value="satellite">衛星写真</option>
+            <option value="dark">ダーク</option>
+            <option value="terrain">地形</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="orbit-color">軌道表示色:</label>
+          <select id="orbit-color">
+            <option value="blue">青</option>
+            <option value="red">赤</option>
+            <option value="green">緑</option>
+            <option value="purple">紫</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="show-visibility" checked>
+            可視範囲を表示
+          </label>
+        </div>
+        <button id="applyDisplayButton">適用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- トースト通知 -->
+  <div class="toast" id="toast">設定が保存されました</div>
+
+  <!-- ジェスチャーガイド -->
+  <div class="gesture-guide" id="gestureGuide">
+    ピンチ操作で拡大縮小<br>
+    ダブルタップで詳細表示<br>
+    スワイプで移動
+  </div>
+
+  <!-- 確認ダイアログ -->
+  <div class="dialog" id="confirmDialog">
+    <div class="dialog-content">
+      <div class="dialog-title">確認</div>
+      <p>軌道データを消去しますか？この操作は元に戻せません。</p>
+      <div class="dialog-actions">
+        <button class="secondary" id="cancelClearButton">キャンセル</button>
+        <button id="confirmClearButton">消去する</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // グローバル変数
+    let map;
+    let observerMarker;
+    let orbitLayer;
+    let isDarkMode = false;
+    let isSatelliteMenuOpen = false;
+    let startX, startY, startDistance;
+    let isGestureGuideShown = false;
+
+    // 地図の初期化
+    function initMap() {
+      map = L.map('map').setView([35.681200, 139.767100], 5);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // 観測地点のマーカーを追加
+      observerMarker = L.marker([35.681200, 139.767100]).addTo(map);
+      observerMarker.bindPopup("観測地点 (東京)").openPopup();
+
+      // 軌道レイヤーを初期化
+      orbitLayer = L.layerGroup().addTo(map);
+
+      // サンプルの軌道パスを表示
+      const orbitCoords = [];
+      for (let i = 0; i < 36; i++) {
+        const angle = (i / 36) * 2 * Math.PI;
+        const lat = 35.681200 + 10 * Math.sin(angle);
+        const lng = 139.767100 + 10 * Math.cos(angle);
+        orbitCoords.push([lat, lng]);
+      }
+
+      L.polyline(orbitCoords, {
+        color: 'blue',
+        weight: 2,
+        opacity: 0.7
+      }).addTo(orbitLayer);
+
+      // 可視範囲の円を表示
+      L.circle([35.681200, 139.767100], {
+        color: 'orange',
+        fillColor: 'orange',
+        fillOpacity: 0.1,
+        radius: 1000000
+      }).addTo(map);
+
+      // 地図クリックイベントを追加
+      map.on('click', function(e) {
+        // クリックした位置に観測地点を移動
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        observerMarker.setLatLng([lat, lng]);
+        observerMarker.bindPopup(`観測地点 (${lat.toFixed(6)}, ${lng.toFixed(6)})`).openPopup();
+
+        // トースト表示
+        showToast("観測地点を更新しました");
+      });
+    }
+
+    // メインFABの処理
+    document.getElementById('fabMain').addEventListener('click', function() {
+      toggleSatelliteMenu();
+    });
+
+    // サテライトメニューの開閉
+    function toggleSatelliteMenu() {
+      isSatelliteMenuOpen = !isSatelliteMenuOpen;
+      document.getElementById('satelliteMenu').classList.toggle('open', isSatelliteMenuOpen);
+      document.getElementById('fabMain').innerHTML = isSatelliteMenuOpen
+        ? '<i class="material-icons-round">close</i>'
+        : '<i class="material-icons-round">menu</i>';
+    }
+
+    // 検索アクション
+    document.getElementById('searchAction').addEventListener('click', function() {
+      document.getElementById('bottomSheet').classList.add('visible');
+      toggleSatelliteMenu();
+    });
+
+    // 情報アクション
+    document.getElementById('infoAction').addEventListener('click', function() {
+      document.getElementById('infoCard').classList.add('visible');
+      toggleSatelliteMenu();
+    });
+
+    // 設定アクション
+    document.getElementById('settingsAction').addEventListener('click', function() {
+      document.getElementById('overlayMenu').classList.add('visible');
+      toggleSatelliteMenu();
+    });
+
+    // ダークモード切り替え
+    document.getElementById('themeToggle').addEventListener('click', function() {
+      isDarkMode = !isDarkMode;
+      document.body.classList.toggle('dark-mode', isDarkMode);
+      this.innerHTML = isDarkMode
+        ? '<i class="material-icons-round">light_mode</i>'
+        : '<i class="material-icons-round">dark_mode</i>';
+    });
+
+    // 情報カードを閉じる
+    document.getElementById('closeInfoCard').addEventListener('click', function() {
+      document.getElementById('infoCard').classList.remove('visible');
+    });
+
+    // ボトムシートを閉じる
+    document.getElementById('closeBottomSheet').addEventListener('click', function() {
+      document.getElementById('bottomSheet').classList.remove('visible');
+    });
+
+    // オーバーレイメニューを閉じる
+    document.getElementById('closeOverlayMenu').addEventListener('click', function() {
+      document.getElementById('overlayMenu').classList.remove('visible');
+    });
+
+    // 設定を適用
+    document.getElementById('applyDisplayButton').addEventListener('click', function() {
+      showToast('表示設定を適用しました');
+      document.getElementById('overlayMenu').classList.remove('visible');
+    });
+
+    // 軌道をクリア確認
+    document.getElementById('clearOrbitButton').addEventListener('click', function() {
+      document.getElementById('confirmDialog').classList.add('visible');
+    });
+
+    // 軌道クリアをキャンセル
+    document.getElementById('cancelClearButton').addEventListener('click', function() {
+      document.getElementById('confirmDialog').classList.remove('visible');
+    });
+
+    // 軌道クリアを確認
+    document.getElementById('confirmClearButton').addEventListener('click', function() {
+      orbitLayer.clearLayers();
+      document.getElementById('confirmDialog').classList.remove('visible');
+      document.getElementById('overlayMenu').classList.remove('visible');
+      showToast('軌道データを消去しました');
+    });
+
+    // 観測地点を設定
+    document.getElementById('setObserverButton').addEventListener('click', function() {
+      const lat = parseFloat(document.getElementById('observer-lat').value);
+      const lng = parseFloat(document.getElementById('observer-lng').value);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        showToast('有効な緯度・経度を入力してください', true);
+        return;
+      }
+
+      observerMarker.setLatLng([lat, lng]);
+      map.setView([lat, lng], map.getZoom());
+      observerMarker.bindPopup(`観測地点 (${lat.toFixed(6)}, ${lng.toFixed(6)})`).openPopup();
+
+      document.getElementById('overlayMenu').classList.remove('visible');
+      showToast('観測地点を更新しました');
+    });
+
+    // メニュータブ切り替え
+    document.querySelectorAll('.menu-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        // アクティブなタブとコンテンツを非アクティブに
+        document.querySelector('.menu-tab.active').classList.remove('active');
+        document.querySelector('.tab-content.active').classList.remove('active');
+
+        // クリックされたタブとそれに対応するコンテンツをアクティブに
+        this.classList.add('active');
+        document.getElementById(this.dataset.tab + '-tab').classList.add('active');
+      });
+    });
+
+    // トースト通知を表示
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+
+      if (isError) {
+        toast.style.backgroundColor = '#D32F2F';
+      } else {
+        toast.style.backgroundColor = '#323232';
+      }
+
+      toast.classList.add('visible');
+
+      setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 3000);
+    }
+
+    // ジェスチャーガイドを表示
+    function showGestureGuide() {
+      if (!isGestureGuideShown) {
+        document.getElementById('gestureGuide').classList.add('visible');
+        isGestureGuideShown = true;
+
+        setTimeout(() => {
+          document.getElementById('gestureGuide').classList.remove('visible');
+        }, 3000);
+      }
+    }
+
+    // ページ読み込み時に地図を初期化
+    window.onload = function() {
+      initMap();
+
+      // 初回ロード時にジェスチャーガイドを表示
+      setTimeout(showGestureGuide, 1500);
+    };
+
+    // ジェスチャー関連のイベントリスナー
+    const gestureArea = document.getElementById('gestureArea');
+
+    // タップとダブルタップの検出
+    let lastTap = 0;
+    gestureArea.addEventListener('click', function(e) {
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTap;
+
+      if (tapLength < 300 && tapLength > 0) {
+        // ダブルタップ
+        document.getElementById('infoCard').classList.add('visible');
+        e.preventDefault();
+      }
+
+      lastTap = currentTime;
+    });
+
+    // スワイプの検出（地図移動に利用）
+    gestureArea.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 1) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      }
+    });
+
+    // ピンチイン・ピンチアウト（ズームに利用）
+    gestureArea.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        startDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    });
+
+    gestureArea.addEventListener('touchmove', function(e) {
+      if (e.touches.length === 2) {
+        const currentDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+
+        if (startDistance && currentDistance) {
+          const diff = currentDistance - startDistance;
+
+          if (Math.abs(diff) > 10) {
+            if (diff > 0) {
+              // ピンチアウト（ズームイン）
+              map.zoomIn(1);
+            } else {
+              // ピンチイン（ズームアウト）
+              map.zoomOut(1);
+            }
+            startDistance = currentDistance;
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

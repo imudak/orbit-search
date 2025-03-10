@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>人間工学最適化UI</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/4.0.0/satellite.min.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    :root {
+      --primary-color: #1976d2;
+      --secondary-color: #0d47a1;
+      --accent-color: #ff4081;
+      --success-color: #4caf50;
+      --warning-color: #ff9800;
+      --error-color: #f44336;
+      --text-primary: #212121;
+      --text-secondary: #757575;
+      --border-color: #e0e0e0;
+      --bg-light: #f5f5f5;
+      --bg-paper: #ffffff;
+      --font-size-base: 16px;
+      --border-radius-sm: 4px;
+      --border-radius-md: 8px;
+      --border-radius-lg: 12px;
+      --spacing-unit: 8px;
+      --shadow-1: 0 2px 4px rgba(0,0,0,0.1);
+      --shadow-2: 0 4px 8px rgba(0,0,0,0.1);
+      --shadow-3: 0 8px 16px rgba(0,0,0,0.1);
+      --focus-outline: 3px solid rgba(25, 118, 210, 0.4);
+      --transition-standard: 0.3s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Hiragino Sans", "Meiryo", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: var(--font-size-base);
+      line-height: 1.5;
+      color: var(--text-primary);
+      background-color: var(--bg-light);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* アクセシビリティフォーカス */
+    :focus-visible {
+      outline: var(--focus-outline);
+      outline-offset: 2px;
+    }
+
+    /* アイコン */
+    .material-symbols-rounded {
+      font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+      vertical-align: middle;
+    }
+
+    .icon-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition-standard);
+    }
+
+    .icon-button:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .icon-button:active {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    /* ヘッダー */
+    .app-header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-1);
+    }
+
+    .app-title {
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: var(--spacing-unit);
+    }
+
+    /* メインコンテンツ */
+    .main-container {
+      display: flex;
+      flex-grow: 1;
+      overflow: hidden;
+    }
+
+    /* 地図コンテナ */
+    .map-container {
+      flex-grow: 1;
+      position: relative;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    /* パネル */
+    .panel {
+      width: 350px;
+      background-color: var(--bg-paper);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* タブ */
+    .tab-container {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .tab {
+      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
+      cursor: pointer;
+      position: relative;
+      flex-grow: 1;
+      text-align: center;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: var(--transition-standard);
+    }
+
+    .tab.active {
+      color: var(--primary-color);
+    }
+
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background-color: var(--primary-color);
+    }
+
+    .tab:hover:not(.active) {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    /* タブコンテンツ */
+    .tab-content {
+      display: none;
+      padding: calc(var(--spacing-unit) * 2);
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* セクション */
+    .section {
+      margin-bottom: calc(var(--spacing-unit) * 3);
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: var(--spacing-unit);
+      padding-bottom: calc(var(--spacing-unit) / 2);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-unit);
+    }
+
+    .section-title .material-symbols-rounded {
+      color: var(--primary-color);
+    }
+
+    /* フォーム */
+    .form-group {
+      margin-bottom: calc(var(--spacing-unit) * 2);
+    }
+
+    label {
+      display: block;
+      margin-bottom: calc(var(--spacing-unit) / 2);
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: calc(var(--spacing-unit) * 1.5);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      font-size: 1rem;
+      color: var(--text-primary);
+      transition: var(--transition-standard);
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+      outline: none;
+    }
+
+    input:disabled,
+    select:disabled,
+    textarea:disabled {
+      background-color: var(--bg-light);
+      opacity: 0.7;
+    }
+
+    /* 日付時間入力用の横並びフォーム */
+    .datetime-wrapper {
+      display: flex;
+      gap: var(--spacing-unit);
+    }
+
+    .datetime-wrapper .form-group {
+      flex: 1;
+    }
+
+    /* ボタン */
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: calc(var(--spacing-unit) / 2);
+      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
+      border: none;
+      border-radius: var(--border-radius-md);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-standard);
+      min-height: 44px; /* アクセシビリティのためのタッチターゲットサイズ */
+    }
+
+    .button-primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .button-primary:hover {
+      background-color: var(--secondary-color);
+    }
+
+    .button-secondary {
+      background-color: transparent;
+      color: var(--primary-color);
+      border: 1px solid var(--primary-color);
+    }
+
+    .button-secondary:hover {
+      background-color: rgba(25, 118, 210, 0.05);
+    }
+
+    .button-text {
+      background-color: transparent;
+      color: var(--primary-color);
+    }
+
+    .button-text:hover {
+      background-color: rgba(25, 118, 210, 0.05);
+    }
+
+    .button-group {
+      display: flex;
+      gap: var(--spacing-unit);
+      margin-bottom: calc(var(--spacing-unit) * 2);
+    }
+
+    /* カード */
+    .card {
+      background-color: var(--bg-paper);
+      border-radius: var(--border-radius-md);
+      box-shadow: var(--shadow-1);
+      margin-bottom: calc(var(--spacing-unit) * 2);
+    }
+
+    .card-content {
+      padding: calc(var(--spacing-unit) * 2);
+    }
+
+    .info-card {
+      background-color: var(--bg-light);
+      border-radius: var(--border-radius-md);
+      padding: calc(var(--spacing-unit) * 2);
+      margin-bottom: calc(var(--spacing-unit) * 2);
+    }
+
+    /* 情報アイテム */
+    .info-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-unit);
+    }
+
+    .info-item {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .info-label {
+      flex: 0 0 120px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .info-value {
+      flex: 1;
+    }
+
+    /* リスト */
+    .data-list {
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: calc(var(--spacing-unit) * 2);
+    }
+
+    .list-item {
+      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
+      border-bottom: 1px solid var(--border-color);
+      transition: var(--transition-standard);
+      cursor: pointer;
+    }
+
+    .list-item:last-child {
+      border-bottom: none;
+    }
+
+    .list-item:hover {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    .list-item.selected {
+      background-color: rgba(25, 118, 210, 0.1);
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .list-item-title {
+      font-weight: 500;
+      margin-bottom: calc(var(--spacing-unit) / 2);
+    }
+
+    .list-item-subtitle {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    /* 凡例 */
+    .legend {
+      margin-top: calc(var(--spacing-unit) * 2);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: var(--spacing-unit);
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 10px;
+      margin-right: var(--spacing-unit);
+      border-radius: calc(var(--border-radius-sm) / 2);
+    }
+
+    /* 地図コントロール */
+    .map-controls {
+      position: absolute;
+      right: calc(var(--spacing-unit) * 2);
+      bottom: calc(var(--spacing-unit) * 2);
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-unit);
+      z-index: 1000;
+    }
+
+    .map-control-button {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: white;
+      box-shadow: var(--shadow-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition-standard);
+    }
+
+    .map-control-button:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-3);
+    }
+
+    /* ツールチップ */
+    .tooltip {
+      position: relative;
+    }
+
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: calc(var(--spacing-unit) / 2) var(--spacing-unit);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      border-radius: var(--border-radius-sm);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition-standard);
+    }
+
+    .tooltip:hover::after {
+      opacity: 1;
+      visibility: visible;
+      bottom: calc(100% + 5px);
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 768px) {
+      .main-container {
+        flex-direction: column;
+      }
+
+      .panel {
+        width: 100%;
+        height: 50%;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+      }
+    }
+
+    /* 高コントラストテーマのサポート */
+    @media (forced-colors: active) {
+      :root {
+        --primary-color: Highlight;
+        --secondary-color: Highlight;
+        --accent-color: Highlight;
+        --text-primary: CanvasText;
+        --text-secondary: GrayText;
+        --border-color: ButtonText;
+        --bg-light: Canvas;
+        --bg-paper: Canvas;
+      }
+
+      .button-primary,
+      .button-secondary,
+      .button-text {
+        border: 1px solid ButtonText;
+      }
+
+      .tab.active::after {
+        background-color: Highlight;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <h1 class="app-title">衛星軌道可視化システム</h1>
+    <div class="header-actions">
+      <button class="icon-button" aria-label="ヘルプ">
+        <span class="material-symbols-rounded">help</span>
+      </button>
+      <button class="icon-button" aria-label="設定">
+        <span class="material-symbols-rounded">settings</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <div class="map-container">
+      <div id="map"></div>
+      <div class="map-controls">
+        <button class="map-control-button tooltip" data-tooltip="ズームイン" aria-label="ズームイン" id="zoomIn">
+          <span class="material-symbols-rounded">add</span>
+        </button>
+        <button class="map-control-button tooltip" data-tooltip="ズームアウト" aria-label="ズームアウト" id="zoomOut">
+          <span class="material-symbols-rounded">remove</span>
+        </button>
+        <button class="map-control-button tooltip" data-tooltip="現在地" aria-label="現在地" id="currentLocation">
+          <span class="material-symbols-rounded">my_location</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tab-container" role="tablist">
+        <div class="tab active" role="tab" aria-selected="true" id="tab-search" aria-controls="search-tab" tabindex="0" data-tab="search">検索</div>
+        <div class="tab" role="tab" aria-selected="false" id="tab-observer" aria-controls="observer-tab" tabindex="-1" data-tab="observer">観測点</div>
+        <div class="tab" role="tab" aria-selected="false" id="tab-orbit" aria-controls="orbit-tab" tabindex="-1" data-tab="orbit">軌道</div>
+        <div class="tab" role="tab" aria-selected="false" id="tab-info" aria-controls="info-tab" tabindex="-1" data-tab="info">情報</div>
+      </div>
+
+      <div class="tab-content active" id="search-tab" role="tabpanel" aria-labelledby="tab-search">
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">search</span>
+            衛星検索
+          </h2>
+          <form id="search-form">
+            <div class="datetime-wrapper">
+              <div class="form-group">
+                <label for="start-date">開始日時:</label>
+                <input type="datetime-local" id="start-date" value="2025-03-11T00:00">
+              </div>
+              <div class="form-group">
+                <label for="end-date">終了日時:</label>
+                <input type="datetime-local" id="end-date" value="2025-03-12T00:00">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="min-elevation">最低仰角 (度):</label>
+              <input type="range" id="min-elevation" min="0" max="90" value="10" oninput="minElevationOutput.value = this.value">
+              <output id="minElevationOutput">10</output>
+            </div>
+            <div class="button-group">
+              <button type="submit" class="button button-primary">
+                <span class="material-symbols-rounded">search</span>
+                検索
+              </button>
+              <button type="reset" class="button button-secondary">
+                <span class="material-symbols-rounded">refresh</span>
+                リセット
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">satellite_alt</span>
+            検索結果
+          </h2>
+          <div class="data-list" id="search-results">
+            <div class="list-item">
+              <div class="list-item-title">ISS (25544)</div>
+              <div class="list-item-subtitle">国際宇宙ステーション - 最大仰角: 68°</div>
+            </div>
+            <div class="list-item selected">
+              <div class="list-item-title">STARLINK-1234 (48232)</div>
+              <div class="list-item-subtitle">通信衛星 - 最大仰角: 45°</div>
+            </div>
+            <div class="list-item">
+              <div class="list-item-title">NOAA-19 (33591)</div>
+              <div class="list-item-subtitle">気象衛星 - 最大仰角: 32°</div>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-list">
+              <div class="info-item">
+                <div class="info-label">可視通過:</div>
+                <div class="info-value">3回 (2025/03/11 - 2025/03/12)</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">最大通過時間:</div>
+                <div class="info-value">2025/03/11 20:45:30 (仰角 68°)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="observer-tab" role="tabpanel" aria-labelledby="tab-observer">
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">location_on</span>
+            観測地点設定
+          </h2>
+          <form id="observer-form">
+            <div class="form-group">
+              <label for="observer-lat">観測地点の緯度 (°):</label>
+              <input type="number" id="observer-lat" value="35.681200" step="0.000001" min="-90" max="90">
+            </div>
+            <div class="form-group">
+              <label for="observer-lng">観測地点の経度 (°):</label>
+              <input type="number" id="observer-lng" value="139.767100" step="0.000001" min="-180" max="180">
+            </div>
+            <div class="button-group">
+              <button type="submit" class="button button-primary">
+                <span class="material-symbols-rounded">save</span>
+                観測地点を設定
+              </button>
+              <button type="button" class="button button-secondary" id="get-current-location">
+                <span class="material-symbols-rounded">my_location</span>
+                現在地を取得
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">info</span>
+            現在の観測地点
+          </h2>
+          <div class="info-card">
+            <div class="info-list">
+              <div class="info-item">
+                <div class="info-label">緯度:</div>
+                <div class="info-value">35.681200°</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">経度:</div>
+                <div class="info-value">139.767100°</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">地名:</div>
+                <div class="info-value">東京都千代田区</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">標高:</div>
+                <div class="info-value">約40m</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="orbit-tab" role="tabpanel" aria-labelledby="tab-orbit">
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">timeline</span>
+            軌道データ
+          </h2>
+          <form id="orbit-form">
+            <div class="form-group">
+              <label for="orbit-display-mode">表示モード:</label>
+              <select id="orbit-display-mode">
+                <option value="absolute">絶対座標（実際の緯度経度）</option>
+                <option value="relative">相対座標（観測地点からの相対位置）</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="orbit-animation-speed">アニメーション速度:</label>
+              <input type="range" id="orbit-animation-speed" min="1" max="100" value="10" oninput="speedOutput.value = this.value + 'x'">
+              <output id="speedOutput">10x</output>
+            </div>
+            <div class="button-group">
+              <button type="button" class="button button-primary" id="show-orbit">
+                <span class="material-symbols-rounded">play_arrow</span>
+                軌道アニメーション
+              </button>
+              <button type="button" class="button button-secondary" id="clear-orbit">
+                <span class="material-symbols-rounded">clear</span>
+                軌道をクリア
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">calendar_today</span>
+            軌道通過時間
+          </h2>
+          <div class="data-list" id="orbit-passes">
+            <div class="list-item">
+              <div class="list-item-title">通過 1: 2025/03/11 12:30:45</div>
+              <div class="list-item-subtitle">最大仰角: 68° / 方位角: 145° / 可視時間: 12分</div>
+            </div>
+            <div class="list-item">
+              <div class="list-item-title">通過 2: 2025/03/11 20:45:30</div>
+              <div class="list-item-subtitle">最大仰角: 45° / 方位角: 230° / 可視時間: 8分</div>
+            </div>
+            <div class="list-item">
+              <div class="list-item-title">通過 3: 2025/03/12 04:15:10</div>
+              <div class="list-item-subtitle">最大仰角: 32° / 方位角: 78° / 可視時間: 6分</div>
+            </div>
+          </div>
+          <div class="button-group">
+            <button type="button" class="button button-text" id="download-csv">
+              <span class="material-symbols-rounded">download</span>
+              CSV形式でダウンロード
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="info-tab" role="tabpanel" aria-labelledby="tab-info">
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">satellite_alt</span>
+            衛星情報
+          </h2>
+          <div class="info-card">
+            <div class="info-list">
+              <div class="info-item">
+                <div class="info-label">衛星名:</div>
+                <div class="info-value">STARLINK-1234</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">NORAD ID:</div>
+                <div class="info-value">48232</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">軌道種類:</div>
+                <div class="info-value">LEO (低軌道)</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">軌道高度:</div>
+                <div class="info-value">約550km</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">軌道傾斜角:</div>
+                <div class="info-value">53.0°</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">周期:</div>
+                <div class="info-value">約95分</div>
+              </div>
+            </div>
+          </div>
+          <div class="button-group">
+            <button type="button" class="button button-text" id="download-tle">
+              <span class="material-symbols-rounded">download</span>
+              TLEデータをダウンロード
+            </button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">list</span>
+            凡例
+          </h2>
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: blue;"></div>
+              <span>軌道（絶対座標）</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: red;"></div>
+              <span>軌道（相対座標）</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: green; border-radius: 50%;"></div>
+              <span>観測地点</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: orange;"></div>
+              <span>可視範囲（最小仰角10°）</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: purple;"></div>
+              <span>衛星現在位置</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">
+            <span class="material-symbols-rounded">schedule</span>
+            現在の状態
+          </h2>
+          <div class="info-card">
+            <div class="info-list">
+              <div class="info-item">
+                <div class="info-label">日時:</div>
+                <div class="info-value">2025/03/11 01:30:00 JST</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">仰角:</div>
+                <div class="info-value">45.3°</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">方位角:</div>
+                <div class="info-value">123.7°</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">距離:</div>
+                <div class="info-value">483.2km</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">可視状態:</div>
+                <div class="info-value">可視中（残り3分）</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 地図の初期化
+    let map;
+    let observerMarker;
+    let orbitLayer;
+    let visibilityCircle;
+
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: false  // デフォルトのズームコントロールを無効化
+      }).setView([35.681200, 139.767100], 5);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // 軌道レイヤーを初期化
+      orbitLayer = L.layerGroup().addTo(map);
+
+      // 観測地点のマーカーを追加
+      observerMarker = L.marker([35.681200, 139.767100]).addTo(map);
+      observerMarker.bindPopup("観測地点 (東京)").openPopup();
+
+      // 可視範囲の円を表示
+      visibilityCircle = L.circle([35.681200, 139.767100], {
+        color: 'orange',
+        fillColor: 'orange',
+        fillOpacity: 0.1,
+        radius: 1000000
+      }).addTo(map);
+
+      // サンプルの軌道パスを表示
+      const orbitCoords = [];
+      for (let i = 0; i < 36; i++) {
+        const angle = (i / 36) * 2 * Math.PI;
+        const lat = 35.681200 + 10 * Math.sin(angle);
+        const lng = 139.767100 + 10 * Math.cos(angle);
+        orbitCoords.push([lat, lng]);
+      }
+
+      L.polyline(orbitCoords, {
+        color: 'blue',
+        weight: 2,
+        opacity: 0.7
+      }).addTo(orbitLayer);
+
+      // 地図クリックイベント - 観測地点の更新
+      map.on('click', function(e) {
+        updateObserverLocation(e.latlng.lat, e.latlng.lng);
+      });
+    }
+
+    // 観測地点を更新
+    function updateObserverLocation(lat, lng) {
+      // マーカーと円の位置を更新
+      observerMarker.setLatLng([lat, lng]);
+      visibilityCircle.setLatLng([lat, lng]);
+
+      // フォームの値も更新
+      document.getElementById('observer-lat').value = lat.toFixed(6);
+      document.getElementById('observer-lng').value = lng.toFixed(6);
+
+      // ポップアップを更新
+      observerMarker.bindPopup(`観測地点 (${lat.toFixed(6)}, ${lng.toFixed(6)})`).openPopup();
+    }
+
+    // タブの切り替え
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        // 現在のアクティブなタブとコンテンツを非アクティブに
+        document.querySelector('.tab.active').classList.remove('active');
+        document.querySelector('.tab.active').setAttribute('aria-selected', 'false');
+        document.querySelector('.tab.active').tabIndex = -1;
+        document.querySelector('.tab-content.active').classList.remove('active');
+
+        // クリックしたタブとその対応するコンテンツをアクティブに
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        tab.tabIndex = 0;
+        document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+      });
+
+      // キーボードナビゲーション
+      tab.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          tab.click();
+        }
+      });
+    });
+
+    // キーボードでのタブナビゲーション
+    const tabs = Array.from(document.querySelectorAll('.tab'));
+    tabs.forEach(tab => {
+      tab.addEventListener('keydown', (e) => {
+        let index = tabs.indexOf(tab);
+        let nextIndex;
+
+        if (e.key === 'ArrowRight') {
+          nextIndex = (index + 1) % tabs.length;
+          tabs[nextIndex].click();
+          tabs[nextIndex].focus();
+        } else if (e.key === 'ArrowLeft') {
+          nextIndex = (index - 1 + tabs.length) % tabs.length;
+          tabs[nextIndex].click();
+          tabs[nextIndex].focus();
+        }
+      });
+    });
+
+    // 地図コントロールボタン
+    document.getElementById('zoomIn').addEventListener('click', () => {
+      map.zoomIn();
+    });
+
+    document.getElementById('zoomOut').addEventListener('click', () => {
+      map.zoomOut();
+    });
+
+    document.getElementById('currentLocation').addEventListener('click', () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          map.setView([lat, lng], 13);
+          updateObserverLocation(lat, lng);
+        }, error => {
+          console.error('Geolocation error:', error);
+          alert('現在地を取得できませんでした。');
+        });
+      } else {
+        alert('お使いのブラウザはGeolocationをサポートしていません。');
+      }
+    });
+
+    // 現在地取得ボタン
+    document.getElementById('get-current-location').addEventListener('click', () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          updateObserverLocation(lat, lng);
+          map.setView([lat, lng], 13);
+        }, error => {
+          console.error('Geolocation error:', error);
+          alert('現在地を取得できませんでした。');
+        });
+      } else {
+        alert('お使いのブラウザはGeolocationをサポートしていません。');
+      }
+    });
+
+    // 観測地点フォーム送信
+    document.getElementById('observer-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const lat = parseFloat(document.getElementById('observer-lat').value);
+      const lng = parseFloat(document.getElementById('observer-lng').value);
+
+      // 値のバリデーション
+      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        alert('有効な緯度・経度を入力してください。');
+        return;
+      }
+
+      updateObserverLocation(lat, lng);
+      map.setView([lat, lng], map.getZoom());
+    });
+
+    // 検索フォーム送信
+    document.getElementById('search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      // 実際のアプリケーションでは、APIリクエストを送信する処理を行います
+      alert('検索条件が適用されました。\n開始日時: ' + document.getElementById('start-date').value + '\n終了日時: ' + document.getElementById('end-date').value + '\n最低仰角: ' + document.getElementById('min-elevation').value + '°');
+    });
+
+    // 軌道表示ボタン
+    document.getElementById('show-orbit').addEventListener('click', () => {
+      // アニメーション開始のシミュレーション
+      alert('軌道アニメーションを開始します。速度: ' + document.getElementById('orbit-animation-speed').value + 'x');
+    });
+
+    // 軌道クリアボタン
+    document.getElementById('clear-orbit').addEventListener('click', () => {
+      orbitLayer.clearLayers();
+    });
+
+    // TLEダウンロードボタン
+    document.getElementById('download-tle').addEventListener('click', () => {
+      const tleLine1 = '1 48232U 21041AF  23249.91477776  .00004327  00000-0  23196-3 0  9996';
+      const tleLine2 = '2 48232  53.0558  11.0628 0001249  91.9563 268.1567 15.06386448122945';
+
+      const blob = new Blob(
+        [`STARLINK-1234\n${tleLine1}\n${tleLine2}`],
+        { type: 'text/plain' }
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'STARLINK-1234.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // CSV観測データダウンロードボタン
+    document.getElementById('download-csv').addEventListener('click', () => {
+      const csvData = `datetime,elevation,azimuth,range,visible
+2025-03-11T12:30:45,68.0,145.0,400.2,true
+2025-03-11T12:31:45,65.3,150.2,420.1,true
+2025-03-11T12:32:45,62.1,155.7,450.8,true
+2025-03-11T12:33:45,58.4,161.3,490.5,true
+2025-03-11T12:34:45,54.2,167.0,520.3,true
+2025-03-11T12:35:45,50.0,173.2,560.7,true
+2025-03-11T12:36:45,45.5,179.8,610.2,true
+2025-03-11T12:37:45,41.0,187.1,650.5,true
+2025-03-11T12:38:45,36.5,195.0,700.8,true
+2025-03-11T12:39:45,32.1,203.5,750.3,true
+2025-03-11T12:40:45,27.8,212.3,800.1,true
+2025-03-11T12:41:45,23.6,221.2,850.6,true
+2025-03-11T12:42:45,19.5,230.1,900.4,true`;
+
+      const blob = new Blob([csvData], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'STARLINK-1234_観測データ.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // 検索結果リストアイテムのクリックイベント
+    document.querySelectorAll('#search-results .list-item').forEach(item => {
+      item.addEventListener('click', () => {
+        // 選択状態を切り替え
+        document.querySelectorAll('#search-results .list-item').forEach(el => {
+          el.classList.remove('selected');
+        });
+        item.classList.add('selected');
+      });
+    });
+
+    // ページ読み込み時の初期化
+    window.onload = initMap;
+  </script>
+</body>
+</html>
