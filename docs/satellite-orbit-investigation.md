@@ -118,10 +118,87 @@ const observerLongitude = observerLocation ? observerLocation.lng : mapCenter.ln
 
 結果: 拡大縮小によるブレはなくなりましたが、軌道位置はまだ正しく表示されていません。
 
-## 今後の調査方針
-1. 座標変換の数学的検証: 相対座標から絶対座標への変換ロジックを再検討
-2. 日付変更線をまたぐケースの特別処理の見直し
-3. 軌道計算の根本的な見直し: satellite.jsライブラリの使用方法が正しいか確認
-4. 地図投影法とLeafletの座標系の整合性確認
+### 試行4: 極座標系を使用した新しいアプローチ
+最後に、相対経度を方位角として扱い、極座標系を使用して地図上の座標に変換するアプローチを試しました。
 
-引き続き調査と修正を進めます。
+```javascript
+// 方位角（相対経度）をラジアンに変換
+const azimuth1Rad = point1.lng * Math.PI / 180;
+
+// 仰角をラジアンに変換
+const elevation1Rad = effectiveAngle * Math.PI / 180;
+
+// 地表面上の距離を計算（仰角が高いほど近くに表示）
+const distance1 = Math.max(0, (90 - Math.max(0, effectiveAngle)) / 90) * 10;
+
+// 極座標から地理座標への変換
+const newLat1 = Math.asin(
+  Math.sin(lat1 * Math.PI / 180) * Math.cos(distanceRad1) +
+  Math.cos(lat1 * Math.PI / 180) * Math.sin(distanceRad1) * Math.cos(azimuth1Rad)
+) * 180 / Math.PI;
+
+const newLng1 = lng1 + Math.atan2(
+  Math.sin(azimuth1Rad) * Math.sin(distanceRad1) * Math.cos(lat1 * Math.PI / 180),
+  Math.cos(distanceRad1) - Math.sin(lat1 * Math.PI / 180) * Math.sin(newLat1 * Math.PI / 180)
+) * 180 / Math.PI;
+```
+
+結果: 軌道が直線として表示されるようになりました。このアプローチでは、軌道の曲線的な性質が失われてしまいました。
+
+## 根本的な設計問題と推奨アプローチ
+
+ユーザーのフィードバックを踏まえ、問題の根本原因は座標系の混在にあると考えられます：
+
+1. **設計上の問題**:
+   - 衛星軌道データを相対座標系で保持することで、座標変換が複雑化
+   - 表示時に再度変換が必要となり、エラーの原因になりやすい
+   - 地図ライブラリ（Leaflet）は絶対座標系を前提としている
+
+2. **推奨される設計**:
+   - 衛星軌道データは絶対座標（実際の緯度経度）で保持する
+   - 仰角などの観測地点からの相対的な情報は必要な時にのみ計算する
+   - 表示時には絶対座標をそのまま使用し、複雑な変換を避ける
+
+## 修正計画
+
+### 1. orbitWorker.tsの修正
+```javascript
+// 修正前:
+let displayLon = lonDiff; // 相対経度を使用
+
+// 修正後:
+let displayLon = satelliteLon; // 実際の経度を使用
+
+// orbitPointsに追加する際も実際の経度を使用
+orbitPoints.push({
+  // ...
+  lat: satelliteLat,
+  lng: satelliteLon, // 実際の経度を使用
+  // 必要に応じて相対経度も保存
+  relLng: lonDiff,
+  // ...
+});
+```
+
+### 2. SatelliteOrbitLayer.tsxの簡素化
+```javascript
+// 複雑な座標変換を削除し、単純に絶対座標を使用
+const segmentPoints = [
+  new LatLng(point1.lat, point1.lng), // point1.lngは実際の経度
+  new LatLng(point2.lat, point2.lng)  // point2.lngは実際の経度
+];
+```
+
+### 3. 仰角計算の分離
+- 軌道表示と仰角計算を明確に分離
+- 仰角は観測地点からの相対的な情報として必要な時にのみ計算
+- 軌道表示は絶対座標を使用
+
+## 実装ステップ
+
+1. orbitWorker.tsを修正して、衛星の実際の経度（satelliteLon）を使用するようにする
+2. SatelliteOrbitLayer.tsxを簡素化し、複雑な座標変換を削除する
+3. 必要に応じて、仰角に基づく表示スタイルの調整は維持する
+4. 日付変更線をまたぐケースの特別処理は維持する
+
+この修正アプローチにより、コードの複雑さが減少し、軌道表示の正確性が向上すると期待されます。
