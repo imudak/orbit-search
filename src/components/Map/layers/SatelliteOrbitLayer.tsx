@@ -85,6 +85,13 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             }
           }
 
+          // 経度を再度-180〜180度の範囲に正規化（表示用）
+          while (lng1ForPoint > 180) lng1ForPoint -= 360;
+          while (lng1ForPoint < -180) lng1ForPoint += 360;
+
+          while (lng2ForPoint > 180) lng2ForPoint -= 360;
+          while (lng2ForPoint < -180) lng2ForPoint += 360;
+
           const segmentPoints = [
             new LatLng(point1.lat, lng1ForPoint),
             new LatLng(point2.lat, lng2ForPoint)
