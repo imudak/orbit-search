@@ -228,9 +228,9 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
           flexDirection: 'column',
           gap: 2,
         }}>
-          {/* 期間選択 - よりコンパクトなレイアウト */}
+          {/* 期間選択 - 日時表示エリアを広げて幅を統一 */}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: '140px' }}>
+            <Box sx={{ width: '220px' }}>
               <DateTimePicker
                 label={`開始 (${timeZoneAbbr})`}
                 value={localStartDate}
@@ -254,7 +254,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
                 ampm={false}
               />
             </Box>
-            <Box sx={{ flex: 1, minWidth: '140px' }}>
+            <Box sx={{ width: '220px' }}>
               <DateTimePicker
                 label={`終了 (${timeZoneAbbr})`}
                 value={localEndDate}
