@@ -76,6 +76,13 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             // 相対座標を使用
             lng1ForPoint = observerLocation.lng + relLng1;
             lng2ForPoint = observerLocation.lng + relLng2;
+
+            // 相対座標計算後に再度日付変更線をまたぐかチェック
+            let lngDiffAfterRelative = Math.abs(lng1ForPoint - lng2ForPoint);
+            if (lngDiffAfterRelative > 170) {
+              // 相対座標計算後も日付変更線をまたぐ場合は線を引かない
+              continue;
+            }
           }
 
           const segmentPoints = [
