@@ -153,6 +153,8 @@ function calculatePasses(
       const rangeSat = lookAngles.rangeSat;
 
       // 衛星の地理座標を計算
+      // 注意: eciToGeodeticは地心直交座標系（ECI）から地理座標系への変換を行う
+      // gmstは地球の自転を考慮するために使用される
       const satelliteGd = satellite.eciToGeodetic(positionEci, gmst);
       const satelliteLat = satellite.degreesLat(satelliteGd.latitude);
       let satelliteLon = satellite.degreesLong(satelliteGd.longitude);
