@@ -62,10 +62,19 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           while (lng2 > 180) lng2 -= 360;
           while (lng2 < -180) lng2 += 360;
 
-          // セグメントのポイントを作成（実際の緯度経度を使用）
+          // セグメントのポイントを作成（相対座標を使用）
+          // relLngが存在しない場合やNaNの場合は、正規化された経度を使用
+          const lng1ForPoint = observerLocation && point1.relLng !== undefined && !isNaN(point1.relLng)
+            ? observerLocation.lng + point1.relLng
+            : lng1;
+
+          const lng2ForPoint = observerLocation && point2.relLng !== undefined && !isNaN(point2.relLng)
+            ? observerLocation.lng + point2.relLng
+            : lng2;
+
           const segmentPoints = [
-            new LatLng(point1.lat, lng1),
-            new LatLng(point2.lat, lng2)
+            new LatLng(point1.lat, lng1ForPoint),
+            new LatLng(point2.lat, lng2ForPoint)
           ];
 
           // デバッグログを抑制
