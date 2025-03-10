@@ -38,7 +38,7 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // 日付変更線をまたぐ場合の処理
           // 経度の差が極端に大きい場合は日付変更線をまたいでいると判断
           let lngDiff = Math.abs(point1.lng - point2.lng);
-          if (lngDiff > 150) { // 150度以上の差がある場合は日付変更線をまたいでいる
+          if (lngDiff > 170) { // 170度以上の差がある場合は日付変更線をまたいでいる
             // 日付変更線をまたぐ場合は線を引かない
             continue;
           }
@@ -46,12 +46,7 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // 観測地点からの距離制限を撤廃
           // すべての軌道点を表示する
 
-          // 複雑な座標変換を削除し、単純に衛星の実際の緯度経度を使用
-          // orbitWorker.tsで実際の経度を使用するように修正したため、
-          // ここでの変換は不要になりました
-
           // 経度を-180〜180度の範囲に正規化
-          // Leafletの座標系に合わせて正規化
           let lng1 = point1.lng;
           let lng2 = point2.lng;
 
@@ -62,15 +57,26 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           while (lng2 > 180) lng2 -= 360;
           while (lng2 < -180) lng2 += 360;
 
-          // セグメントのポイントを作成（相対座標を使用）
-          // relLngが存在しない場合やNaNの場合は、正規化された経度を使用
-          const lng1ForPoint = observerLocation && point1.relLng !== undefined && !isNaN(point1.relLng)
-            ? observerLocation.lng + point1.relLng
-            : lng1;
+          // 相対座標を計算
+          let lng1ForPoint = lng1;
+          let lng2ForPoint = lng2;
 
-          const lng2ForPoint = observerLocation && point2.relLng !== undefined && !isNaN(point2.relLng)
-            ? observerLocation.lng + point2.relLng
-            : lng2;
+          if (observerLocation) {
+            // 観測地点からの相対経度を計算
+            let relLng1 = lng1 - observerLocation.lng;
+            let relLng2 = lng2 - observerLocation.lng;
+
+            // -180〜180度の範囲に正規化
+            while (relLng1 > 180) relLng1 -= 360;
+            while (relLng1 < -180) relLng1 += 360;
+
+            while (relLng2 > 180) relLng2 -= 360;
+            while (relLng2 < -180) relLng2 += 360;
+
+            // 相対座標を使用
+            lng1ForPoint = observerLocation.lng + relLng1;
+            lng2ForPoint = observerLocation.lng + relLng2;
+          }
 
           const segmentPoints = [
             new LatLng(point1.lat, lng1ForPoint),

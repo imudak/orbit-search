@@ -179,9 +179,8 @@ function calculatePasses(
       while (lonDiff > 180) lonDiff -= 360;
       while (lonDiff < -180) lonDiff += 360;
 
-      // 3. 表示用の経度を計算（実際の経度を使用）
-      // 修正: 相対経度ではなく実際の経度を使用する
-      // ユーザー指示により相対座標は使用しない
+      // 3. 表示用の経度を計算
+      // 相対経度と実際の経度の両方を保存し、表示時に選択できるようにする
       let displayLon = satelliteLon;
 
       // 調査用ログを抑制
@@ -207,9 +206,9 @@ function calculatePasses(
         while (diff > 180) diff -= 360;
         while (diff < -180) diff += 360;
 
-        // 経度の差の絶対値が大きい場合は不連続点とする
-        // 日付変更線をまたぐ場合の閾値を調整（170度→150度）
-        if (Math.abs(diff) > 150) {
+        // 相対座標を使用する場合は、不連続点の判定を緩和する
+        // 日付変更線をまたぐ場合の閾値を調整（150度→170度）
+        if (Math.abs(diff) > 170) {
           isDiscontinuous = true;
           // デバッグログを抑制
           if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
