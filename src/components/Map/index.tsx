@@ -113,9 +113,6 @@ const Map: React.FC<MapProps> = ({
     showFootprints: true,
   });
 
-  // レイヤー管理コンテキストを使用
-  const { layers, toggleLayer } = useLayerManager();
-
   // 再生/停止の切り替え
   const handlePlayPause = useCallback(() => {
     setAnimationState(prev => ({
@@ -263,27 +260,6 @@ const Map: React.FC<MapProps> = ({
       orbitVisibility={orbitVisibility}
       onOrbitVisibilityChange={setOrbitVisibility}
     />
-  );
-
-  // 分析タブコンポーネント
-  const analysisTabContent = (
-    <Box sx={{ p: 2 }}>
-      {orbitPaths.length > 0 ? (
-        <Box>
-          <Box sx={{ mb: 2 }}>
-            <Alert severity="info">
-              選択された衛星の軌道分析情報を表示します。
-            </Alert>
-          </Box>
-          {/* 分析情報の表示 */}
-          {/* 実際の分析情報はフェーズ3で実装 */}
-        </Box>
-      ) : (
-        <Alert severity="warning">
-          衛星が選択されていません。衛星を選択すると分析情報が表示されます。
-        </Alert>
-      )}
-    </Box>
   );
 
   // 分析タブの内容を充実させる
@@ -568,23 +544,6 @@ const Map: React.FC<MapProps> = ({
               analysisTab={analysisTabContent}
             />
           }
-          controls={
-            <MinimalControls
-              currentCenter={center}
-              onMyLocationClick={() => {
-                // ブラウザのジオロケーションAPIを使用して現在地を取得
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    const { latitude, longitude } = position.coords;
-                    onLocationSelect({ lat: latitude, lng: longitude });
-                  },
-                  (error) => {
-                    console.error('位置情報の取得に失敗しました:', error);
-                  }
-                );
-              }}
-            />
-          }
         >
           <MapView center={center} zoom={defaultZoom}>
             {/* 地図クリックイベントハンドラー */}
@@ -621,6 +580,23 @@ const Map: React.FC<MapProps> = ({
                 />
               )}
             </LayerRenderer>
+
+            {/* マップコントロール */}
+            <MinimalControls
+              currentCenter={center}
+              onMyLocationClick={() => {
+                // ブラウザのジオロケーションAPIを使用して現在地を取得
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    const { latitude, longitude } = position.coords;
+                    onLocationSelect({ lat: latitude, lng: longitude });
+                  },
+                  (error) => {
+                    console.error('位置情報の取得に失敗しました:', error);
+                  }
+                );
+              }}
+            />
           </MapView>
         </ResponsiveMapLayout>
       </LayerProvider>
