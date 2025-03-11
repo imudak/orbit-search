@@ -28,7 +28,8 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
   // 衛星アイコンの初期化（一度だけ作成）
   if (!satelliteIconRef.current) {
     satelliteIconRef.current = L.icon({
-      iconUrl: '/satellite.svg', // 修正したSVGファイルを使用
+      // データURLを使用してアイコンを埋め込む（CSP制約を回避）
+      iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHJ4PSI0IiBmaWxsPSIjMTk3NmQyIi8+PHBhdGggZD0iTTEyLDYuNWMwLTEuMSwwLjktMiwyLTJzMiwwLjksMiwycy0wLjksMi0yLDJTMTIsNy42LDEyLDYuNXogTTE3LDguNWwzLDNsLTEuNSwxLjVsLTMtM1Y4LjV6IE03LDguNWwtMywzbDEuNSwxLjVsMy0zVjguNXogTTEyLDExLjVjLTEuMSwwLTIsMC45LTIsMnMwLjksMiwyLDJzMi0wLjksMi0yUzEzLjEsMTEuNSwxMiwxMS41eiBNMTIsMTUuNWMtMS4xLDAtMiwwLjktMiwyczAuOSwyLDIsMnMyLTAuOSwyLTJTMTMuMSwxNS41LDEyLDE1LjV6IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==',
       iconSize: [24, 24],
       iconAnchor: [12, 12],
       popupAnchor: [0, -12],
