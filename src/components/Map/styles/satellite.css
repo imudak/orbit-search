@@ -5,3 +5,13 @@
   /* 他の要素より前面に表示 */
   z-index: 1000 !important;
 }
+
+/* 青い衛星アイコンのスタイル */
+.satellite-icon-blue {
+  /* 常に表示されるようにする */
+  opacity: 1 !important;
+  /* 他の要素より前面に表示 */
+  z-index: 1000 !important;
+  /* 影をつけて目立たせる */
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+}

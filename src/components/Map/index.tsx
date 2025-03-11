@@ -572,7 +572,7 @@ const Map: React.FC<MapProps> = ({
 
             {/* 衛星アニメーション */}
             <LayerRenderer layerId="satellite-animation">
-              {orbitPaths.length > 0 && animationState.isPlaying && (
+              {orbitPaths.length > 0 && (
                 <SatelliteAnimationLayer
                   path={orbitPaths[0]}
                   animationState={animationState}
