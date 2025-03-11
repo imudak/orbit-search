@@ -16,7 +16,8 @@ export interface OrbitType {
 export const DEFAULT_ORBIT_TYPES: OrbitType[] = [
   { name: 'LEO', height: 800, color: '#FF0000' },    // 低軌道: 赤
   { name: 'MEO', height: 20000, color: '#00FF00' },  // 中軌道: 緑
-  { name: 'GEO', height: 35786, color: '#0000FF' }   // 静止軌道: 青
+  { name: 'GEO', height: 35786, color: '#0000FF' },  // 静止軌道: 青
+  { name: 'HEO', height: 40000, color: '#FFA500' }   // 高楕円軌道: オレンジ
 ];
 
 // 仰角と衛星高度から地表での可視範囲の半径を計算する関数

@@ -70,6 +70,9 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
     visibility: false,
   });
 
+  // 凡例は常に表示
+  const legendOpen = true;
+
   // 時間をフォーマットする関数
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -607,30 +610,23 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                   backgroundColor: 'rgba(0, 0, 0, 0.03)',
                   px: 2,
                   py: 1,
-                  borderBottom: showLegend ? '1px solid rgba(0, 0, 0, 0.1)' : 'none',
-                  cursor: 'pointer',
+                  borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
                 }}
-                onClick={onToggleLegend}
               >
                 <InfoIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
                   凡例情報
                 </Typography>
-                <IconButton
-                  size="small"
-                  sx={{ ml: 'auto' }}
-                >
-                  {showLegend ? <ExpandMoreIcon /> : <ExpandMoreIcon sx={{ transform: 'rotate(-90deg)' }} />}
-                </IconButton>
+                {/* 凡例は常に表示するため、展開アイコンは不要 */}
               </Box>
-              <Collapse in={showLegend}>
+              <Collapse in={legendOpen}>
                 <CardContent sx={{ py: 1.5 }}>
                   {/* 軌道の種類と高度 */}
                   <Typography variant="subtitle2" sx={{ mb: 1, color: theme.palette.primary.main }}>
                     軌道の種類と高度
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
-                    {orbitTypes.map((orbitType) => (
+                    {DEFAULT_ORBIT_TYPES.map((orbitType) => (
                       <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center' }}>
                         <Box
                           sx={{
