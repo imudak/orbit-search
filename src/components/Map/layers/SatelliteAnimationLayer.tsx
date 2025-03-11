@@ -4,6 +4,7 @@ import L from 'leaflet';
 import type { OrbitPath } from '@/types';
 import { AnimationState } from '../panels/AnimationControlPanel';
 import '../styles/satellite.css'; // 衛星アイコンのスタイルをインポート
+import { ORBIT_COLORS } from './VisibilityCircleLayer';
 
 interface SatelliteAnimationLayerProps {
   path: OrbitPath;
@@ -27,13 +28,30 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
 
   // 衛星アイコンの初期化（一度だけ作成）
   if (!satelliteIconRef.current) {
+    // 衛星の軌道タイプに基づいてアイコンクラスを決定
+    // 注: 現在の実装ではOrbitPathから軌道タイプを直接取得できないため、
+    // 衛星IDから推測するか、デフォルト値を使用する
+    let orbitType = 'LEO'; // デフォルトはLEO
+
+    // 衛星IDから軌道タイプを推測（例：IDに基づく簡易な判定）
+    const satelliteId = path.satelliteId.toLowerCase();
+    if (satelliteId.includes('geo') || satelliteId.includes('geostationary')) {
+      orbitType = 'GEO';
+    } else if (satelliteId.includes('meo') || satelliteId.includes('medium')) {
+      orbitType = 'MEO';
+    } else if (satelliteId.includes('heo') || satelliteId.includes('high')) {
+      orbitType = 'HEO';
+    }
+
+    const iconClass = `satellite-icon satellite-icon-${orbitType.toLowerCase()}`;
+
     satelliteIconRef.current = L.icon({
       // データURLを使用してアイコンを埋め込む（CSP制約を回避）
       iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHJ4PSI0IiBmaWxsPSIjMTk3NmQyIi8+PHBhdGggZD0iTTEyLDYuNWMwLTEuMSwwLjktMiwyLTJzMiwwLjksMiwycy0wLjksMi0yLDJTMTIsNy42LDEyLDYuNXogTTE3LDguNWwzLDNsLTEuNSwxLjVsLTMtM1Y4LjV6IE03LDguNWwtMywzbDEuNSwxLjVsMy0zVjguNXogTTEyLDExLjVjLTEuMSwwLTIsMC45LTIsMnMwLjksMiwyLDJzMi0wLjksMi0yUzEzLjEsMTEuNSwxMiwxMS41eiBNMTIsMTUuNWMtMS4xLDAtMiwwLjktMiwyczAuOSwyLDIsMnMyLTAuOSwyLTJTMTMuMSwxNS41LDEyLDE1LjV6IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==',
       iconSize: [24, 24],
       iconAnchor: [12, 12],
       popupAnchor: [0, -12],
-      className: 'satellite-icon-blue'
+      className: iconClass
     });
   }
 

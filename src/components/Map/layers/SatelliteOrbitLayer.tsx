@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
 import type { OrbitPath } from '@/types';
+import { ELEVATION_COLORS } from './VisibilityCircleLayer';
 
 interface SatelliteOrbitLayerProps {
   paths: OrbitPath[];
@@ -113,29 +114,30 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           let weight: number;
           let opacity: number;
 
+          // 人間工学に基づいた色分け：緑=最適、青=良好、オレンジ=可視、赤=不良、グレー=不可視
           if (effectiveAngle >= 45) {
-            // 高仰角: 赤系（最も見やすく）
-            color = '#FF0000';
+            // 最適（45°以上）: 緑色 - 最も見やすい条件
+            color = ELEVATION_COLORS.optimal;
             weight = 4;
             opacity = 1.0;
           } else if (effectiveAngle >= 20) {
-            // 中仰角: オレンジ系
-            color = '#FFA500';
+            // 良好（20-45°）: 青色 - 良好な条件
+            color = ELEVATION_COLORS.good;
             weight = 3;
             opacity = 0.8;
           } else if (effectiveAngle >= 10) {
-            // 低仰角: 青系
-            color = '#0000FF';
+            // 可視（10-20°）: オレンジ色 - 注意が必要な条件
+            color = ELEVATION_COLORS.visible;
             weight = 2;
-            opacity = 0.6; // 低仰角の可視性を少し上げる
+            opacity = 0.6;
           } else if (effectiveAngle >= 0) {
-            // 極低仰角: 青系（薄め）
-            color = '#0000FF';
+            // 不良（0-10°）: 赤色 - 困難な条件
+            color = ELEVATION_COLORS.poor;
             weight = 1.5;
-            opacity = 0.4; // 極低仰角でも少し見えるように
+            opacity = 0.4;
           } else {
-            // 地平線以下: グレー系
-            color = '#808080';
+            // 不可視（0°未満）: グレー - 見えない条件
+            color = ELEVATION_COLORS.invisible;
             weight = 1;
             opacity = 0.3;
           }

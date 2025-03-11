@@ -13,7 +13,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import type { Satellite, Location, OrbitPath } from '@/types';
 import type { AnimationState } from '../panels/AnimationControlPanel';
-import { OrbitType, DEFAULT_ORBIT_TYPES } from '../layers/VisibilityCircleLayer';
+import { OrbitType, DEFAULT_ORBIT_TYPES, ELEVATION_COLORS, ORBIT_COLORS } from '../layers/VisibilityCircleLayer';
 
 interface SatelliteInfoPanelProps {
   satellite?: Satellite;
@@ -68,6 +68,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
     basic: false,
     position: false,
     visibility: false,
+    legend: false, // 凡例の展開状態
   });
 
   // 凡例は常に表示
@@ -86,13 +87,15 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   // 可視性の分類
   const getVisibilityCategory = (elevation: number) => {
     if (elevation >= 45) {
-      return { label: '最適', color: 'success' };
+      return { label: '最適', color: 'success', description: '非常に良好な観測条件' };
     } else if (elevation >= 20) {
-      return { label: '良好', color: 'primary' };
+      return { label: '良好', color: 'primary', description: '良好な観測条件' };
     } else if (elevation >= 10) {
-      return { label: '可視', color: 'warning' };
+      return { label: '可視', color: 'warning', description: '観測可能だが障害物に注意' };
+    } else if (elevation >= 0) {
+      return { label: '不良', color: 'error', description: '地平線に近く観測困難' };
     } else {
-      return { label: '不良', color: 'error' };
+      return { label: '不可視', color: 'default', description: '地平線以下で観測不可' };
     }
   };
 
@@ -284,17 +287,25 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                     <Divider sx={{ my: 0.5 }} />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography variant="body2" color="text.secondary">軌道種類:</Typography>
-                      <Chip
-                        label={satellite.orbitType || '不明'}
-                        size="small"
-                        color={
-                          satellite.orbitType === 'LEO' ? 'error' :
-                          satellite.orbitType === 'MEO' ? 'success' :
-                          satellite.orbitType === 'GEO' ? 'primary' :
-                          satellite.orbitType === 'HEO' ? 'warning' : 'default'
-                        }
-                        sx={{ height: '20px', '& .MuiChip-label': { px: 1, py: 0 } }}
-                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            backgroundColor:
+                              satellite.orbitType === 'LEO' ? ORBIT_COLORS.leo :
+                              satellite.orbitType === 'MEO' ? ORBIT_COLORS.meo :
+                              satellite.orbitType === 'GEO' ? ORBIT_COLORS.geo :
+                              satellite.orbitType === 'HEO' ? ORBIT_COLORS.heo : '#9e9e9e',
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.2)',
+                          }}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                          {satellite.orbitType || '不明'}
+                        </Typography>
+                      </Box>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography variant="body2" color="text.secondary">軌道高度:</Typography>
@@ -593,92 +604,222 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
               </Card>
             )}
 
-            {/* 凡例情報セクション */}
-            <Card
-              elevation={0}
+            {/* 凡例情報セクション - 右下に固定表示 */}
+            <Box
               sx={{
-                mb: 2,
-                border: '1px solid rgba(0, 0, 0, 0.1)',
+                position: 'fixed',
+                bottom: '20px',
+                right: '20px',
+                zIndex: 1000,
+                maxWidth: '300px',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
                 borderRadius: '8px',
-                overflow: 'hidden',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
               }}
             >
-              <Box
+              <Card
+                elevation={0}
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
-                  px: 2,
-                  py: 1,
-                  borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
                 }}
               >
-                <InfoIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                  凡例情報
-                </Typography>
-                {/* 凡例は常に表示するため、展開アイコンは不要 */}
-              </Box>
-              <Collapse in={legendOpen}>
-                <CardContent sx={{ py: 1.5 }}>
-                  {/* 軌道の種類と高度 */}
-                  <Typography variant="subtitle2" sx={{ mb: 1, color: theme.palette.primary.main }}>
-                    軌道の種類と高度
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
-                    {DEFAULT_ORBIT_TYPES.map((orbitType) => (
-                      <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Chip
-                          size="small"
-                          label={orbitType.name}
-                          color={
-                            orbitType.name === 'LEO' ? 'error' :
-                            orbitType.name === 'MEO' ? 'success' :
-                            orbitType.name === 'GEO' ? 'primary' :
-                            orbitType.name === 'HEO' ? 'warning' : 'default'
-                          }
-                          sx={{ minWidth: '60px', mr: 1 }}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                    px: 2,
+                    py: 1,
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <InfoIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                    <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                      凡例情報
+                    </Typography>
+                  </Box>
+                  <Tooltip title={legendOpen ? "凡例を折りたたむ" : "凡例を展開する"}>
+                    <IconButton
+                      size="small"
+                      onClick={() => setHelpOpen(prev => ({ ...prev, legend: !prev.legend }))}
+                    >
+                      <ExpandMoreIcon
+                        sx={{
+                          transform: helpOpen.legend ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.3s',
+                        }}
+                      />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                <Collapse in={!helpOpen.legend}>
+                  <CardContent sx={{ py: 1.5 }}>
+                    {/* 軌道の種類と高度 - 色を更新 */}
+                    <Typography variant="subtitle2" sx={{
+                      mb: 1,
+                      color: theme.palette.primary.main,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                    }}>
+                      <TimelineIcon fontSize="small" />
+                      軌道の種類と高度
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 0.5,
+                        mb: 2,
+                        p: 1,
+                        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      {DEFAULT_ORBIT_TYPES.map((orbitType) => (
+                        <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box
+                              sx={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: '50%',
+                                backgroundColor: orbitType.color,
+                                mr: 1,
+                                border: '1px solid rgba(0, 0, 0, 0.2)',
+                              }}
+                            />
+                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                              {orbitType.name}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2">
+                            {orbitType.height.toLocaleString()}km
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+
+                    {/* 可視性の色分け - 色と説明を更新 */}
+                    <Typography variant="subtitle2" sx={{
+                      mb: 1,
+                      color: theme.palette.primary.main,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                    }}>
+                      <VisibilityIcon fontSize="small" />
+                      衛星の見やすさ（仰角）
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 0.5,
+                        p: 1,
+                        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: '4px',
+                            backgroundColor: ELEVATION_COLORS.optimal,
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.2)',
+                          }}
                         />
-                        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                          {orbitType.height.toLocaleString()}km
+                        <Typography variant="body2" sx={{ fontWeight: 'medium', mr: 1 }}>
+                          最適:
+                        </Typography>
+                        <Typography variant="body2">
+                          45°以上 - 非常に良好な観測条件
                         </Typography>
                       </Box>
-                    ))}
-                  </Box>
-
-                  {/* 可視性の色分け */}
-                  <Typography variant="subtitle2" sx={{ mb: 1, color: theme.palette.primary.main }}>
-                    衛星の見やすさ
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Chip size="small" label="最適" color="success" sx={{ minWidth: '60px', mr: 1 }} />
-                      <Typography variant="body2">
-                        45°以上 - 非常に良好な観測条件
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: '4px',
+                            backgroundColor: ELEVATION_COLORS.good,
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.2)',
+                          }}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 'medium', mr: 1 }}>
+                          良好:
+                        </Typography>
+                        <Typography variant="body2">
+                          20-45° - 良好な観測条件
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: '4px',
+                            backgroundColor: ELEVATION_COLORS.visible,
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.2)',
+                          }}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 'medium', mr: 1 }}>
+                          可視:
+                        </Typography>
+                        <Typography variant="body2">
+                          10-20° - 観測可能だが障害物に注意
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: '4px',
+                            backgroundColor: ELEVATION_COLORS.poor,
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.2)',
+                          }}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 'medium', mr: 1 }}>
+                          不良:
+                        </Typography>
+                        <Typography variant="body2">
+                          0-10° - 地平線に近く観測困難
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: '4px',
+                            backgroundColor: ELEVATION_COLORS.invisible,
+                            mr: 1,
+                            border: '1px solid rgba(0, 0, 0, 0.2)',
+                          }}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 'medium', mr: 1 }}>
+                          不可視:
+                        </Typography>
+                        <Typography variant="body2">
+                          0°未満 - 地平線以下で観測不可
+                        </Typography>
+                      </Box>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Chip size="small" label="良好" color="primary" sx={{ minWidth: '60px', mr: 1 }} />
-                      <Typography variant="body2">
-                        20-45° - 良好な観測条件
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Chip size="small" label="可視" color="warning" sx={{ minWidth: '60px', mr: 1 }} />
-                      <Typography variant="body2">
-                        10-20° - 観測可能だが障害物に注意
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Chip size="small" label="不良" color="error" sx={{ minWidth: '60px', mr: 1 }} />
-                      <Typography variant="body2">
-                        0-10° - 地平線に近く観測困難
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Collapse>
-            </Card>
+                  </CardContent>
+                </Collapse>
+              </Card>
+            </Box>
 
             {/* 衛星が選択されていない場合のメッセージ */}
             {!satellite && !currentPosition && orbitPaths.length === 0 && (

@@ -12,20 +12,30 @@ export interface OrbitType {
   color: string;
 }
 
-// Material-UIのカラーテーマに合わせた色
-const THEME_COLORS = {
-  error: '#f44336',    // 赤（LEO）
-  success: '#4caf50',  // 緑（MEO）
-  primary: '#2196f3',  // 青（GEO）
-  warning: '#ff9800'   // オレンジ（HEO）
+// 人間工学に基づいた色の定義
+// 軌道タイプの色は直感的に理解しやすく、色覚異常の方にも区別しやすい配色
+export const ORBIT_COLORS = {
+  leo: '#2196f3',    // 青（LEO）- 地球に近い軌道
+  meo: '#4caf50',    // 緑（MEO）- 中間の軌道
+  geo: '#9c27b0',    // 紫（GEO）- 特殊な静止軌道
+  heo: '#ff9800'     // オレンジ（HEO）- 高い楕円軌道
+};
+
+// 仰角の色は交通信号に似た直感的な意味を持つ配色
+export const ELEVATION_COLORS = {
+  optimal: '#4caf50',   // 緑（最適）- 45°以上
+  good: '#2196f3',      // 青（良好）- 20-45°
+  visible: '#ff9800',   // オレンジ（可視）- 10-20°
+  poor: '#f44336',      // 赤（不良）- 0-10°
+  invisible: '#9e9e9e'  // グレー（不可視）- 0°未満
 };
 
 // デフォルトの軌道種類と高度
 export const DEFAULT_ORBIT_TYPES: OrbitType[] = [
-  { name: 'LEO', height: 800, color: THEME_COLORS.error },      // 低軌道: 赤
-  { name: 'MEO', height: 20000, color: THEME_COLORS.success },  // 中軌道: 緑
-  { name: 'GEO', height: 35786, color: THEME_COLORS.primary },  // 静止軌道: 青
-  { name: 'HEO', height: 40000, color: THEME_COLORS.warning }   // 高楕円軌道: オレンジ
+  { name: 'LEO', height: 800, color: ORBIT_COLORS.leo },      // 低軌道: 青
+  { name: 'MEO', height: 20000, color: ORBIT_COLORS.meo },    // 中軌道: 緑
+  { name: 'GEO', height: 35786, color: ORBIT_COLORS.geo },    // 静止軌道: 紫
+  { name: 'HEO', height: 40000, color: ORBIT_COLORS.heo }     // 高楕円軌道: オレンジ
 ];
 
 // 仰角と衛星高度から地表での可視範囲の半径を計算する関数
