@@ -105,7 +105,10 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
     if (!satelliteMarkerRef.current) {
       satelliteMarkerRef.current = L.marker([point.lat, lng], {
         icon: satelliteIcon,
-        zIndexOffset: 1000 // 他のマーカーより前面に表示
+        zIndexOffset: 1000, // 他のマーカーより前面に表示
+        // アニメーションを無効化して点滅を防止
+        interactive: true,
+        bubblingMouseEvents: false
       }).addTo(map);
 
       // ポップアップを設定（初回のみ）
@@ -121,7 +124,8 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
     } else {
       // マーカーの位置を更新（アニメーション中のみ）
       if (animationState.isPlaying) {
-        satelliteMarkerRef.current.setLatLng([point.lat, lng]);
+        // アニメーションなしで位置を更新して点滅を防止
+        satelliteMarkerRef.current.setLatLng([point.lat, lng], { animate: false });
 
         // ポップアップ内容を更新（開いている場合のみ）
         if (satelliteMarkerRef.current.isPopupOpen()) {
