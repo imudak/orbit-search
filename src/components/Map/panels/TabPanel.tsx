@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Tabs, Tab, Typography, Paper } from '@mui/material';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Box, Tabs, Tab, Typography, Paper, useTheme } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import InfoIcon from '@mui/icons-material/Info';
@@ -20,25 +20,33 @@ const TabPanelContainer = styled(Paper)(({ theme }) => ({
   },
 }));
 
-// タブのスタイル
+// タブのスタイル - コントラスト比を向上
 const StyledTabs = styled(Tabs)(({ theme }) => ({
-  borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+  borderBottom: '1px solid rgba(0, 0, 0, 0.2)',
   '& .MuiTabs-indicator': {
-    backgroundColor: theme.palette.primary.main,
-    height: '3px',
+    backgroundColor: theme.palette.primary.dark, // より暗い色でコントラスト向上
+    height: '4px', // より太く視認性向上
   },
 }));
 
-// タブのスタイル
+// タブのスタイル - アクセシビリティ向上
 const StyledTab = styled(Tab)(({ theme }) => ({
   textTransform: 'none',
   minWidth: 72,
   fontWeight: theme.typography.fontWeightRegular,
-  fontSize: '0.875rem',
+  fontSize: '1rem', // 16pxに増加
   padding: '12px 16px',
+  lineHeight: 1.5, // 行間を1.5倍に設定
   '&.Mui-selected': {
-    color: theme.palette.primary.main,
+    color: theme.palette.primary.dark, // より暗い色でコントラスト向上
     fontWeight: theme.typography.fontWeightMedium,
+  },
+  '&.Mui-focusVisible': {
+    backgroundColor: 'rgba(0, 0, 0, 0.12)', // フォーカス状態を明確に
+    outline: '2px solid #1976d2', // フォーカスアウトラインを追加
+  },
+  '&:hover': {
+    backgroundColor: 'rgba(0, 0, 0, 0.04)', // ホバー状態を明確に
   },
 }));
 
@@ -59,6 +67,7 @@ const TabPanelContent = (props: TabPanelProps) => {
       id={`tabpanel-${index}`}
       aria-labelledby={`tab-${index}`}
       style={{ height: '100%', overflow: 'auto' }}
+      tabIndex={value === index ? 0 : -1} // アクティブな場合のみフォーカス可能
       {...other}
     >
       {value === index && (
@@ -76,87 +85,107 @@ interface TabPanelComponentProps {
   infoTab?: React.ReactNode;
   orbitTab?: React.ReactNode;
   analysisTab?: React.ReactNode;
+  initialTab?: number;
 }
 
 /**
  * タブ方式のパネルコンポーネント
  * 検索、情報、軌道、分析の4つのタブを持つ
+ * アクセシビリティ対応済み
  */
 const TabPanel: React.FC<TabPanelComponentProps> = ({
   searchTab,
   infoTab,
   orbitTab,
   analysisTab,
+  initialTab = 0,
 }) => {
-  const [value, setValue] = useState(0);
+  const [value, setValue] = useState(initialTab);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
 
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleChange = useCallback((event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
-  };
+  }, []);
+
+  // キーボードショートカット処理
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Alt + 1-4 でタブ切り替え
+    if (event.altKey && event.key >= '1' && event.key <= '4') {
+      const tabIndex = parseInt(event.key) - 1;
+      if (tabIndex >= 0 && tabIndex <= 3) {
+        setValue(tabIndex);
+        event.preventDefault();
+      }
+    }
+  }, []);
+
+  // キーボードイベントリスナーの設定
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  // タブラベルとアイコンの組み合わせ
+  const tabLabels = [
+    { label: '検索', icon: <SearchIcon />, ariaLabel: '衛星検索タブ' },
+    { label: '情報', icon: <InfoIcon />, ariaLabel: '衛星情報タブ' },
+    { label: '軌道', icon: <TimelineIcon />, ariaLabel: '軌道制御タブ' },
+    { label: '分析', icon: <AssessmentIcon />, ariaLabel: '軌道分析タブ' },
+  ];
+
+  // プレースホルダーコンテンツ
+  const placeholderContent = [
+    '衛星を検索するためのフォームがここに表示されます。キーワードや軌道パラメータで検索できます。',
+    '選択した衛星の詳細情報がここに表示されます。軌道要素や運用状況を確認できます。',
+    '衛星軌道の表示設定や再生コントロールがここに表示されます。時間を進めて軌道の変化を確認できます。',
+    '衛星軌道の詳細な分析結果がここに表示されます。可視性や軌道特性を評価できます。',
+  ];
 
   return (
-    <TabPanelContainer>
+    <TabPanelContainer role="region" aria-label="衛星情報パネル">
       <StyledTabs
         value={value}
         onChange={handleChange}
         variant="fullWidth"
-        aria-label="機能タブ"
+        aria-label="衛星情報タブ"
+        ref={tabsRef}
       >
-        <StyledTab
-          icon={<SearchIcon />}
-          label="検索"
-          id="tab-0"
-          aria-controls="tabpanel-0"
-        />
-        <StyledTab
-          icon={<InfoIcon />}
-          label="情報"
-          id="tab-1"
-          aria-controls="tabpanel-1"
-        />
-        <StyledTab
-          icon={<TimelineIcon />}
-          label="軌道"
-          id="tab-2"
-          aria-controls="tabpanel-2"
-        />
-        <StyledTab
-          icon={<AssessmentIcon />}
-          label="分析"
-          id="tab-3"
-          aria-controls="tabpanel-3"
-        />
+        {tabLabels.map((tab, index) => (
+          <StyledTab
+            key={`tab-${index}`}
+            icon={tab.icon}
+            label={tab.label}
+            id={`tab-${index}`}
+            aria-controls={`tabpanel-${index}`}
+            aria-label={tab.ariaLabel}
+            sx={{
+              color: theme.palette.text.primary, // 高コントラスト
+            }}
+          />
+        ))}
       </StyledTabs>
 
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        <TabPanelContent value={value} index={0}>
-          {searchTab || (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography color="text.secondary">検索タブの内容がここに表示されます</Typography>
-            </Box>
-          )}
-        </TabPanelContent>
-        <TabPanelContent value={value} index={1}>
-          {infoTab || (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography color="text.secondary">情報タブの内容がここに表示されます</Typography>
-            </Box>
-          )}
-        </TabPanelContent>
-        <TabPanelContent value={value} index={2}>
-          {orbitTab || (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography color="text.secondary">軌道タブの内容がここに表示されます</Typography>
-            </Box>
-          )}
-        </TabPanelContent>
-        <TabPanelContent value={value} index={3}>
-          {analysisTab || (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography color="text.secondary">分析タブの内容がここに表示されます</Typography>
-            </Box>
-          )}
-        </TabPanelContent>
+        {[searchTab, infoTab, orbitTab, analysisTab].map((tabContent, index) => (
+          <TabPanelContent key={`panel-${index}`} value={value} index={index}>
+            {tabContent || (
+              <Box sx={{ p: 3, textAlign: 'center', maxWidth: '70ch', mx: 'auto' }}>
+                <Typography
+                  color="text.primary"
+                  sx={{
+                    fontSize: '1rem', // 16px
+                    lineHeight: 1.5, // 行間1.5倍
+                  }}
+                >
+                  {placeholderContent[index]}
+                </Typography>
+              </Box>
+            )}
+          </TabPanelContent>
+        ))}
       </Box>
     </TabPanelContainer>
   );

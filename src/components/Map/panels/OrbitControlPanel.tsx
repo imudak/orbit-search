@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Paper,
   Typography,
@@ -22,6 +22,9 @@ import {
   ToggleButton,
   Divider,
   Collapse,
+  Badge,
+  InputLabel,
+  FormHelperText,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
@@ -34,6 +37,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
 import type { AnimationState } from './AnimationControlPanel';
 
 interface OrbitControlPanelProps {
@@ -51,6 +55,7 @@ interface OrbitControlPanelProps {
 /**
  * 軌道コントロールパネルコンポーネント
  * 衛星軌道の表示と再生をコントロール
+ * アクセシビリティ対応済み
  */
 const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
   animationState,
@@ -62,6 +67,7 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
 }) => {
   const { isPlaying, currentTime, startTime, endTime, playbackSpeed } = animationState;
   const [showHelp, setShowHelp] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -88,7 +94,7 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
   };
 
   // 30分前後にシークするハンドラー
-  const handleSkip = (minutes: number) => {
+  const handleSkip = useCallback((minutes: number) => {
     const newTime = new Date(currentTime.getTime() + minutes * 60 * 1000);
     // 範囲内に収める
     if (newTime < startTime) {
@@ -98,12 +104,12 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
     } else {
       onSeek(newTime);
     }
-  };
+  }, [currentTime, startTime, endTime, onSeek]);
 
   // 開始/終了時間にジャンプするハンドラー
-  const handleJump = (toStart: boolean) => {
+  const handleJump = useCallback((toStart: boolean) => {
     onSeek(toStart ? startTime : endTime);
-  };
+  }, [startTime, endTime, onSeek]);
 
   // 軌道表示設定の変更ハンドラー
   const handleOrbitVisibilityChange = (
@@ -116,14 +122,84 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
     });
   };
 
+  // キーボードショートカット処理
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // スペースキーで再生/一時停止
+    if (event.code === 'Space' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      onPlayPause();
+      event.preventDefault();
+    }
+    // 左右矢印キーで30分前後に移動
+    else if (event.code === 'ArrowLeft' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      handleSkip(-30);
+      event.preventDefault();
+    }
+    else if (event.code === 'ArrowRight' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      handleSkip(30);
+      event.preventDefault();
+    }
+    // Home/Endキーで開始/終了位置に移動
+    else if (event.code === 'Home' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      handleJump(true);
+      event.preventDefault();
+    }
+    else if (event.code === 'End' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      handleJump(false);
+      event.preventDefault();
+    }
+    // 数字キーで再生速度変更
+    else if (event.code === 'Digit1' && event.ctrlKey && !event.altKey && !event.metaKey) {
+      onSpeedChange(1);
+      event.preventDefault();
+    }
+    else if (event.code === 'Digit2' && event.ctrlKey && !event.altKey && !event.metaKey) {
+      onSpeedChange(5);
+      event.preventDefault();
+    }
+    else if (event.code === 'Digit3' && event.ctrlKey && !event.altKey && !event.metaKey) {
+      onSpeedChange(10);
+      event.preventDefault();
+    }
+    else if (event.code === 'Digit4' && event.ctrlKey && !event.altKey && !event.metaKey) {
+      onSpeedChange(60);
+      event.preventDefault();
+    }
+    else if (event.code === 'Digit5' && event.ctrlKey && !event.altKey && !event.metaKey) {
+      onSpeedChange(120);
+      event.preventDefault();
+    }
+  }, [onPlayPause, handleSkip, handleJump, onSpeedChange]);
+
+  // キーボードイベントリスナーの設定
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  // キーボードショートカット一覧
+  const keyboardShortcuts = [
+    { key: 'スペース', action: '再生/一時停止' },
+    { key: '←', action: '30分前に移動' },
+    { key: '→', action: '30分後に移動' },
+    { key: 'Home', action: '開始位置に移動' },
+    { key: 'End', action: '終了位置に移動' },
+    { key: 'Ctrl+1', action: '1倍速' },
+    { key: 'Ctrl+2', action: '5倍速' },
+    { key: 'Ctrl+3', action: '10倍速' },
+    { key: 'Ctrl+4', action: '60倍速' },
+    { key: 'Ctrl+5', action: '120倍速' },
+  ];
+
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: 2 }} role="region" aria-label="軌道コントロールパネル">
       {/* 時間コントロールカード */}
       <Card
         elevation={0}
         sx={{
           mb: 2,
-          border: '1px solid rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(0, 0, 0, 0.2)', // コントラスト向上
           borderRadius: '8px',
           overflow: 'hidden',
         }}
@@ -131,58 +207,148 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
         <Box sx={{
           display: 'flex',
           alignItems: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.03)',
+          backgroundColor: 'rgba(0, 0, 0, 0.05)', // コントラスト向上
           px: 2,
           py: 1,
-          borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.2)', // コントラスト向上
         }}>
-          <AccessTimeIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+          <AccessTimeIcon sx={{ mr: 1, color: theme.palette.primary.dark }} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 'medium', fontSize: '1rem' }}>
             時間コントロール
           </Typography>
           <Chip
             label={`${playbackSpeed}倍速`}
             size="small"
             color="primary"
-            sx={{ ml: 1, height: '20px', '& .MuiChip-label': { px: 1, py: 0 } }}
+            sx={{
+              ml: 1,
+              height: '24px',
+              '& .MuiChip-label': { px: 1, py: 0, fontSize: '0.875rem' }
+            }}
           />
           {isPlaying ? (
             <Chip
               label="再生中"
               size="small"
               color="success"
-              sx={{ ml: 1, height: '20px', '& .MuiChip-label': { px: 1, py: 0 } }}
+              sx={{
+                ml: 1,
+                height: '24px',
+                '& .MuiChip-label': { px: 1, py: 0, fontSize: '0.875rem' }
+              }}
             />
           ) : (
             <Chip
               label="一時停止"
               size="small"
               color="default"
-              sx={{ ml: 1, height: '20px', '& .MuiChip-label': { px: 1, py: 0 } }}
+              sx={{
+                ml: 1,
+                height: '24px',
+                '& .MuiChip-label': { px: 1, py: 0, fontSize: '0.875rem' }
+              }}
             />
           )}
-          <Tooltip title="ヘルプを表示">
-            <IconButton
-              size="small"
-              onClick={() => setShowHelp(!showHelp)}
-              sx={{ ml: 'auto' }}
-            >
-              <HelpOutlineIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ ml: 'auto', display: 'flex' }}>
+            <Tooltip title="キーボードショートカット">
+              <IconButton
+                size="medium"
+                onClick={() => setShowKeyboardShortcuts(!showKeyboardShortcuts)}
+                aria-label="キーボードショートカットを表示"
+                sx={{
+                  color: theme.palette.primary.dark,
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: '2px'
+                  },
+                  minWidth: '44px', // タッチターゲットサイズ
+                  minHeight: '44px', // タッチターゲットサイズ
+                }}
+              >
+                <KeyboardIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="ヘルプを表示">
+              <IconButton
+                size="medium"
+                onClick={() => setShowHelp(!showHelp)}
+                aria-label="ヘルプを表示"
+                sx={{
+                  color: theme.palette.primary.dark,
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: '2px'
+                  },
+                  minWidth: '44px', // タッチターゲットサイズ
+                  minHeight: '44px', // タッチターゲットサイズ
+                }}
+              >
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
         <CardContent>
-          {/* ヘルプテキスト */}
-          <Collapse in={showHelp}>
+          {/* キーボードショートカット */}
+          <Collapse in={showKeyboardShortcuts}>
             <Box sx={{
-              backgroundColor: 'rgba(0, 0, 0, 0.03)',
+              backgroundColor: 'rgba(25, 118, 210, 0.05)',
               p: 1.5,
               borderRadius: '4px',
               mb: 1.5,
+              border: '1px solid rgba(25, 118, 210, 0.2)',
             }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="subtitle2" sx={{ mb: 1, fontSize: '1rem' }}>
+                キーボードショートカット
+              </Typography>
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: 1,
+                '& > div': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 0.5,
+                }
+              }}>
+                {keyboardShortcuts.map((shortcut, index) => (
+                  <Box key={index}>
+                    <Chip
+                      label={shortcut.key}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        minWidth: '60px',
+                        fontSize: '0.875rem',
+                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                      }}
+                    />
+                    <Typography variant="body2" sx={{ ml: 1, fontSize: '0.875rem' }}>
+                      {shortcut.action}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          </Collapse>
+
+          {/* ヘルプテキスト */}
+          <Collapse in={showHelp}>
+            <Box sx={{
+              backgroundColor: 'rgba(0, 0, 0, 0.05)', // コントラスト向上
+              p: 1.5,
+              borderRadius: '4px',
+              mb: 1.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)',
+            }}>
+              <Typography variant="body1" color="text.primary" sx={{ fontSize: '1rem', lineHeight: 1.5 }}>
                 再生/一時停止ボタンで衛星の動きを制御できます。スライダーをドラッグして特定の時間に移動したり、
                 スキップボタンで30分単位で移動できます。再生速度は1倍速から120倍速まで変更可能です。
+              </Typography>
+              <Typography variant="body2" color="text.primary" sx={{ mt: 1, fontSize: '0.875rem' }}>
+                キーボードショートカットを使用すると、より素早く操作できます。スペースキーで再生/一時停止、
+                矢印キーで時間移動が可能です。
               </Typography>
             </Box>
           </Collapse>
@@ -190,23 +356,29 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
           {/* 時間情報 */}
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body1" color="text.primary" sx={{ fontSize: '1rem' }}>
                 現在時刻: {formatDate(currentTime)} {formatTime(currentTime)}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body1" color="text.primary" sx={{ fontSize: '1rem' }}>
                 残り時間: {formatDuration(endTimeValue - currentTimeValue)}
               </Typography>
             </Box>
             <LinearProgress
               variant="determinate"
               value={progress}
-              sx={{ height: 8, borderRadius: 4, mb: 1 }}
+              sx={{
+                height: 12, // より大きく
+                borderRadius: 6,
+                mb: 1,
+                backgroundColor: 'rgba(0, 0, 0, 0.1)', // コントラスト向上
+              }}
+              aria-label={`再生進捗 ${progress.toFixed(0)}%`}
             />
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="body2" color="text.primary" sx={{ fontSize: '0.875rem' }}>
                 {formatTime(startTime)}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="body2" color="text.primary" sx={{ fontSize: '0.875rem' }}>
                 {formatTime(endTime)}
               </Typography>
             </Box>
@@ -214,64 +386,108 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
 
           {/* 再生コントロール */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
-            <Tooltip title="開始位置に移動">
+            <Tooltip title="開始位置に移動 (Home)">
               <IconButton
                 onClick={() => handleJump(true)}
-                size="small"
-                sx={{ color: theme.palette.grey[700] }}
-              >
-                <SkipPreviousIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="30分前に移動">
-              <IconButton
-                onClick={() => handleSkip(-30)}
-                size="small"
-                sx={{ color: theme.palette.grey[700] }}
-              >
-                <FastRewindIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={isPlaying ? "一時停止" : "再生"}>
-              <IconButton
-                onClick={onPlayPause}
                 size="medium"
+                aria-label="開始位置に移動"
                 sx={{
-                  color: 'white',
-                  backgroundColor: isPlaying ? theme.palette.warning.main : theme.palette.primary.main,
-                  '&:hover': {
-                    backgroundColor: isPlaying ? theme.palette.warning.dark : theme.palette.primary.dark,
+                  color: theme.palette.grey[900], // コントラスト向上
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: '2px'
                   },
-                  width: 48,
-                  height: 48,
+                  minWidth: '44px', // タッチターゲットサイズ
+                  minHeight: '44px', // タッチターゲットサイズ
                 }}
               >
-                {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                <SkipPreviousIcon fontSize="medium" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="30分後に移動">
+            <Tooltip title="30分前に移動 (←)">
+              <IconButton
+                onClick={() => handleSkip(-30)}
+                size="medium"
+                aria-label="30分前に移動"
+                sx={{
+                  color: theme.palette.grey[900], // コントラスト向上
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: '2px'
+                  },
+                  minWidth: '44px', // タッチターゲットサイズ
+                  minHeight: '44px', // タッチターゲットサイズ
+                }}
+              >
+                <FastRewindIcon fontSize="medium" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={isPlaying ? "一時停止 (スペース)" : "再生 (スペース)"}>
+              <IconButton
+                onClick={onPlayPause}
+                size="large"
+                aria-label={isPlaying ? "一時停止" : "再生"}
+                sx={{
+                  color: 'white',
+                  backgroundColor: isPlaying ? theme.palette.warning.dark : theme.palette.primary.dark, // コントラスト向上
+                  '&:hover': {
+                    backgroundColor: isPlaying ? theme.palette.warning.dark : theme.palette.primary.dark,
+                    opacity: 0.9,
+                  },
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: '2px'
+                  },
+                  width: 56, // より大きく
+                  height: 56, // より大きく
+                  minWidth: '56px', // タッチターゲットサイズ
+                  minHeight: '56px', // タッチターゲットサイズ
+                }}
+              >
+                {isPlaying ? <PauseIcon fontSize="large" /> : <PlayArrowIcon fontSize="large" />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="30分後に移動 (→)">
               <IconButton
                 onClick={() => handleSkip(30)}
-                size="small"
-                sx={{ color: theme.palette.grey[700] }}
+                size="medium"
+                aria-label="30分後に移動"
+                sx={{
+                  color: theme.palette.grey[900], // コントラスト向上
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: '2px'
+                  },
+                  minWidth: '44px', // タッチターゲットサイズ
+                  minHeight: '44px', // タッチターゲットサイズ
+                }}
               >
-                <FastForwardIcon />
+                <FastForwardIcon fontSize="medium" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="終了位置に移動">
+            <Tooltip title="終了位置に移動 (End)">
               <IconButton
                 onClick={() => handleJump(false)}
-                size="small"
-                sx={{ color: theme.palette.grey[700] }}
+                size="medium"
+                aria-label="終了位置に移動"
+                sx={{
+                  color: theme.palette.grey[900], // コントラスト向上
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: '2px'
+                  },
+                  minWidth: '44px', // タッチターゲットサイズ
+                  minHeight: '44px', // タッチターゲットサイズ
+                }}
               >
-                <SkipNextIcon />
+                <SkipNextIcon fontSize="medium" />
               </IconButton>
             </Tooltip>
           </Box>
 
           {/* 再生速度選択 */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography variant="body2" sx={{ mr: 2 }}>
+            <Typography variant="body1" sx={{ mr: 2, fontSize: '1rem' }}>
               再生速度:
             </Typography>
             <FormControl size="small" sx={{ minWidth: 120 }}>
@@ -279,15 +495,27 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
                 value={playbackSpeed}
                 onChange={handleSpeedChange}
                 variant="outlined"
-                size="small"
+                size="medium" // より大きく
                 displayEmpty
+                inputProps={{
+                  'aria-label': '再生速度選択',
+                  sx: { fontSize: '1rem' } // フォントサイズ増加
+                }}
+                sx={{
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: '2px'
+                  },
+                  minHeight: '44px', // タッチターゲットサイズ
+                }}
               >
-                <MenuItem value={1}>1倍速</MenuItem>
-                <MenuItem value={5}>5倍速</MenuItem>
-                <MenuItem value={10}>10倍速</MenuItem>
-                <MenuItem value={60}>60倍速</MenuItem>
-                <MenuItem value={120}>120倍速</MenuItem>
+                <MenuItem value={1}>1倍速 (Ctrl+1)</MenuItem>
+                <MenuItem value={5}>5倍速 (Ctrl+2)</MenuItem>
+                <MenuItem value={10}>10倍速 (Ctrl+3)</MenuItem>
+                <MenuItem value={60}>60倍速 (Ctrl+4)</MenuItem>
+                <MenuItem value={120}>120倍速 (Ctrl+5)</MenuItem>
               </Select>
+              <FormHelperText>Ctrl+数字キーでも変更可能</FormHelperText>
             </FormControl>
           </Box>
         </CardContent>
@@ -298,7 +526,7 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
         elevation={0}
         sx={{
           mb: 2,
-          border: '1px solid rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(0, 0, 0, 0.2)', // コントラスト向上
           borderRadius: '8px',
           overflow: 'hidden',
         }}
@@ -306,20 +534,20 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
         <Box sx={{
           display: 'flex',
           alignItems: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.03)',
+          backgroundColor: 'rgba(0, 0, 0, 0.05)', // コントラスト向上
           px: 2,
           py: 1,
-          borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.2)', // コントラスト向上
         }}>
-          <TimelineIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+          <TimelineIcon sx={{ mr: 1, color: theme.palette.primary.dark }} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 'medium', fontSize: '1rem' }}>
             軌道表示設定
           </Typography>
         </Box>
         <CardContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box>
-              <Typography variant="body2" gutterBottom>
+              <Typography variant="body1" gutterBottom sx={{ fontSize: '1rem' }}>
                 表示項目:
               </Typography>
               <ToggleButtonGroup
@@ -329,9 +557,19 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
                 ]}
                 onChange={handleOrbitVisibilityChange}
                 aria-label="軌道表示設定"
-                size="small"
+                size="medium" // より大きく
                 color="primary"
-                sx={{ width: '100%' }}
+                sx={{
+                  width: '100%',
+                  '& .MuiToggleButton-root': {
+                    minHeight: '44px', // タッチターゲットサイズ
+                    fontSize: '1rem', // フォントサイズ増加
+                    '&:focus': {
+                      outline: `2px solid ${theme.palette.primary.main}`,
+                      outlineOffset: '2px'
+                    }
+                  }
+                }}
               >
                 <ToggleButton value="orbits" aria-label="軌道を表示" sx={{ flex: 1 }}>
                   <TimelineIcon sx={{ mr: 1 }} />
@@ -347,18 +585,18 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
             <Divider />
 
             <Box>
-              <Typography variant="body2" gutterBottom>
+              <Typography variant="body1" gutterBottom sx={{ fontSize: '1rem' }}>
                 表示期間:
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">
+                <Typography variant="body1" sx={{ fontSize: '1rem' }}>
                   開始: {formatDate(startTime)} {formatTime(startTime)}
                 </Typography>
-                <Typography variant="body2">
+                <Typography variant="body1" sx={{ fontSize: '1rem' }}>
                   終了: {formatDate(endTime)} {formatTime(endTime)}
                 </Typography>
               </Box>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body1" color="text.primary" sx={{ fontSize: '1rem' }}>
                 総期間: {formatDuration(endTimeValue - startTimeValue)}
               </Typography>
             </Box>
