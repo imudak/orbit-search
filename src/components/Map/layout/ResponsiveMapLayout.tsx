@@ -29,15 +29,13 @@ const SidePanel = styled(Box)(({ theme }) => ({
   },
 }));
 
-// 地図コンテナ
+// 地図コンテナ - フルスクリーン表示
 const MapContainer = styled(Box)(({ theme }) => ({
   flex: '1 1 auto',
-  height: '600px',
+  height: '100%',
   position: 'relative',
   minWidth: 0, // flexboxのバグを防ぐ
-  [theme.breakpoints.down('sm')]: {
-    height: '500px',
-  },
+  overflow: 'hidden',
 }));
 
 // モバイル用のドロワーコンテンツ

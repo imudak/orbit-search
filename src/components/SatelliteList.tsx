@@ -247,99 +247,53 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
           {/* ヘッダー部分 */}
           <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.1)' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="h6" component="h2" sx={{
-                  fontWeight: 'bold',
-                  color: theme.palette.primary.main,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                }}>
-                  <SatelliteIcon />
-                  可視衛星リスト
-                </Typography>
+              <Typography variant="h6" component="h2" sx={{
+                fontWeight: 'bold',
+                color: theme.palette.primary.main,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+              }}>
+                <SatelliteIcon />
+                可視衛星
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Tooltip title="軌道種類と最大仰角について">
                   <IconButton
                     size="small"
                     color="primary"
                     onClick={() => setInfoDialogOpen(true)}
-                    sx={{ ml: 1 }}
                   >
                     <InfoIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
-              </Box>
-              <Badge
-                badgeContent={satellites.length}
-                color="primary"
-                max={999}
-                sx={{
-                  '& .MuiBadge-badge': {
-                    fontSize: '0.8rem',
-                    height: '22px',
-                    minWidth: '22px',
-                    padding: '0 6px',
-                  }
-                }}
-              >
                 <Chip
-                  icon={<SatelliteIcon />}
-                  label="衛星"
+                  label={`${satellites.length}個`}
                   color="primary"
-                  size="medium"
+                  size="small"
                   sx={{
                     fontWeight: 'bold',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                    '& .MuiChip-icon': {
-                      fontSize: '1rem',
-                    }
+                    minWidth: '60px',
                   }}
                 />
-              </Badge>
+              </Box>
             </Box>
 
             {/* 検索パネル */}
             {searchPanel}
 
-            {/* フィルターとソートのオプション（将来的な拡張用） */}
+            {/* フィルターとソートのオプション - シンプル化 */}
             <Box sx={{
               display: 'flex',
-              justifyContent: 'space-between',
-              mt: 2,
+              justifyContent: 'flex-end',
+              mt: 1,
               borderTop: '1px solid rgba(0, 0, 0, 0.1)',
               pt: 1,
             }}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Tooltip title="軌道種類でフィルター">
-                  <Chip
-                    icon={<FilterListIcon />}
-                    label="軌道種類"
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {}}
-                    sx={{ cursor: 'pointer' }}
-                  />
-                </Tooltip>
-                <Tooltip title="最大仰角でフィルター">
-                  <Chip
-                    icon={<FilterListIcon />}
-                    label="最大仰角"
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {}}
-                    sx={{ cursor: 'pointer' }}
-                  />
-                </Tooltip>
-              </Box>
               <Tooltip title="並び替え">
-                <Chip
-                  icon={<SortIcon />}
-                  label="並び替え"
-                  variant="outlined"
-                  size="small"
-                  onClick={() => {}}
-                  sx={{ cursor: 'pointer' }}
-                />
+                <IconButton size="small" color="primary">
+                  <SortIcon fontSize="small" />
+                </IconButton>
               </Tooltip>
             </Box>
           </Box>
@@ -446,7 +400,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                     </Box>
                     <ListItemText
                       primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography
                             component="span"
                             sx={{
@@ -460,9 +414,14 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                         </Box>
                       }
                       secondary={
-                        <Box sx={{ mt: 0.5 }}>
-                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                        <Box component="span" sx={{ mt: 0.5, display: 'block' }}>
+                          <Box component="span" sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <Typography
+                              variant="body2"
+                              component="span"
+                              color="text.secondary"
+                              sx={{ mr: 1 }}
+                            >
                               ID: {satellite.noradId}
                             </Typography>
 
