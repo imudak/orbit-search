@@ -303,7 +303,9 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
               // 軌道種類を取得
               const orbitType = satellite.tle ? getOrbitType(satellite.tle) : '不明';
               // 最大仰角を取得
-              const maxElevation = satellite.passes.length > 0 ? satellite.passes[0].maxElevation : 0;
+              const maxElevation = satellite.passes.length > 0
+                ? Math.max(...satellite.passes.map(pass => pass.maxElevation))
+                : 0;
 
               return (
                 <ListItem
@@ -387,7 +389,8 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                         {orbitType}
                       </Avatar>
                     </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
+                      {/* 番号とNORAD ID */}
                       <Typography
                         component="div"
                         sx={{
@@ -396,38 +399,23 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                           fontSize: '1rem',
                         }}
                       >
-                        {index + 1}. {satellite.name}
+                        {index + 1}. NORAD ID: {satellite.id}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip
-                          size="small"
-                          label={orbitType}
-                          color={getOrbitTypeColor(orbitType)}
-                          sx={{
-                            fontWeight: 'bold',
-                            height: '24px',
-                            '& .MuiChip-label': {
-                              px: 1,
-                            }
-                          }}
-                        />
 
-                        {/* 最大仰角を表示（パスがある場合のみ） */}
-                        {satellite.passes.length > 0 && (
-                          <Chip
-                            size="small"
-                            label={`最大仰角: ${maxElevation.toFixed(1)}°`}
-                            color="primary"
-                            sx={{
-                              fontWeight: 'bold',
-                              height: '24px',
-                              '& .MuiChip-label': {
-                                px: 1,
-                              }
-                            }}
-                          />
-                        )}
-                      </Box>
+                      {/* 最大仰角を別の行に表示 */}
+                      <Chip
+                        size="small"
+                        label={`最大仰角: ${maxElevation.toFixed(1)}°`}
+                        color={getElevationColor(maxElevation)}
+                        sx={{
+                          fontWeight: 'bold',
+                          height: '24px',
+                          alignSelf: 'flex-start',
+                          '& .MuiChip-label': {
+                            px: 1,
+                          }
+                        }}
+                      />
                     </Box>
                   </ListItemButton>
                 </ListItem>

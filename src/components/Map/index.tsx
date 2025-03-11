@@ -225,7 +225,7 @@ const Map: React.FC<MapProps> = ({
         onFiltersChange={onFiltersChange}
       />
       <SatelliteList
-        satellites={satellites.map(s => ({ ...s, passes: [] })) as any}
+        satellites={satellites as any}
         onTLEDownload={onTLEDownload}
         onObservationDataRequest={onObservationDataRequest}
         onSatelliteSelect={onSatelliteSelect}
