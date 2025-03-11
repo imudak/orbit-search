@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import {
-  Paper, Typography, Box, IconButton, Collapse, Divider, Chip,
-  Accordion, AccordionSummary, AccordionDetails, useTheme, useMediaQuery,
-  Tooltip, Card, CardContent, LinearProgress
+  Typography, Box, IconButton, Collapse, Divider, Chip,
+  useTheme, useMediaQuery, Tooltip, Card, CardContent, LinearProgress
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import SatelliteIcon from '@mui/icons-material/Satellite';
@@ -18,7 +16,6 @@ import type { AnimationState } from '../panels/AnimationControlPanel';
 import { OrbitType, DEFAULT_ORBIT_TYPES } from '../layers/VisibilityCircleLayer';
 
 interface SatelliteInfoPanelProps {
-  position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' | 'center';
   satellite?: Satellite;
   currentPosition?: {
     lat: number;
@@ -48,7 +45,6 @@ interface SatelliteInfoPanelProps {
  * 情報の階層化と視認性を向上
  */
 const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
-  position = 'center',
   satellite,
   currentPosition,
   currentTime = new Date(),
@@ -73,30 +69,6 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
     position: false,
     visibility: false,
   });
-
-  // ポジションに応じたスタイルを設定
-  const getPositionStyle = () => {
-    if (position === 'center') {
-      return {
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      };
-    }
-
-    switch (position) {
-      case 'topleft':
-        return { top: '10px', left: '10px' };
-      case 'topright':
-        return { top: '10px', right: '10px' };
-      case 'bottomleft':
-        return { bottom: '10px', left: '10px' };
-      case 'bottomright':
-        return { bottom: '10px', right: '10px' };
-      default:
-        return { bottom: '10px', left: '10px' };
-    }
-  };
 
   // 時間をフォーマットする関数
   const formatTime = (date: Date) => {
@@ -134,56 +106,36 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
   return (
     <Box
       sx={{
-        position: 'absolute',
-        ...getPositionStyle(),
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: position === 'center' ? 'center' : position.includes('right') ? 'flex-end' : 'flex-start',
-        minWidth: position === 'center' ? '600px' : '280px', // 最小幅を設定
-        maxWidth: position === 'center' ? '80%' : (isMobile ? '90vw' : '380px'), // モバイルでは画面幅の90%に制限
-      }}
-      onWheel={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
+        width: '100%',
+        height: '100%',
+        overflow: 'auto',
+        padding: '8px',
       }}
     >
-      <Collapse
-        in={isOpen}
-        sx={{ width: '100%' }}
-        onWheel={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
+      <Box
+        sx={{
+          overflowY: 'auto',
+          height: '100%',
+          pr: 1, // スクロールバー用の余白
+          // スクロールバーのスタイル
+          '&::-webkit-scrollbar': {
+            width: '8px',
+            display: 'block', // スクロールバーを常に表示
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'rgba(0,0,0,0.05)',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            borderRadius: '4px',
+          }
         }}
       >
-        <Paper
-          sx={{
-            padding: '16px',
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            border: '1px solid rgba(0, 0, 0, 0.1)',
-            minWidth: position === 'center' ? '600px' : '280px',
-            width: '100%',
-            maxHeight: isMobile ? '70vh' : '80vh', // 最大高さを調整
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-          onWheel={(e) => {
-            // マウスホイールイベントが伝播しないようにする
-            e.stopPropagation();
-            // デフォルトの動作も防止
-            e.preventDefault();
-          }}
-        >
-          {/* ヘッダー部分 */}
+          {/* タイトル部分 */}
           <Box sx={{
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
-            pb: 1,
             mb: 2
           }}>
             <Typography variant="h6" sx={{
@@ -196,45 +148,7 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
               <SatelliteIcon />
               {satellite ? `${satellite.name}` : '衛星情報'}
             </Typography>
-            {onClose && (
-              <IconButton
-                size="small"
-                onClick={onClose}
-                sx={{
-                  color: theme.palette.grey[700],
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                  }
-                }}
-                aria-label="閉じる"
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            )}
           </Box>
-
-          {/* スクロール可能なコンテンツエリア */}
-          <Box
-            sx={{
-              overflowY: 'auto',
-              flex: '1 1 auto',
-              pr: 1, // スクロールバー用の余白
-              maxHeight: isMobile ? 'calc(70vh - 60px)' : 'calc(80vh - 60px)', // 最大高さを明示的に設定
-              // スクロールバーのスタイル
-              '&::-webkit-scrollbar': {
-                width: '8px',
-                display: 'block', // スクロールバーを常に表示
-              },
-              '&::-webkit-scrollbar-track': {
-                backgroundColor: 'rgba(0,0,0,0.05)',
-                borderRadius: '4px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(0,0,0,0.2)',
-                borderRadius: '4px',
-              }
-            }}
-          >
             {/* 観測地点情報 */}
             {center && (
               <Card
@@ -791,8 +705,6 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
               </Box>
             )}
           </Box>
-        </Paper>
-      </Collapse>
     </Box>
   );
 };
