@@ -1,7 +1,28 @@
-/* 衛星アイコンのスタイル */
+/* 衛星アイコンの基本スタイル */
 .satellite-icon {
   /* 常に表示されるようにする */
   opacity: 1 !important;
   /* 他の要素より前面に表示 */
   z-index: 1000 !important;
+  /* 影をつけて目立たせる */
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+  /* アニメーションを滑らかにする */
+  transition: all 0.3s ease;
+}
+
+/* 軌道タイプ別の衛星アイコンスタイル */
+.satellite-icon-leo {
+  background-color: #2196f3 !important; /* 青 - LEO */
+}
+
+.satellite-icon-meo {
+  background-color: #4caf50 !important; /* 緑 - MEO */
+}
+
+.satellite-icon-geo {
+  background-color: #9c27b0 !important; /* 紫 - GEO */
+}
+
+.satellite-icon-heo {
+  background-color: #ff9800 !important; /* オレンジ - HEO */
 }

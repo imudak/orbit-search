@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Box, Container, Grid, Paper, Typography, AppBar, Toolbar, Divider } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -17,24 +17,9 @@ import { orbitService } from '@/services/orbitService';
 const Root = styled(Box)({
   minHeight: '100vh',
   display: 'flex',
-  flexDirection: 'column'
-});
-
-const Main = styled(Container)({
-  flex: 1,
-  display: 'flex',
   flexDirection: 'column',
-  padding: '24px',
-  overflow: 'auto'  // スクロール可能に
+  overflow: 'hidden'
 });
-
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(2),
-  backgroundColor: theme.palette.background.default,
-  display: 'flex',
-  flexDirection: 'column',
-  boxSizing: 'border-box'  // パディングを含めたサイズ計算
-}));
 
 const Footer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(1, 2),
@@ -42,7 +27,8 @@ const Footer = styled(Box)(({ theme }) => ({
   borderTop: `1px solid ${theme.palette.divider}`,
   display: 'flex',
   justifyContent: 'space-between',
-  alignItems: 'center'
+  alignItems: 'center',
+  zIndex: 10
 }));
 
 const App = () => {
@@ -267,84 +253,43 @@ const App = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} locale={ja}>
       <Root>
-        {/* アプリのヘッダー */}
-      <AppBar position="static" color="primary">
-        <Toolbar>
-          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            Orbit Search - 衛星軌道検索 - 地図上の位置をクリックして、その場所から見える衛星を検索します
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Main maxWidth="xl">
-        {/* 地図と衛星リストを横に並べるレイアウト */}
-        <Box sx={{ display: 'flex', height: 'calc(100vh - 150px)', width: '100%', gap: 2 }}>
-          {/* 地図エリア */}
-          <Box sx={{ position: 'relative', flex: 2, height: '100%' }}>
-            {/* 地図 */}
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                '& .leaflet-container': {
-                  height: '100% !important',
-                  width: '100% !important'
-                }
-              }}
-            >
-              <Map
-                center={selectedLocation}
-                onLocationSelect={handleLocationSelect}
-                orbitPaths={orbitPaths}
-                filters={searchFilters}
-                selectedSatellite={selectedSatellite}
-              />
-            </Box>
-          </Box>
-
-          {/* 右側のコンテンツ（衛星リスト） */}
-          <Box sx={{ flex: 1, height: '100%', minWidth: '350px', maxWidth: '450px' }}>
-            <SatelliteList
-              satellites={satellites}
-              onTLEDownload={handleTLEDownload}
-              onObservationDataRequest={handleObservationDataRequest}
-              onSatelliteSelect={handleSatelliteSelect}
-              selectedSatellite={selectedSatellite}
-              isLoading={isLoading}
-              searchPanel={
-                <SearchPanel
-                  filters={searchFilters}
-                  onFiltersChange={handleFiltersChange}
-                />
-              }
-            />
-          </Box>
-
-          {/* 凡例はMap内に移動 */}
+        {/* 地図コンポーネント（フルスクリーン） */}
+        <Box sx={{ height: 'calc(100vh - 40px)', width: '100%' }}>
+          <Map
+            center={selectedLocation}
+            onLocationSelect={handleLocationSelect}
+            orbitPaths={orbitPaths}
+            filters={searchFilters}
+            satellites={satellites}
+            selectedSatellite={selectedSatellite}
+            onFiltersChange={handleFiltersChange}
+            onSatelliteSelect={handleSatelliteSelect}
+            onTLEDownload={handleTLEDownload}
+            onObservationDataRequest={handleObservationDataRequest}
+            isLoading={isLoading}
+          />
         </Box>
-      </Main>
-      {/* フッター */}
-      <Footer>
-        <Typography variant="body2" color="text.secondary">
-          © {new Date().getFullYear()} Kazumi OKANO
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Version 1.0.0
-        </Typography>
-      </Footer>
 
-      {/* 観測データダイアログ */}
-      <ObservationDataDialog
-        open={observationDialogOpen}
-        onClose={() => setObservationDialogOpen(false)}
-        onDownload={handleObservationDataDownload}
-        isLoading={observationLoading}
-        satelliteName={satelliteForObservation?.name || ''}
-      />
-    </Root>
-  </LocalizationProvider>
+        {/* フッター */}
+        <Footer>
+          <Typography variant="body2" color="text.secondary">
+            © {new Date().getFullYear()} Kazumi OKANO
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Version 1.0.0
+          </Typography>
+        </Footer>
+
+        {/* 観測データダイアログ */}
+        <ObservationDataDialog
+          open={observationDialogOpen}
+          onClose={() => setObservationDialogOpen(false)}
+          onDownload={handleObservationDataDownload}
+          isLoading={observationLoading}
+          satelliteName={satelliteForObservation?.name || ''}
+        />
+      </Root>
+    </LocalizationProvider>
   );
 };
 
