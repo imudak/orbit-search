@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { OrbitPath } from '@/types';
@@ -23,15 +23,18 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
   const map = useMap();
   const { currentTime } = animationState;
   const satelliteMarkerRef = useRef<L.Marker | null>(null);
+  const satelliteIconRef = useRef<L.Icon | null>(null);
 
-  // 衛星アイコンの設定（useMemoを使用してメモ化）
-  const satelliteIcon = useMemo(() => L.icon({
-    iconUrl: import.meta.env.BASE_URL + 'satellite.svg',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12],
-    className: 'satellite-icon-blue'
-  }), []);
+  // 衛星アイコンの初期化（一度だけ作成）
+  if (!satelliteIconRef.current) {
+    satelliteIconRef.current = L.icon({
+      iconUrl: '/satellite.svg', // 修正したSVGファイルを使用
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      popupAnchor: [0, -12],
+      className: 'satellite-icon-blue'
+    });
+  }
 
   // 指定された時刻に対応する軌道点を見つける
   const findOrbitPoint = (time: Date) => {
@@ -103,32 +106,36 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
 
     // マーカーがまだ作成されていない場合は作成
     if (!satelliteMarkerRef.current) {
-      satelliteMarkerRef.current = L.marker([point.lat, lng], {
-        icon: satelliteIcon,
-        zIndexOffset: 1000, // 他のマーカーより前面に表示
-        // アニメーションを無効化して点滅を防止
-        interactive: true,
-        bubblingMouseEvents: false
-      }).addTo(map);
+      // satelliteIconRef.currentがnullでないことを確認
+      if (satelliteIconRef.current) {
+        satelliteMarkerRef.current = L.marker([point.lat, lng], {
+          icon: satelliteIconRef.current,
+          zIndexOffset: 1000, // 他のマーカーより前面に表示
+          // アニメーションを無効化して点滅を防止
+          interactive: true,
+          bubblingMouseEvents: false
+        }).addTo(map);
 
-      // ポップアップを設定（初回のみ）
-      const popupContent = `
-        <b>衛星位置情報</b><br>
-        時刻: ${currentTime.toLocaleString()}<br>
-        仰角: ${effectiveAngle.toFixed(2)}°<br>
-        緯度: ${point.lat.toFixed(4)}°<br>
-        経度: ${lng.toFixed(4)}°
-      `;
+        // ポップアップを設定（初回のみ）
+        const popupContent = `
+          <b>衛星位置情報</b><br>
+          時刻: ${currentTime.toLocaleString()}<br>
+          仰角: ${effectiveAngle.toFixed(2)}°<br>
+          緯度: ${point.lat.toFixed(4)}°<br>
+          経度: ${lng.toFixed(4)}°
+        `;
 
-      satelliteMarkerRef.current.bindPopup(popupContent);
+        satelliteMarkerRef.current.bindPopup(popupContent);
+      }
     } else {
-      // マーカーの位置を更新（アニメーション中のみ）
-      if (animationState.isPlaying) {
+      // マーカーが存在し、アニメーション中の場合のみ位置を更新
+      const marker = satelliteMarkerRef.current;
+      if (marker && animationState.isPlaying) {
         // アニメーションなしで位置を更新して点滅を防止
-        satelliteMarkerRef.current.setLatLng([point.lat, lng]);
+        marker.setLatLng([point.lat, lng]);
 
         // ポップアップ内容を更新（開いている場合のみ）
-        if (satelliteMarkerRef.current.isPopupOpen()) {
+        if (marker.isPopupOpen()) {
           const popupContent = `
             <b>衛星位置情報</b><br>
             時刻: ${currentTime.toLocaleString()}<br>
@@ -136,7 +143,7 @@ const SatelliteAnimationLayer: React.FC<SatelliteAnimationLayerProps> = ({
             緯度: ${point.lat.toFixed(4)}°<br>
             経度: ${lng.toFixed(4)}°
           `;
-          satelliteMarkerRef.current.setPopupContent(popupContent);
+          marker.setPopupContent(popupContent);
         }
       }
     }
