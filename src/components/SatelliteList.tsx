@@ -28,10 +28,10 @@ import {
   Timeline as TimelineIcon,
   Info as InfoIcon,
   Close as CloseIcon,
-  Satellite as SatelliteIcon,
   FilterList as FilterListIcon,
   Sort as SortIcon,
 } from '@mui/icons-material';
+import SatelliteAltIcon from '@mui/icons-material/SatelliteAlt';
 import type { Satellite, Pass } from '@/types';
 
 // TLEデータから軌道種類を判断する関数
@@ -152,7 +152,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                 alignItems: 'center',
                 gap: 1,
               }}>
-                <SatelliteIcon />
+                <SatelliteAltIcon sx={{ color: 'primary.main' }} />
                 可視衛星リスト
               </Typography>
             </Box>
@@ -203,7 +203,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                 alignItems: 'center',
                 gap: 1,
               }}>
-                <SatelliteIcon />
+                <SatelliteAltIcon sx={{ color: 'primary.main' }} />
                 可視衛星リスト
               </Typography>
             </Box>
@@ -254,8 +254,8 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                 alignItems: 'center',
                 gap: 1,
               }}>
-                <SatelliteIcon />
-                可視衛星
+                <SatelliteAltIcon sx={{ color: 'primary.main' }} />
+                可視衛星リスト
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Tooltip title="軌道種類と最大仰角について">
@@ -282,20 +282,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
             {/* 検索パネル */}
             {searchPanel}
 
-            {/* フィルターとソートのオプション - シンプル化 */}
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              mt: 1,
-              borderTop: '1px solid rgba(0, 0, 0, 0.1)',
-              pt: 1,
-            }}>
-              <Tooltip title="並び替え">
-                <IconButton size="small" color="primary">
-                  <SortIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
+            {/* ソート機能は削除 */}
           </Box>
 
           {/* 衛星リスト */}
@@ -324,12 +311,13 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                   disablePadding
                   divider
                   secondaryAction={
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
                       <Tooltip title="観測データをダウンロード">
                         <IconButton
                           edge="end"
                           aria-label="download-observation"
                           onClick={() => onObservationDataRequest(satellite)}
+                          size="small"
                           sx={{
                             color: theme.palette.primary.main,
                             backgroundColor: 'rgba(25, 118, 210, 0.05)',
@@ -338,7 +326,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                             }
                           }}
                         >
-                          <TimelineIcon />
+                          <TimelineIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="TLEデータをダウンロード">
@@ -346,6 +334,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                           edge="end"
                           aria-label="download-tle"
                           onClick={() => onTLEDownload(satellite)}
+                          size="small"
                           sx={{
                             color: theme.palette.secondary.main,
                             backgroundColor: 'rgba(156, 39, 176, 0.05)',
@@ -354,7 +343,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                             }
                           }}
                         >
-                          <DownloadIcon />
+                          <DownloadIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </Box>
@@ -398,54 +387,48 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                         {orbitType}
                       </Avatar>
                     </Box>
-                    <ListItemText
-                      primary={
-                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography
-                            component="span"
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Typography
+                        component="div"
+                        sx={{
+                          fontWeight: 'bold',
+                          color: selectedSatellite?.id === satellite.id ? theme.palette.primary.main : 'inherit',
+                          fontSize: '1rem',
+                        }}
+                      >
+                        {index + 1}. {satellite.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Chip
+                          size="small"
+                          label={orbitType}
+                          color={getOrbitTypeColor(orbitType)}
+                          sx={{
+                            fontWeight: 'bold',
+                            height: '24px',
+                            '& .MuiChip-label': {
+                              px: 1,
+                            }
+                          }}
+                        />
+
+                        {/* 最大仰角を表示（パスがある場合のみ） */}
+                        {satellite.passes.length > 0 && (
+                          <Chip
+                            size="small"
+                            label={`最大仰角: ${maxElevation.toFixed(1)}°`}
+                            color="primary"
                             sx={{
                               fontWeight: 'bold',
-                              color: selectedSatellite?.id === satellite.id ? theme.palette.primary.main : 'inherit',
-                              fontSize: '1rem',
+                              height: '24px',
+                              '& .MuiChip-label': {
+                                px: 1,
+                              }
                             }}
-                          >
-                            {satellite.name}
-                          </Typography>
-                        </Box>
-                      }
-                      secondary={
-                        <Box component="span" sx={{ mt: 0.5, display: 'block' }}>
-                          <Box component="span" sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <Typography
-                              variant="body2"
-                              component="span"
-                              color="text.secondary"
-                              sx={{ mr: 1 }}
-                            >
-                              ID: {satellite.noradId}
-                            </Typography>
-
-                            {/* 最大仰角を表示（パスがある場合のみ） */}
-                            {satellite.passes.length > 0 && (
-                              <Tooltip title={`最大仰角: ${maxElevation.toFixed(1)}°`}>
-                                <Chip
-                                  size="small"
-                                  label={`${getElevationLabel(maxElevation)} ${maxElevation.toFixed(1)}°`}
-                                  color={getElevationColor(maxElevation)}
-                                  sx={{
-                                    fontWeight: 'bold',
-                                    height: '24px',
-                                    '& .MuiChip-label': {
-                                      px: 1,
-                                    }
-                                  }}
-                                />
-                              </Tooltip>
-                            )}
-                          </Box>
-                        </Box>
-                      }
-                    />
+                          />
+                        )}
+                      </Box>
+                    </Box>
                   </ListItemButton>
                 </ListItem>
               );

@@ -203,10 +203,6 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
         borderRadius: '8px',
       }}
     >
-      <Typography variant="h6" gutterBottom>
-        衛星検索
-      </Typography>
-
       {/* 観測地点設定 */}
       <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>
@@ -223,14 +219,6 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
           <Typography variant="body2" sx={{ flexGrow: 1 }}>
             緯度: {filters.location.lat.toFixed(6)}°, 経度: {filters.location.lng.toFixed(6)}°
           </Typography>
-          <Button
-            startIcon={<EditLocationIcon />}
-            onClick={handleLocationEdit}
-            size="small"
-            variant="outlined"
-          >
-            地図から選択
-          </Button>
         </Box>
       </Box>
 
@@ -309,7 +297,12 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ filters, onFiltersChange }) =
           step={1}
           marks={[
             { value: 0, label: '0°' },
+            { value: 10, label: '10°' },
+            { value: 20, label: '20°' },
+            { value: 30, label: '30°' },
             { value: 45, label: '45°' },
+            { value: 60, label: '60°' },
+            { value: 75, label: '75°' },
             { value: 90, label: '90°' },
           ]}
           valueLabelDisplay="auto"

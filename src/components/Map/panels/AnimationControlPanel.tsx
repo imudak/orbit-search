@@ -16,15 +16,15 @@ import {
   useTheme,
   useMediaQuery
 } from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
-import FastForwardIcon from '@mui/icons-material/FastForward';
-import FastRewindIcon from '@mui/icons-material/FastRewind';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
+import FastForwardRoundedIcon from '@mui/icons-material/FastForwardRounded';
+import FastRewindRoundedIcon from '@mui/icons-material/FastRewindRounded';
+import SkipNextRoundedIcon from '@mui/icons-material/SkipNextRounded';
+import SkipPreviousRoundedIcon from '@mui/icons-material/SkipPreviousRounded';
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 
 // 衛星アニメーションの状態を表す型
 export interface AnimationState {
@@ -168,7 +168,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
               onClick={() => setIsCompact(!isCompact)}
               sx={{ color: 'white', opacity: 0.8, '&:hover': { opacity: 1 } }}
             >
-              {isCompact ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
+              {isCompact ? <ExpandMoreRoundedIcon fontSize="small" /> : <ExpandLessRoundedIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
           <Tooltip title="操作ヘルプを表示">
@@ -177,7 +177,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
               onClick={() => setShowHelp(!showHelp)}
               sx={{ color: 'white', opacity: 0.8, '&:hover': { opacity: 1 } }}
             >
-              <HelpOutlineIcon fontSize="small" />
+              <HelpOutlineRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>
@@ -209,7 +209,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
                   size="small"
                   sx={{ color: 'white' }}
                 >
-                  <SkipPreviousIcon />
+                  <SkipPreviousRoundedIcon />
                 </IconButton>
               </Tooltip>
 
@@ -220,7 +220,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
                   size="small"
                   sx={{ color: 'white' }}
                 >
-                  <FastRewindIcon />
+                  <FastRewindRoundedIcon />
                 </IconButton>
               </Tooltip>
             </>
@@ -236,7 +236,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
               '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.3)' }
             }}
           >
-            {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+            {isPlaying ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
           </IconButton>
 
           {/* コンパクト表示でない場合のみ表示 */}
@@ -249,7 +249,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
                   size="small"
                   sx={{ color: 'white' }}
                 >
-                  <FastForwardIcon />
+                  <FastForwardRoundedIcon />
                 </IconButton>
               </Tooltip>
 
@@ -260,7 +260,7 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
                   size="small"
                   sx={{ color: 'white' }}
                 >
-                  <SkipNextIcon />
+                  <SkipNextRoundedIcon />
                 </IconButton>
               </Tooltip>
             </>
@@ -380,19 +380,19 @@ const AnimationControlPanel: React.FC<AnimationControlPanelProps> = ({
           </Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <PlayArrowIcon fontSize="small" sx={{ mr: 1 }} />
+              <PlayArrowRoundedIcon fontSize="small" sx={{ mr: 1 }} />
               <Typography variant="caption">再生/一時停止</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <FastForwardIcon fontSize="small" sx={{ mr: 1 }} />
+              <FastForwardRoundedIcon fontSize="small" sx={{ mr: 1 }} />
               <Typography variant="caption">30分前後にスキップ</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <SkipNextIcon fontSize="small" sx={{ mr: 1 }} />
+              <SkipNextRoundedIcon fontSize="small" sx={{ mr: 1 }} />
               <Typography variant="caption">開始/終了位置にジャンプ</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <ExpandLessIcon fontSize="small" sx={{ mr: 1 }} />
+              <ExpandLessRoundedIcon fontSize="small" sx={{ mr: 1 }} />
               <Typography variant="caption">コンパクト表示の切り替え</Typography>
             </Box>
           </Box>
