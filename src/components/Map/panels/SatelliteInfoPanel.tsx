@@ -628,20 +628,17 @@ const SatelliteInfoPanel: React.FC<SatelliteInfoPanelProps> = ({
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
                     {DEFAULT_ORBIT_TYPES.map((orbitType) => (
                       <Box key={orbitType.name} sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box
-                          sx={{
-                            width: '12px',
-                            height: '12px',
-                            backgroundColor: orbitType.color,
-                            opacity: 0.7,
-                            mr: 1,
-                            border: '1px solid rgba(0, 0, 0, 0.3)',
-                            borderRadius: '2px',
-                          }}
+                        <Chip
+                          size="small"
+                          label={orbitType.name}
+                          color={
+                            orbitType.name === 'LEO' ? 'error' :
+                            orbitType.name === 'MEO' ? 'success' :
+                            orbitType.name === 'GEO' ? 'primary' :
+                            orbitType.name === 'HEO' ? 'warning' : 'default'
+                          }
+                          sx={{ minWidth: '60px', mr: 1 }}
                         />
-                        <Typography variant="body2" sx={{ flex: 1 }}>
-                          {orbitType.name}
-                        </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
                           {orbitType.height.toLocaleString()}km
                         </Typography>
