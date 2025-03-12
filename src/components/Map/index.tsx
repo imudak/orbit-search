@@ -217,23 +217,39 @@ const Map: React.FC<MapProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // 検索パネルコンポーネント
+  // 検索パネルコンポーネント - 垂直方向のスペースを最適化
   const searchTabContent = (
-    <>
-      <SearchPanel
-        filters={filters}
-        onFiltersChange={onFiltersChange}
-      />
-      <SatelliteList
-        satellites={satellites as any}
-        onTLEDownload={onTLEDownload}
-        onObservationDataRequest={onObservationDataRequest}
-        onSatelliteSelect={onSatelliteSelect}
-        selectedSatellite={selectedSatellite}
-        isLoading={isLoading}
-        searchPanel={null} // 検索パネルは別途表示するため不要
-      />
-    </>
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      overflow: 'hidden'
+    }}>
+      {/* 検索パネル - アコーディオン形式でコンパクト化 */}
+      <Box sx={{ flexShrink: 0 }}>
+        <SearchPanel
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
+      </Box>
+
+      {/* 衛星リスト - 残りのスペースを最大限に活用 */}
+      <Box sx={{
+        flex: 1,
+        overflow: 'auto',
+        minHeight: 0 // flexboxのバグを防ぐ
+      }}>
+        <SatelliteList
+          satellites={satellites as any}
+          onTLEDownload={onTLEDownload}
+          onObservationDataRequest={onObservationDataRequest}
+          onSatelliteSelect={onSatelliteSelect}
+          selectedSatellite={selectedSatellite}
+          isLoading={isLoading}
+          searchPanel={null} // 検索パネルは別途表示するため不要
+        />
+      </Box>
+    </Box>
   );
 
   // 衛星情報タブコンポーネント

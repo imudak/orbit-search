@@ -113,6 +113,7 @@ interface SatelliteListProps {
 /**
  * 改良版衛星リストコンポーネント
  * 視認性と操作性を向上させた設計
+ * リスト表示領域を拡大し、より多くの衛星を表示
  */
 const SatelliteList: React.FC<SatelliteListProps> = ({
   satellites,
@@ -121,7 +122,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
   onSatelliteSelect,
   selectedSatellite,
   isLoading = false,
-  searchPanel,
+  searchPanel, // 使用しない（Map/index.tsxで別途表示）
 }) => {
   // 軌道情報ダイアログの状態
   const [infoDialogOpen, setInfoDialogOpen] = useState<boolean>(false);
@@ -144,7 +145,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
         >
           {/* ヘッダー部分 */}
           <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.1)' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6" component="h2" sx={{
                 fontWeight: 'bold',
                 color: theme.palette.primary.main,
@@ -156,9 +157,6 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                 可視衛星リスト
               </Typography>
             </Box>
-
-            {/* 検索パネル */}
-            {searchPanel}
           </Box>
 
           <Box sx={{
@@ -195,7 +193,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
         >
           {/* ヘッダー部分 */}
           <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.1)' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6" component="h2" sx={{
                 fontWeight: 'bold',
                 color: theme.palette.primary.main,
@@ -207,9 +205,6 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                 可視衛星リスト
               </Typography>
             </Box>
-
-            {/* 検索パネル */}
-            {searchPanel}
           </Box>
 
           <Box sx={{
@@ -244,20 +239,24 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
         }}
       >
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {/* ヘッダー部分 */}
-          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.1)' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" component="h2" sx={{
+          {/* ヘッダー部分 - コンパクト化 */}
+          <Box sx={{
+            p: 1.8,
+            borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+            backgroundColor: 'rgba(0, 0, 0, 0.02)',
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="subtitle1" component="h2" sx={{
                 fontWeight: 'bold',
                 color: theme.palette.primary.main,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1,
+                gap: 1.5,
               }}>
                 <SatelliteAltIcon sx={{ color: 'primary.main' }} />
                 可視衛星リスト
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <Tooltip title="軌道種類と最大仰角について">
                   <IconButton
                     size="small"
@@ -278,19 +277,15 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                 />
               </Box>
             </Box>
-
-            {/* 検索パネル */}
-            {searchPanel}
-
-            {/* ソート機能は削除 */}
           </Box>
 
-          {/* 衛星リスト */}
+          {/* 衛星リスト - 表示領域拡大 */}
           <List
             disablePadding
             sx={{
               flex: 1,
               overflow: 'auto',
+              maxHeight: 'calc(100vh - 200px)', // より多くのスペースを確保
               '& .MuiListItem-root': {
                 transition: 'background-color 0.2s ease',
               },
@@ -355,8 +350,9 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                     selected={selectedSatellite?.id === satellite.id}
                     onClick={() => onSatelliteSelect(satellite)}
                     sx={{
-                      py: 1.5,
-                      px: 2,
+                      py: 1.2, // 高さを適度に確保
+                      px: 2.5, // 左右の余白を増やす
+                      my: 0.3, // リスト項目間の余白を追加
                       borderRadius: '4px',
                       transition: 'all 0.2s ease',
                       '&:hover': {
@@ -373,30 +369,30 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                       }
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mr: 2.5 }}>
                       <Avatar
                         sx={{
-                          width: 40,
-                          height: 40,
+                          width: 36, // サイズを少し縮小
+                          height: 36, // サイズを少し縮小
                           bgcolor: getOrbitTypeColor(orbitType) === 'default'
                             ? 'grey.400'
                             : `${getOrbitTypeColor(orbitType)}.main`,
                           color: 'white',
                           fontWeight: 'bold',
-                          fontSize: '1rem',
+                          fontSize: '0.9rem', // フォントサイズを少し縮小
                         }}
                       >
                         {orbitType}
                       </Avatar>
                     </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8, width: '100%' }}>
                       {/* 番号とNORAD ID */}
                       <Typography
                         component="div"
                         sx={{
                           fontWeight: 'bold',
                           color: selectedSatellite?.id === satellite.id ? theme.palette.primary.main : 'inherit',
-                          fontSize: '1rem',
+                          fontSize: '0.95rem', // フォントサイズを少し縮小
                         }}
                       >
                         {index + 1}. NORAD ID: {satellite.id}
@@ -409,10 +405,11 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                         color={getElevationColor(maxElevation)}
                         sx={{
                           fontWeight: 'bold',
-                          height: '24px',
+                          height: '20px', // 高さを少し縮小
                           alignSelf: 'flex-start',
                           '& .MuiChip-label': {
                             px: 1,
+                            fontSize: '0.75rem', // フォントサイズを少し縮小
                           }
                         }}
                       />
