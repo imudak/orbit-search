@@ -4,7 +4,6 @@ import { styled } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import InfoIcon from '@mui/icons-material/Info';
 import TimelineIcon from '@mui/icons-material/Timeline';
-import AssessmentIcon from '@mui/icons-material/Assessment';
 
 // タブパネルのコンテナ
 const TabPanelContainer = styled(Paper)(({ theme }) => ({
@@ -82,22 +81,20 @@ const TabPanelContent = (props: TabPanelProps) => {
 // タブパネルのプロパティ
 interface TabPanelComponentProps {
   searchTab?: React.ReactNode;
-  infoTab?: React.ReactNode;
+  satelliteInfoTab?: React.ReactNode;
   orbitTab?: React.ReactNode;
-  analysisTab?: React.ReactNode;
   initialTab?: number;
 }
 
 /**
  * タブ方式のパネルコンポーネント
- * 検索、情報、軌道、分析の4つのタブを持つ
+ * 検索、衛星情報、軌道の3つのタブを持つ
  * アクセシビリティ対応済み
  */
 const TabPanel: React.FC<TabPanelComponentProps> = ({
   searchTab,
-  infoTab,
+  satelliteInfoTab,
   orbitTab,
-  analysisTab,
   initialTab = 0,
 }) => {
   const [value, setValue] = useState(initialTab);
@@ -110,10 +107,10 @@ const TabPanel: React.FC<TabPanelComponentProps> = ({
 
   // キーボードショートカット処理
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Alt + 1-4 でタブ切り替え
-    if (event.altKey && event.key >= '1' && event.key <= '4') {
+    // Alt + 1-3 でタブ切り替え
+    if (event.altKey && event.key >= '1' && event.key <= '3') {
       const tabIndex = parseInt(event.key) - 1;
-      if (tabIndex >= 0 && tabIndex <= 3) {
+      if (tabIndex >= 0 && tabIndex <= 2) {
         setValue(tabIndex);
         event.preventDefault();
       }
@@ -131,17 +128,15 @@ const TabPanel: React.FC<TabPanelComponentProps> = ({
   // タブラベルとアイコンの組み合わせ
   const tabLabels = [
     { label: '検索', icon: <SearchIcon />, ariaLabel: '衛星検索タブ' },
-    { label: '情報', icon: <InfoIcon />, ariaLabel: '衛星情報タブ' },
+    { label: '衛星情報', icon: <InfoIcon />, ariaLabel: '衛星情報タブ' },
     { label: '軌道', icon: <TimelineIcon />, ariaLabel: '軌道制御タブ' },
-    { label: '分析', icon: <AssessmentIcon />, ariaLabel: '軌道分析タブ' },
   ];
 
   // プレースホルダーコンテンツ
   const placeholderContent = [
     '衛星を検索するためのフォームがここに表示されます。キーワードや軌道パラメータで検索できます。',
-    '選択した衛星の詳細情報がここに表示されます。軌道要素や運用状況を確認できます。',
+    '選択した衛星の詳細情報と分析結果がここに表示されます。軌道要素、運用状況、可視性分析などを確認できます。',
     '衛星軌道の表示設定や再生コントロールがここに表示されます。時間を進めて軌道の変化を確認できます。',
-    '衛星軌道の詳細な分析結果がここに表示されます。可視性や軌道特性を評価できます。',
   ];
 
   return (
@@ -169,7 +164,7 @@ const TabPanel: React.FC<TabPanelComponentProps> = ({
       </StyledTabs>
 
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        {[searchTab, infoTab, orbitTab, analysisTab].map((tabContent, index) => (
+        {[searchTab, satelliteInfoTab, orbitTab].map((tabContent, index) => (
           <TabPanelContent key={`panel-${index}`} value={value} index={index}>
             {tabContent || (
               <Box sx={{ p: 3, textAlign: 'center', maxWidth: '70ch', mx: 'auto' }}>

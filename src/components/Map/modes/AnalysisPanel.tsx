@@ -29,8 +29,7 @@ import KeyboardIcon from '@mui/icons-material/Keyboard';
 import type { OrbitPath } from '@/types';
 
 // 遅延ロードするコンポーネント
-const DetailedAnalysisTab = lazy(() => import('./analysis/DetailedAnalysisTab'));
-const VisibilityAnalysisTab = lazy(() => import('./analysis/VisibilityAnalysisTab'));
+const SatelliteInfoTab = lazy(() => import('./analysis/SatelliteInfoTab'));
 
 interface AnalysisPanelProps {
   position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' | 'bottom';
@@ -42,8 +41,7 @@ interface AnalysisPanelProps {
 // 分析タブの種類
 enum AnalysisTab {
   SUMMARY = 'summary',
-  DETAILS = 'details',
-  VISIBILITY = 'visibility'
+  SATELLITE = 'satellite'
 }
 
 // 統計情報の型定義
@@ -96,12 +94,11 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
   // キーボードショートカット処理
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Alt + 1-3 でタブ切り替え
-    if (event.altKey && event.key >= '1' && event.key <= '3') {
+    // Alt + 1-2 でタブ切り替え
+    if (event.altKey && event.key >= '1' && event.key <= '2') {
       const tabIndex = parseInt(event.key) - 1;
       if (tabIndex === 0) setCurrentTab(AnalysisTab.SUMMARY);
-      if (tabIndex === 1) setCurrentTab(AnalysisTab.DETAILS);
-      if (tabIndex === 2) setCurrentTab(AnalysisTab.VISIBILITY);
+      if (tabIndex === 1) setCurrentTab(AnalysisTab.SATELLITE);
       event.preventDefault();
     }
     // H キーでヘルプ表示切り替え
@@ -604,8 +601,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   // キーボードショートカット一覧
   const keyboardShortcuts = [
     { key: 'Alt+1', action: 'サマリータブに切り替え' },
-    { key: 'Alt+2', action: '詳細タブに切り替え' },
-    { key: 'Alt+3', action: '可視性タブに切り替え' },
+    { key: 'Alt+2', action: '衛星情報タブに切り替え' },
     { key: 'H', action: 'ヘルプ表示/非表示' },
     { key: 'K', action: 'ショートカット表示/非表示' },
     { key: 'Esc', action: 'パネルを閉じる' },
@@ -883,20 +879,12 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                 aria-label="サマリータブ (Alt+1)"
               />
               <Tab
-                icon={<AssessmentIcon />}
-                label="詳細"
-                value={AnalysisTab.DETAILS}
-                id="tab-details"
-                aria-controls="tabpanel-details"
-                aria-label="詳細タブ (Alt+2)"
-              />
-              <Tab
-                icon={<TimelineIcon />}
-                label="可視性"
-                value={AnalysisTab.VISIBILITY}
-                id="tab-visibility"
-                aria-controls="tabpanel-visibility"
-                aria-label="可視性タブ (Alt+3)"
+                icon={<InfoOutlinedIcon />}
+                label="衛星情報"
+                value={AnalysisTab.SATELLITE}
+                id="tab-satellite"
+                aria-controls="tabpanel-satellite"
+                aria-label="衛星情報タブ (Alt+2)"
               />
             </Tabs>
 
@@ -920,15 +908,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             }}>
               {currentTab === AnalysisTab.SUMMARY && renderSummaryTab()}
 
-              {currentTab === AnalysisTab.DETAILS && (
+              {currentTab === AnalysisTab.SATELLITE && (
                 <Suspense fallback={renderLoadingFallback()}>
-                  <DetailedAnalysisTab orbitPaths={orbitPaths} pathStats={pathStats} />
-                </Suspense>
-              )}
-
-              {currentTab === AnalysisTab.VISIBILITY && (
-                <Suspense fallback={renderLoadingFallback()}>
-                  <VisibilityAnalysisTab orbitPaths={orbitPaths} pathStats={pathStats} />
+                  <SatelliteInfoTab orbitPaths={orbitPaths} pathStats={pathStats} />
                 </Suspense>
               )}
             </Box>

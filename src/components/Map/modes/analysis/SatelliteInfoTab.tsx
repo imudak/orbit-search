@@ -5,14 +5,27 @@ import {
   LinearProgress,
   Paper,
   Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Divider,
   useTheme,
 } from '@mui/material';
 import type { OrbitPath } from '@/types';
 
-interface VisibilityAnalysisTabProps {
+interface SatelliteInfoTabProps {
   orbitPaths: OrbitPath[];
   pathStats: Array<{
+    totalPoints: number;
+    totalSegments: number;
+    totalDistance: string;
+    minElevation: string;
+    maxElevation: string;
+    avgElevation: string;
+    maxElevationFromPath: string;
     visibleTime: number;
     totalTime: number;
     visibilityRate: string;
@@ -26,14 +39,14 @@ interface VisibilityAnalysisTabProps {
 }
 
 /**
- * 可視性分析タブコンポーネント
- * 衛星軌道の可視性に関する詳細な分析情報を表示
+ * 衛星情報タブコンポーネント
+ * 衛星軌道の詳細情報と可視性分析を統合して表示
  */
-const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPaths, pathStats }) => {
+const SatelliteInfoTab: React.FC<SatelliteInfoTabProps> = ({ orbitPaths, pathStats }) => {
   const theme = useTheme();
 
   return (
-    <Box sx={{ mt: 2 }} role="tabpanel" aria-labelledby="tab-visibility">
+    <Box sx={{ mt: 2 }} role="tabpanel" aria-labelledby="tab-satellite-info">
       {orbitPaths.map((path, index) => {
         const stats = pathStats[index];
 
@@ -60,6 +73,7 @@ const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPath
               衛星ID: {path.satelliteId}
             </Typography>
 
+            {/* 仰角分布 */}
             <Box sx={{ mt: 2 }}>
               <Typography
                 variant="body1"
@@ -73,6 +87,7 @@ const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPath
                 仰角分布
               </Typography>
 
+              {/* 最適 */}
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                 <Box sx={{ width: '120px', mr: 2 }}>
                   <Typography
@@ -115,6 +130,7 @@ const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPath
                 </Typography>
               </Box>
 
+              {/* 良好 */}
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                 <Box sx={{ width: '120px', mr: 2 }}>
                   <Typography
@@ -157,6 +173,7 @@ const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPath
                 </Typography>
               </Box>
 
+              {/* 可視 */}
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                 <Box sx={{ width: '120px', mr: 2 }}>
                   <Typography
@@ -199,6 +216,7 @@ const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPath
                 </Typography>
               </Box>
 
+              {/* 不良 */}
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Box sx={{ width: '120px', mr: 2 }}>
                   <Typography
@@ -242,6 +260,7 @@ const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPath
               </Box>
             </Box>
 
+            {/* 可視性サマリー */}
             <Box sx={{ mt: 3 }}>
               <Typography
                 variant="body1"
@@ -324,6 +343,72 @@ const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPath
               </Grid>
             </Box>
 
+            {/* 詳細データ */}
+            <Box sx={{ mt: 3 }}>
+              <Typography
+                variant="body1"
+                sx={{
+                  mb: 1,
+                  fontSize: '1rem',
+                  color: theme.palette.text.primary,
+                  fontWeight: 'medium',
+                }}
+              >
+                詳細データ
+              </Typography>
+              <TableContainer
+                component={Box}
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  borderRadius: '4px',
+                }}
+              >
+                <Table size="medium" aria-label={`衛星${path.satelliteId}の詳細データ`}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '1rem', fontWeight: 'medium', color: theme.palette.text.primary }}>
+                        項目
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontSize: '1rem', fontWeight: 'medium', color: theme.palette.text.primary }}>
+                        値
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>最大仰角</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>{stats.maxElevationFromPath}°</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>平均仰角</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>{stats.avgElevation}°</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>最小仰角</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>{stats.minElevation}°</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>総距離</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>{stats.totalDistance} km</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>セグメント数</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>{stats.totalSegments}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>ポイント数</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>{stats.totalPoints}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>総時間</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.9rem', color: theme.palette.text.primary }}>{stats.totalTime}分</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+
             {index < orbitPaths.length - 1 && (
               <Divider sx={{ my: 2 }} />
             )}
@@ -334,4 +419,4 @@ const VisibilityAnalysisTab: React.FC<VisibilityAnalysisTabProps> = ({ orbitPath
   );
 };
 
-export default VisibilityAnalysisTab;
+export default SatelliteInfoTab;
