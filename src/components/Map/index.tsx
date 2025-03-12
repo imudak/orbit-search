@@ -236,34 +236,8 @@ const Map: React.FC<MapProps> = ({
     </>
   );
 
-  // 情報パネルコンポーネント
-  const infoTabContent = (
-    <SatelliteInfoPanel
-      satellite={selectedSatellite}
-      currentPosition={satellitePosition}
-      currentTime={animationState.currentTime}
-      center={center}
-      orbitPaths={orbitPaths}
-      minElevation={minElevation}
-      orbitTypes={orbitTypes}
-      isOpen={true} // タブパネル内では常に表示
-    />
-  );
-
-  // 軌道タブコンポーネント
-  const orbitTabContent = (
-    <OrbitControlPanel
-      animationState={animationState}
-      onPlayPause={handlePlayPause}
-      onSeek={handleSeek}
-      onSpeedChange={handleSpeedChange}
-      orbitVisibility={orbitVisibility}
-      onOrbitVisibilityChange={setOrbitVisibility}
-    />
-  );
-
-  // 分析タブの内容を充実させる
-  const analysisTabContent = useMemo(() => {
+  // 衛星情報タブコンポーネント
+  const satelliteInfoTabContent = useMemo(() => {
     // 軌道パスがない場合
     if (orbitPaths.length === 0) {
       return (
@@ -539,9 +513,17 @@ const Map: React.FC<MapProps> = ({
           sidePanel={
             <TabPanel
               searchTab={searchTabContent}
-              infoTab={infoTabContent}
-              orbitTab={orbitTabContent}
-              analysisTab={analysisTabContent}
+              satelliteInfoTab={satelliteInfoTabContent}
+              orbitTab={
+                <OrbitControlPanel
+                  animationState={animationState}
+                  onPlayPause={handlePlayPause}
+                  onSeek={handleSeek}
+                  onSpeedChange={handleSpeedChange}
+                  orbitVisibility={orbitVisibility}
+                  onOrbitVisibilityChange={setOrbitVisibility}
+                />
+              }
             />
           }
         >
