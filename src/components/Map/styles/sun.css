@@ -1,0 +1,76 @@
+/* 太陽アイコンのスタイル */
+.sun-icon {
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  background: none !important;
+  border: none !important;
+}
+
+/* 太陽アイコンのコンテナ */
+.sun-icon-container {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 太陽の円 */
+.sun-icon-circle {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  background-color: #FFC107;
+  border: 2px solid #FF9800;
+  border-radius: 50%;
+  animation: sun-pulse 2s infinite alternate;
+  filter: drop-shadow(0 0 5px rgba(255, 165, 0, 0.7));
+}
+
+/* 太陽の光線 */
+.sun-icon-rays {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle, transparent 12px, #FF9800 12px, #FF9800 14px, transparent 14px),
+              radial-gradient(circle, transparent 12px, #FF9800 12px, #FF9800 14px, transparent 14px),
+              radial-gradient(circle, transparent 12px, #FF9800 12px, #FF9800 14px, transparent 14px),
+              radial-gradient(circle, transparent 12px, #FF9800 12px, #FF9800 14px, transparent 14px);
+  background-position: center top, center bottom, left center, right center;
+  background-repeat: no-repeat;
+  transform: rotate(0deg);
+  animation: sun-rotate 10s linear infinite;
+}
+
+/* 太陽のパルスアニメーション */
+@keyframes sun-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+/* 太陽の回転アニメーション */
+@keyframes sun-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ポップアップのスタイル */
+.sun-icon + .leaflet-popup .leaflet-popup-content-wrapper {
+  background-color: rgba(255, 248, 225, 0.9);
+  border: 1px solid #FFA500;
+}
+
+.sun-icon + .leaflet-popup .leaflet-popup-tip {
+  background-color: rgba(255, 248, 225, 0.9);
+}
