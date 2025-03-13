@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   List,
   ListItem,
@@ -22,6 +22,9 @@ import {
   Avatar,
   useTheme,
   useMediaQuery,
+  TextField,
+  InputAdornment,
+  Collapse,
 } from '@mui/material';
 import {
   Download as DownloadIcon,
@@ -30,6 +33,8 @@ import {
   Close as CloseIcon,
   FilterList as FilterListIcon,
   Sort as SortIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import SatelliteAltIcon from '@mui/icons-material/SatelliteAlt';
 import type { Satellite, Pass } from '@/types';
@@ -114,6 +119,7 @@ interface SatelliteListProps {
  * 改良版衛星リストコンポーネント
  * 視認性と操作性を向上させた設計
  * リスト表示領域を拡大し、より多くの衛星を表示
+ * NORAD IDによるフィルタリング機能を追加
  */
 const SatelliteList: React.FC<SatelliteListProps> = ({
   satellites,
@@ -126,8 +132,47 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
 }) => {
   // 軌道情報ダイアログの状態
   const [infoDialogOpen, setInfoDialogOpen] = useState<boolean>(false);
+  // フィルター関連の状態
+  const [filterOpen, setFilterOpen] = useState<boolean>(false);
+  const [noradIdFilter, setNoradIdFilter] = useState<string>('');
+  // フィルタリングされた衛星リスト
+  const [filteredSatellites, setFilteredSatellites] = useState<Array<Satellite & { passes: Pass[] }>>(satellites);
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // 衛星リストが変更されたときにフィルタリングを適用
+  useEffect(() => {
+    filterSatellites();
+  }, [satellites, noradIdFilter]);
+
+  // NORAD IDに基づいて衛星をフィルタリングする関数
+  const filterSatellites = () => {
+    if (!noradIdFilter) {
+      setFilteredSatellites(satellites);
+      return;
+    }
+
+    const filtered = satellites.filter(satellite =>
+      satellite.id.toString().includes(noradIdFilter)
+    );
+    setFilteredSatellites(filtered);
+  };
+
+  // フィルター入力の変更ハンドラー
+  const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNoradIdFilter(event.target.value);
+  };
+
+  // フィルターのクリアハンドラー
+  const handleClearFilter = () => {
+    setNoradIdFilter('');
+  };
+
+  // フィルターの開閉ハンドラー
+  const toggleFilter = () => {
+    setFilterOpen(!filterOpen);
+  };
 
   // ローディング状態の表示
   if (isLoading) {
@@ -245,38 +290,122 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
             borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
             backgroundColor: 'rgba(0, 0, 0, 0.02)',
           }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="subtitle1" component="h2" sx={{
-                fontWeight: 'bold',
-                color: theme.palette.primary.main,
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'nowrap'
+            }}>
+              <Box sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1.5,
+                gap: 1,
+                minWidth: isMobile ? '120px' : '150px', // 「可視衛星リスト」が収まる最小幅を確保
+                flex: '0 0 auto' // 幅を固定（伸縮しない）
               }}>
-                <SatelliteAltIcon sx={{ color: 'primary.main' }} />
-                可視衛星リスト
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <SatelliteAltIcon sx={{ color: 'primary.main', flexShrink: 0 }} />
+                <Typography
+                  variant="subtitle1"
+                  component="h2"
+                  sx={{
+                    fontWeight: 'bold',
+                    color: theme.palette.primary.main,
+                    whiteSpace: 'nowrap', // テキストを一行に制限
+                    overflow: 'visible', // はみ出しを許可
+                  }}
+                >
+                  可視衛星リスト
+                </Typography>
+              </Box>
+
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                flexShrink: 0 // 収縮しないように設定
+              }}>
+                <Tooltip title="NORAD IDでフィルタリング">
+                  <IconButton
+                    size="small"
+                    color={filterOpen ? "primary" : "default"}
+                    onClick={toggleFilter}
+                    sx={{
+                      backgroundColor: filterOpen ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                      padding: '4px', // パディングを小さくして省スペース化
+                    }}
+                  >
+                    <FilterListIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
                 <Tooltip title="軌道種類と最大仰角について">
                   <IconButton
                     size="small"
                     color="primary"
                     onClick={() => setInfoDialogOpen(true)}
+                    sx={{
+                      padding: '4px', // パディングを小さくして省スペース化
+                    }}
                   >
                     <InfoIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
                 <Chip
-                  label={`${satellites.length}個`}
+                  label={filteredSatellites.length < satellites.length
+                    ? `${filteredSatellites.length}/${satellites.length}`
+                    : `${satellites.length}個`}
                   color="primary"
                   size="small"
                   sx={{
                     fontWeight: 'bold',
-                    minWidth: '60px',
+                    fontSize: '0.75rem',
+                    height: '24px',
+                    '& .MuiChip-label': {
+                      px: 1,
+                    }
                   }}
                 />
               </Box>
             </Box>
+
+            {/* NORAD IDフィルター入力欄 */}
+            <Collapse in={filterOpen} timeout="auto" unmountOnExit>
+              <Box sx={{ mt: 1, px: 1, pb: 1 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="NORAD IDで絞り込み"
+                  value={noradIdFilter}
+                  onChange={handleFilterChange}
+                  variant="outlined"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" color="action" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: noradIdFilter && (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={handleClearFilter}
+                          edge="end"
+                          aria-label="clear filter"
+                        >
+                          <ClearIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                    sx: {
+                      backgroundColor: 'white',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(0, 0, 0, 0.15)',
+                      },
+                    }
+                  }}
+                />
+              </Box>
+            </Collapse>
           </Box>
 
           {/* 衛星リスト - 表示領域拡大 */}
@@ -294,7 +423,22 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
               },
             }}
           >
-            {satellites.map((satellite, index) => {
+            {filteredSatellites.length === 0 ? (
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                p: 4,
+                height: '200px',
+              }}>
+                <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                  NORAD ID「{noradIdFilter}」に一致する衛星が見つかりません。<br />
+                  フィルター条件を変更してお試しください。
+                </Typography>
+              </Box>
+            ) : (
+              filteredSatellites.map((satellite, index) => {
               // 軌道種類を取得
               const orbitType = satellite.tle ? getOrbitType(satellite.tle) : '不明';
               // 最大仰角を取得
@@ -417,7 +561,7 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
                   </ListItemButton>
                 </ListItem>
               );
-            })}
+            }))}
           </List>
         </Box>
       </Paper>
