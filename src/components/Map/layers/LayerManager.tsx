@@ -46,6 +46,20 @@ const defaultLayers: MapLayer[] = [
     color: '#f44336',
   },
   {
+    id: 'sun-orbit',
+    name: '太陽軌道',
+    description: '太陽の軌道と昼夜の境界線を表示します',
+    isVisible: true,
+    color: '#FFA500',
+  },
+  {
+    id: 'sun-position',
+    name: '太陽位置',
+    description: '太陽の現在位置をアイコンで表示します',
+    isVisible: true,
+    color: '#FFC107',
+  },
+  {
     id: 'satellite-animation',
     name: '衛星アニメーション',
     description: '衛星の動きをアニメーションで表示します',

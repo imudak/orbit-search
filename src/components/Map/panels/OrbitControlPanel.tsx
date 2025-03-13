@@ -18,6 +18,7 @@ import PauseIcon from '@mui/icons-material/Pause';
 import ReplayIcon from '@mui/icons-material/Replay';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import type { AnimationState } from './AnimationControlPanel';
 
 interface OrbitControlPanelProps {
@@ -28,8 +29,9 @@ interface OrbitControlPanelProps {
   orbitVisibility?: {
     showOrbits: boolean;
     showFootprints: boolean;
+    showSunOrbit: boolean;
   };
-  onOrbitVisibilityChange?: (settings: { showOrbits: boolean; showFootprints: boolean }) => void;
+  onOrbitVisibilityChange?: (settings: { showOrbits: boolean; showFootprints: boolean; showSunOrbit: boolean }) => void;
 }
 
 /**
@@ -41,7 +43,7 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
   onPlayPause,
   onSeek,
   onSpeedChange,
-  orbitVisibility = { showOrbits: true, showFootprints: true },
+  orbitVisibility = { showOrbits: true, showFootprints: true, showSunOrbit: true },
   onOrbitVisibilityChange = () => {},
 }) => {
   const { isPlaying, currentTime, startTime, endTime, playbackSpeed } = animationState;
@@ -63,9 +65,17 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
     return date.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
-  // 日時の完全なフォーマット
+  // タイムゾーンオフセットを取得（GMT+9形式）
+  const getGMTOffset = () => {
+    const tzOffset = new Date().getTimezoneOffset();
+    const tzSign = tzOffset <= 0 ? '+' : '-';
+    const tzHours = Math.floor(Math.abs(tzOffset) / 60);
+    return `GMT${tzSign}${tzHours}`;
+  };
+
+  // 日時の完全なフォーマット（タイムゾーン情報付き）
   const formatDateTime = (date: Date) => {
-    return `${formatDate(date)} ${formatTime(date)}`;
+    return `${formatDate(date)} ${formatTime(date)} (${getGMTOffset()})`;
   };
 
   // リセットハンドラー
@@ -81,6 +91,7 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
     onOrbitVisibilityChange({
       showOrbits: newValue.includes('orbits'),
       showFootprints: newValue.includes('footprints'),
+      showSunOrbit: newValue.includes('sunorbit'),
     });
   };
 
@@ -119,16 +130,19 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
 
           {/* 時間制御 */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1 }}>時間制御</Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>時間制御 ({getGMTOffset()})</Typography>
             <TextField
               fullWidth
               size="small"
-              value={formatDateTime(currentTime)}
+              value={formatDate(currentTime) + " " + formatTime(currentTime)}
               sx={{ mb: 1 }}
               InputProps={{
                 readOnly: true,
               }}
             />
+            <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>
+              UTC: {currentTime.toISOString().substring(0, 16).replace('T', ' ')}
+            </Typography>
             <Slider
               value={currentTimeValue}
               min={startTimeValue}
@@ -235,6 +249,7 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
               value={[
                 ...(orbitVisibility.showOrbits ? ['orbits'] : []),
                 ...(orbitVisibility.showFootprints ? ['footprints'] : []),
+                ...(orbitVisibility.showSunOrbit ? ['sunorbit'] : []),
               ]}
               onChange={handleOrbitVisibilityChange}
               aria-label="軌道表示設定"
@@ -242,13 +257,47 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
               color="primary"
               sx={{ width: '100%' }}
             >
-              <ToggleButton value="orbits" aria-label="軌道を表示" sx={{ flex: 1 }}>
-                <TimelineIcon sx={{ mr: 1 }} />
-                軌道
+              <ToggleButton
+                value="orbits"
+                aria-label="軌道を表示"
+                sx={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  minWidth: 0
+                }}
+              >
+                <TimelineIcon fontSize="small" />
+                <Box component="span" sx={{ ml: 0.5, fontSize: '0.8rem', display: { xs: 'none', sm: 'inline' } }}>
+                  軌道
+                </Box>
               </ToggleButton>
-              <ToggleButton value="footprints" aria-label="可視範囲を表示" sx={{ flex: 1 }}>
-                <VisibilityIcon sx={{ mr: 1 }} />
-                可視範囲
+              <ToggleButton
+                value="footprints"
+                aria-label="可視範囲を表示"
+                sx={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  minWidth: 0
+                }}
+              >
+                <VisibilityIcon fontSize="small" />
+                <Box component="span" sx={{ ml: 0.5, fontSize: '0.8rem', display: { xs: 'none', sm: 'inline' } }}>
+                  可視範囲
+                </Box>
+              </ToggleButton>
+              <ToggleButton
+                value="sunorbit"
+                aria-label="太陽軌道を表示"
+                sx={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  minWidth: 0
+                }}
+              >
+                <WbSunnyIcon fontSize="small" />
+                <Box component="span" sx={{ ml: 0.5, fontSize: '0.8rem', display: { xs: 'none', sm: 'inline' } }}>
+                  太陽
+                </Box>
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>

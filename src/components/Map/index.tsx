@@ -13,6 +13,8 @@ import ObserverMarkerLayer from './layers/ObserverMarkerLayer';
 import VisibilityCircleLayer from './layers/VisibilityCircleLayer';
 import SatelliteOrbitLayer from './layers/SatelliteOrbitLayer';
 import SatelliteAnimationLayer from './layers/SatelliteAnimationLayer';
+import SunOrbitLayer from './layers/SunOrbitLayer';
+import SunPositionLayer from './layers/SunPositionLayer';
 import SatelliteInfoPanel from './panels/SatelliteInfoPanel';
 import OrbitControlPanel from './panels/OrbitControlPanel';
 import { AnimationState } from './panels/AnimationControlPanel';
@@ -30,10 +32,12 @@ interface MapContextType {
   orbitVisibility: {
     showOrbits: boolean;
     showFootprints: boolean;
+    showSunOrbit: boolean;
   };
   setOrbitVisibility: React.Dispatch<React.SetStateAction<{
     showOrbits: boolean;
     showFootprints: boolean;
+    showSunOrbit: boolean;
   }>>;
 }
 
@@ -111,6 +115,7 @@ const Map: React.FC<MapProps> = ({
   const [orbitVisibility, setOrbitVisibility] = useState({
     showOrbits: true,
     showFootprints: true,
+    showSunOrbit: true,
   });
 
   // 再生/停止の切り替え
@@ -142,7 +147,7 @@ const Map: React.FC<MapProps> = ({
     setSatellitePosition(position);
   }, []);
 
-  // アニメーション用の衛星位置更新
+  // アニメーション用の衛星と太陽の位置更新
   useEffect(() => {
     if (orbitPaths.length > 0 && animationState.isPlaying) {
       const interval = setInterval(() => {
@@ -163,6 +168,8 @@ const Map: React.FC<MapProps> = ({
             currentTime: newTime
           }));
         }
+
+        // アニメーション更新
       }, 1000);
 
       return () => clearInterval(interval);
@@ -564,7 +571,33 @@ const Map: React.FC<MapProps> = ({
 
             <LayerRenderer layerId="orbit-paths">
               {orbitPaths.length > 0 && orbitVisibility.showOrbits && (
-                <SatelliteOrbitLayer paths={orbitPaths} observerLocation={center} />
+                <SatelliteOrbitLayer
+                  paths={orbitPaths}
+                  observerLocation={center}
+                  currentTime={animationState.currentTime}
+                  key={`satellite-orbit-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                />
+              )}
+            </LayerRenderer>
+
+            {/* 太陽の軌道と位置 - 同じ時刻を使用して同期を確保 */}
+            <LayerRenderer layerId="sun-orbit">
+              {orbitVisibility.showSunOrbit && (
+                <SunOrbitLayer
+                  date={animationState.currentTime}
+                  observerLocation={center}
+                  key={`sun-orbit-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                />
+              )}
+            </LayerRenderer>
+
+            <LayerRenderer layerId="sun-position">
+              {orbitVisibility.showSunOrbit && (
+                <SunPositionLayer
+                  date={animationState.currentTime}
+                  observerLocation={center}
+                  key={`sun-position-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                />
               )}
             </LayerRenderer>
 
