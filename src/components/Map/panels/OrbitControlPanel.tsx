@@ -257,17 +257,47 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
               color="primary"
               sx={{ width: '100%' }}
             >
-              <ToggleButton value="orbits" aria-label="軌道を表示" sx={{ flex: 1 }}>
-                <TimelineIcon sx={{ mr: 1 }} />
-                軌道
+              <ToggleButton
+                value="orbits"
+                aria-label="軌道を表示"
+                sx={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  minWidth: 0
+                }}
+              >
+                <TimelineIcon fontSize="small" />
+                <Box component="span" sx={{ ml: 0.5, fontSize: '0.8rem', display: { xs: 'none', sm: 'inline' } }}>
+                  軌道
+                </Box>
               </ToggleButton>
-              <ToggleButton value="footprints" aria-label="可視範囲を表示" sx={{ flex: 1 }}>
-                <VisibilityIcon sx={{ mr: 1 }} />
-                可視範囲
+              <ToggleButton
+                value="footprints"
+                aria-label="可視範囲を表示"
+                sx={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  minWidth: 0
+                }}
+              >
+                <VisibilityIcon fontSize="small" />
+                <Box component="span" sx={{ ml: 0.5, fontSize: '0.8rem', display: { xs: 'none', sm: 'inline' } }}>
+                  可視範囲
+                </Box>
               </ToggleButton>
-              <ToggleButton value="sunorbit" aria-label="太陽軌道を表示" sx={{ flex: 1 }}>
-                <WbSunnyIcon sx={{ mr: 1 }} />
-                太陽
+              <ToggleButton
+                value="sunorbit"
+                aria-label="太陽軌道を表示"
+                sx={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  minWidth: 0
+                }}
+              >
+                <WbSunnyIcon fontSize="small" />
+                <Box component="span" sx={{ ml: 0.5, fontSize: '0.8rem', display: { xs: 'none', sm: 'inline' } }}>
+                  太陽
+                </Box>
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
