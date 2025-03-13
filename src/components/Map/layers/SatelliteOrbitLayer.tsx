@@ -4,6 +4,7 @@ import L, { LatLng } from 'leaflet';
 import type { OrbitPath, PassPoint } from '@/types';
 import { ELEVATION_COLORS } from './VisibilityCircleLayer';
 import { orbitService } from '@/services/orbitService';
+import { calculateSolarPosition } from '@/utils/sunCalculations';
 
 // 昼夜に基づいた色の定義（夜間も昼間と同じ色を使用）
 const DAY_NIGHT_COLORS = {
@@ -56,6 +57,7 @@ const passPointMap = new Map<string, PassPoint>();
 interface SatelliteOrbitLayerProps {
   paths: OrbitPath[];
   observerLocation?: { lat: number; lng: number }; // 観測地点の座標（オプション）
+  currentTime?: Date; // アニメーションの現在時刻
 }
 
 /**
@@ -63,7 +65,8 @@ interface SatelliteOrbitLayerProps {
  */
 const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
   paths,
-  observerLocation
+  observerLocation,
+  currentTime = new Date() // デフォルト値として現在時刻を使用
 }) => {
   const map = useMap();
   const [originalPassPoints, setOriginalPassPoints] = useState<PassPoint[]>([]);
@@ -91,35 +94,14 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
     fetchOriginalData();
   }, [paths]);
 
-  // 現在の時刻に基づいて昼夜を判定する関数
+  // 共通のユーティリティ関数を使用して昼夜を判定する関数
   const isDaylight = (lat: number, lng: number, date: Date = new Date()): boolean => {
-    const DEG_TO_RAD = Math.PI / 180;
-    const RAD_TO_DEG = 180 / Math.PI;
-
-    // 日付から年間通日を計算
-    const startOfYear = new Date(date.getFullYear(), 0, 0);
-    const diff = date.getTime() - startOfYear.getTime();
-    const dayOfYear = Math.floor(diff / 86400000);
-
-    // 太陽の赤緯を計算
-    const L = 280.460 + 0.9856474 * dayOfYear;
-    const g = 357.528 + 0.9856003 * dayOfYear;
-    const lambda = L + 1.915 * Math.sin(g * DEG_TO_RAD) + 0.020 * Math.sin(2 * g * DEG_TO_RAD);
-    const epsilon = 23.439 - 0.0000004 * dayOfYear;
-    const declination = Math.asin(Math.sin(epsilon * DEG_TO_RAD) * Math.sin(lambda * DEG_TO_RAD)) * RAD_TO_DEG;
-
-    // 時角を計算
-    const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
-    const hourAngle = (utcHours - 12) * 15 + lng;
-
-    // 太陽高度を計算
-    const sinAltitude = Math.sin(lat * DEG_TO_RAD) * Math.sin(declination * DEG_TO_RAD) +
-      Math.cos(lat * DEG_TO_RAD) * Math.cos(declination * DEG_TO_RAD) * Math.cos(hourAngle * DEG_TO_RAD);
-    const solarAltitude = Math.asin(sinAltitude) * RAD_TO_DEG;
+    // 太陽の方位角と高度を計算
+    const { altitude } = calculateSolarPosition(lat, lng, date);
 
     // 大気による屈折を考慮した太陽高度による昼夜判定
     // -0.833は大気による屈折と太陽の視半径を考慮した値
-    return solarAltitude > -0.833;
+    return altitude > -0.833;
   };
 
   useEffect(() => {
@@ -205,14 +187,11 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // 各ポイントの時刻に基づいて昼夜を判定
           // 現在の時刻ではなく、軌道上の各ポイントの時刻を使用
 
-          // 時刻を計算（現在の時刻から経過時間を加算）
-          // 注: これは簡略化した実装です。実際には軌道上の各ポイントの正確な時刻を使用すべきです
-          const now = new Date();
-          const timeOffset = i * 10 * 60 * 1000; // 10分ごとに時間をずらす（簡略化）
-          const pointTime = new Date(now.getTime() + timeOffset);
+          // propsから受け取ったアニメーションの現在時刻を使用
+          // 注: 将来的には軌道上の各ポイントの正確な時刻を使用するように改善する必要があります
 
           // 各ポイントの時刻に基づいて昼夜を判定
-          const isDay = isDaylight(point1.lat, lng1ForPoint, pointTime);
+          const isDay = isDaylight(point1.lat, lng1ForPoint, currentTime);
 
           // 昼夜と仰角に基づいてスタイルを設定
           let color: string;
@@ -287,7 +266,7 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
       // クリーンアップ時に軌道パスを削除
       allLines.forEach(line => line.remove());
     };
-  }, [paths, map]);
+  }, [paths, map, currentTime, currentTime?.getTime()]); // currentTimeを依存配列に追加
 
   return null;
 };
