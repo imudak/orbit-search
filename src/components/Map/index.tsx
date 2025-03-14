@@ -154,12 +154,16 @@ const Map: React.FC<MapProps> = ({
     setSatellitePosition(position);
   }, []);
 
-  // アニメーション用の衛星と太陽の位置更新
+  // アニメーション用の衛星と太陽の位置更新 - 更新間隔を調整
   useEffect(() => {
     if (orbitPaths.length > 0 && animationState.isPlaying) {
+      // 更新間隔を調整（1秒から2秒に変更）
+      const updateInterval = 2000; // 2秒ごとに更新
+
       const interval = setInterval(() => {
         // 現在時刻を更新（再生速度に応じて）
-        const newTime = new Date(animationState.currentTime.getTime() + 10000 * animationState.playbackSpeed);
+        // 更新間隔が長くなった分、1回あたりの時間進行を調整
+        const newTime = new Date(animationState.currentTime.getTime() + 20000 * animationState.playbackSpeed);
 
         // 終了時刻を超えた場合は最初に戻る
         if (newTime > animationState.endTime) {
@@ -177,7 +181,7 @@ const Map: React.FC<MapProps> = ({
         }
 
         // アニメーション更新
-      }, 1000);
+      }, updateInterval);
 
       return () => clearInterval(interval);
     }
@@ -608,7 +612,7 @@ const Map: React.FC<MapProps> = ({
                 <SunOrbitLayer
                   date={animationState.currentTime}
                   observerLocation={center}
-                  key={`sun-orbit-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                  key={`sun-orbit-${Math.floor(animationState.currentTime.getTime() / 60000)}`} // 1分ごとに再レンダリング
                 />
               )}
             </LayerRenderer>
@@ -618,7 +622,7 @@ const Map: React.FC<MapProps> = ({
                 <SunPositionLayer
                   date={animationState.currentTime}
                   observerLocation={center}
-                  key={`sun-position-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                  key={`sun-position-${Math.floor(animationState.currentTime.getTime() / 60000)}`} // 1分ごとに再レンダリング
                 />
               )}
             </LayerRenderer>

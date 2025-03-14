@@ -118,7 +118,7 @@ const SunPositionLayer: React.FC<SunPositionLayerProps> = ({
         sunMarkerRef.current = null;
       }
     };
-  }, [date, date.getTime(), map]); // date.getTimeを依存配列に追加して確実に更新されるようにする
+  }, [date.getTime(), map]); // date.getTimeのみを依存配列に含める
 
   return null;
 };
