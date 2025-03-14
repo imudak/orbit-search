@@ -601,7 +601,7 @@ const Map: React.FC<MapProps> = ({
                   paths={orbitPaths}
                   observerLocation={center}
                   currentTime={animationState.currentTime}
-                  key={`satellite-orbit-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                  key={`satellite-orbit-${Math.floor(animationState.currentTime.getTime() / 60000)}`} // 1分ごとに再レンダリング
                 />
               )}
             </LayerRenderer>
