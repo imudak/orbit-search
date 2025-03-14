@@ -57,7 +57,8 @@ export const calculateSolarPosition = (lat: number, lng: number, date: Date): { 
 
   // 時角を計算
   const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
-  const hourAngle = (utcHours - 12) * 15 + lng;
+  // 経度の符号を反転（東経は負、西経は正）- 太陽は東から西に移動するため
+  const hourAngle = (utcHours - 12) * 15 - lng;
 
   // 太陽高度を計算
   const sinAltitude = Math.sin(lat * DEG_TO_RAD) * Math.sin(declination * DEG_TO_RAD) +

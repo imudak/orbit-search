@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, createContext, useContext } from 'react';
 import { styled } from '@mui/material/styles';
 import { Box, Button, useTheme, useMediaQuery, Snackbar, Alert, Fade, Grid, LinearProgress, Typography, Paper } from '@mui/material';
-import type { Location, OrbitPath, SearchFilters } from '@/types';
+import type { Location, OrbitPath, SearchFilters, TLEData } from '@/types';
 
 // コンポーネントのインポート
 import MapView from './MapView';
@@ -22,6 +22,7 @@ import { OrbitType, DEFAULT_ORBIT_TYPES } from './layers/VisibilityCircleLayer';
 import { LayerProvider, useLayerManager, LayerRenderer } from './layers/LayerManager';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
+import { orbitService } from '@/services/orbitService';
 
 // マップ状態管理のためのコンテキスト
 interface MapContextType {
@@ -39,6 +40,9 @@ interface MapContextType {
     showFootprints: boolean;
     showSunOrbit: boolean;
   }>>;
+  // 選択された衛星のTLEデータ
+  selectedTLE: TLEData | null;
+  setSelectedTLE: React.Dispatch<React.SetStateAction<TLEData | null>>;
 }
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
@@ -118,6 +122,9 @@ const Map: React.FC<MapProps> = ({
     showSunOrbit: true,
   });
 
+  // 選択された衛星のTLEデータ
+  const [selectedTLE, setSelectedTLE] = useState<TLEData | null>(null);
+
   // 再生/停止の切り替え
   const handlePlayPause = useCallback(() => {
     setAnimationState(prev => ({
@@ -147,12 +154,16 @@ const Map: React.FC<MapProps> = ({
     setSatellitePosition(position);
   }, []);
 
-  // アニメーション用の衛星と太陽の位置更新
+  // アニメーション用の衛星と太陽の位置更新 - 更新間隔を調整
   useEffect(() => {
     if (orbitPaths.length > 0 && animationState.isPlaying) {
+      // 更新間隔を調整（1秒から2秒に変更）
+      const updateInterval = 2000; // 2秒ごとに更新
+
       const interval = setInterval(() => {
         // 現在時刻を更新（再生速度に応じて）
-        const newTime = new Date(animationState.currentTime.getTime() + 10000 * animationState.playbackSpeed);
+        // 更新間隔が長くなった分、1回あたりの時間進行を調整
+        const newTime = new Date(animationState.currentTime.getTime() + 20000 * animationState.playbackSpeed);
 
         // 終了時刻を超えた場合は最初に戻る
         if (newTime > animationState.endTime) {
@@ -170,11 +181,24 @@ const Map: React.FC<MapProps> = ({
         }
 
         // アニメーション更新
-      }, 1000);
+      }, updateInterval);
 
       return () => clearInterval(interval);
     }
   }, [orbitPaths, animationState.isPlaying, animationState.currentTime, animationState.playbackSpeed, animationState.endTime, animationState.startTime]);
+
+  // 衛星選択時の処理
+  const handleSatelliteSelect = useCallback((satellite: any) => {
+    // 選択された衛星のTLEデータを保存
+    if (satellite && satellite.tle) {
+      setSelectedTLE(satellite.tle);
+    } else {
+      setSelectedTLE(null);
+    }
+
+    // 元の選択ハンドラーを呼び出す
+    onSatelliteSelect(satellite);
+  }, [onSatelliteSelect]);
 
   // 衛星データから軌道種類ごとの高度を集計
   const orbitTypes = useMemo(() => {
@@ -250,7 +274,7 @@ const Map: React.FC<MapProps> = ({
           satellites={satellites as any}
           onTLEDownload={onTLEDownload}
           onObservationDataRequest={onObservationDataRequest}
-          onSatelliteSelect={onSatelliteSelect}
+          onSatelliteSelect={handleSatelliteSelect}
           selectedSatellite={selectedSatellite}
           isLoading={isLoading}
           searchPanel={null} // 検索パネルは別途表示するため不要
@@ -526,7 +550,9 @@ const Map: React.FC<MapProps> = ({
     satellitePosition,
     setSatellitePosition,
     orbitVisibility,
-    setOrbitVisibility
+    setOrbitVisibility,
+    selectedTLE,
+    setSelectedTLE
   };
 
   return (
@@ -570,12 +596,12 @@ const Map: React.FC<MapProps> = ({
             </LayerRenderer>
 
             <LayerRenderer layerId="orbit-paths">
-              {orbitPaths.length > 0 && orbitVisibility.showOrbits && (
+              {orbitVisibility.showOrbits && (
                 <SatelliteOrbitLayer
                   paths={orbitPaths}
                   observerLocation={center}
                   currentTime={animationState.currentTime}
-                  key={`satellite-orbit-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                  key={`satellite-orbit-${Math.floor(animationState.currentTime.getTime() / 60000)}`} // 1分ごとに再レンダリング
                 />
               )}
             </LayerRenderer>
@@ -586,7 +612,7 @@ const Map: React.FC<MapProps> = ({
                 <SunOrbitLayer
                   date={animationState.currentTime}
                   observerLocation={center}
-                  key={`sun-orbit-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                  key={`sun-orbit-${Math.floor(animationState.currentTime.getTime() / 60000)}`} // 1分ごとに再レンダリング
                 />
               )}
             </LayerRenderer>
@@ -596,14 +622,14 @@ const Map: React.FC<MapProps> = ({
                 <SunPositionLayer
                   date={animationState.currentTime}
                   observerLocation={center}
-                  key={`sun-position-${animationState.currentTime.getTime()}`} // 時刻が変わるたびに再レンダリング
+                  key={`sun-position-${Math.floor(animationState.currentTime.getTime() / 60000)}`} // 1分ごとに再レンダリング
                 />
               )}
             </LayerRenderer>
 
             {/* 衛星アニメーション */}
             <LayerRenderer layerId="satellite-animation">
-              {orbitPaths.length > 0 && (
+              {selectedTLE && orbitPaths.length > 0 && (
                 <SatelliteAnimationLayer
                   path={orbitPaths[0]}
                   animationState={animationState}

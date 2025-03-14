@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   List,
   ListItem,
@@ -135,29 +135,19 @@ const SatelliteList: React.FC<SatelliteListProps> = ({
   // フィルター関連の状態
   const [filterOpen, setFilterOpen] = useState<boolean>(false);
   const [noradIdFilter, setNoradIdFilter] = useState<string>('');
-  // フィルタリングされた衛星リスト
-  const [filteredSatellites, setFilteredSatellites] = useState<Array<Satellite & { passes: Pass[] }>>(satellites);
-
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // 衛星リストが変更されたときにフィルタリングを適用
-  useEffect(() => {
-    filterSatellites();
-  }, [satellites, noradIdFilter]);
-
-  // NORAD IDに基づいて衛星をフィルタリングする関数
-  const filterSatellites = () => {
+  // メモリ使用量を削減するためにフィルタリングをステートではなく計算で行う
+  // フィルタリングされた衛星リストを計算する（ステートに保存せず）
+  const filteredSatellites: Array<Satellite & { passes: Pass[] }> = useMemo(() => {
     if (!noradIdFilter) {
-      setFilteredSatellites(satellites);
-      return;
+      return satellites;
     }
-
-    const filtered = satellites.filter(satellite =>
+    return satellites.filter(satellite =>
       satellite.id.toString().includes(noradIdFilter)
     );
-    setFilteredSatellites(filtered);
-  };
+  }, [satellites, noradIdFilter]);
 
   // フィルター入力の変更ハンドラー
   const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {

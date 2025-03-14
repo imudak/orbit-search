@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useMap } from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
-import type { OrbitPath, PassPoint } from '@/types';
+import type { OrbitPath, PassPoint, SearchFilters } from '@/types';
 import { ELEVATION_COLORS } from './VisibilityCircleLayer';
 import { orbitService } from '@/services/orbitService';
 import { calculateSolarPosition } from '@/utils/sunCalculations';
+import { useMapContext } from '../index';
 
 // 昼夜に基づいた色の定義（夜間も昼間と同じ色を使用）
 const DAY_NIGHT_COLORS = {
@@ -69,30 +70,97 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
   currentTime = new Date() // デフォルト値として現在時刻を使用
 }) => {
   const map = useMap();
-  const [originalPassPoints, setOriginalPassPoints] = useState<PassPoint[]>([]);
+  const { selectedTLE, animationState } = useMapContext();
+  const [calculatedPaths, setCalculatedPaths] = useState<OrbitPath[]>(paths);
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
 
-  // 元のPassPointデータを取得する
+  // 選択されたTLEデータから軌道を計算 - メモリ使用量最適化版
   useEffect(() => {
-    const fetchOriginalData = async () => {
-      if (paths.length === 0 || !paths[0].satelliteId) return;
+    const calculateOrbit = async () => {
+      // TLEデータがない場合は何もしない
+      if (!selectedTLE || !observerLocation) {
+        setCalculatedPaths([]);
+        return;
+      }
+
+      setIsCalculating(true);
 
       try {
-        // 現在表示中の衛星のIDを取得
-        const satelliteId = paths[0].satelliteId;
+        // 検索フィルターを作成
+        const filters: SearchFilters = {
+          startDate: animationState.startTime,
+          endDate: animationState.endTime,
+          minElevation: 0, // すべての仰角を含める
+          location: observerLocation
+        };
 
-        // ストアから衛星データを取得する処理を実装
-        // 注: 実際の実装では、ストアから選択された衛星とその軌道データを取得する必要があります
-        // ここでは簡略化のため、コメントアウトしています
+        // 軌道計算
+        const passes = await orbitService.calculatePasses(selectedTLE, observerLocation, filters);
 
-        // passPointMapをクリア
-        passPointMap.clear();
+        // 計算結果からOrbitPathを作成
+        if (passes.length > 0) {
+          // パスポイントをセグメントに分割 - 間引きを行う
+          const tempSegments = [];
+          let currentSegment = {
+            points: [] as PassPoint[],
+            effectiveAngles: [] as number[]
+          };
+
+          // 間引き率を設定（メモリ使用量削減のため）- より滑らかな表示のために間引きを最小化
+          const skipPoints = 1; // 最小の間引き - ほぼすべてのポイントを使用して滑らかに表示
+
+          for (let i = 0; i < passes[0].points.length; i += skipPoints) {
+            const point = passes[0].points[i];
+
+            // 新しいセグメントを開始する必要がある場合
+            if (point.isNewSegment && currentSegment.points.length > 0) {
+              tempSegments.push(currentSegment);
+              currentSegment = {
+                points: [],
+                effectiveAngles: []
+              };
+            }
+
+            currentSegment.points.push(point);
+            currentSegment.effectiveAngles.push(point.effectiveAngle || 0);
+          }
+
+          // 最後のセグメントを追加
+          if (currentSegment.points.length > 0) {
+            tempSegments.push(currentSegment);
+          }
+
+          // PassPointからLatLngに変換 - 直接変換して中間配列を削減
+          const orbitSegments = tempSegments.map(segment => ({
+            points: segment.points.map(point => ({
+              lat: point.lat || 0,
+              lng: point.lng || 0
+            })),
+            effectiveAngles: segment.effectiveAngles
+          }));
+
+          // OrbitPathを作成
+          const orbitPath: OrbitPath = {
+            satelliteId: selectedTLE.line1.substring(2, 7).trim() || 'unknown', // TLEの1行目から衛星IDを抽出
+            maxElevation: passes[0].maxElevation,
+            segments: orbitSegments,
+            timestamp: new Date().toISOString() // 現在時刻をタイムスタンプとして使用
+          };
+
+          setCalculatedPaths([orbitPath]);
+        } else {
+          setCalculatedPaths([]);
+        }
       } catch (error) {
-        console.error('Failed to fetch original pass points:', error);
+        console.error('Failed to calculate orbit:', error);
+        setCalculatedPaths([]);
+      } finally {
+        setIsCalculating(false);
       }
     };
 
-    fetchOriginalData();
-  }, [paths]);
+    calculateOrbit();
+  }, [selectedTLE, observerLocation, animationState.startTime, animationState.endTime]);
 
   // 共通のユーティリティ関数を使用して昼夜を判定する関数
   const isDaylight = (lat: number, lng: number, date: Date = new Date()): boolean => {
@@ -104,34 +172,65 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
     return altitude > -0.833;
   };
 
+  // 軌道の描画 - メモリ使用量最適化版
   useEffect(() => {
-    if (!paths.length) return;
+    // 計算された軌道パスがない場合は何もしない
+    if (!calculatedPaths.length) return;
+
+    // 軌道ラインを保持するローカル変数（ステートではなく）
+    const currentLines: L.Polyline[] = [];
 
     // 観測地点の位置を取得（地図の中心点）
     const mapCenter = map.getCenter();
 
     // 軌道パスの描画
-    const lines = paths.flatMap((path, pathIndex) => {
+    calculatedPaths.forEach((path, pathIndex) => {
       // 各セグメントのパスを作成
-      return path.segments.flatMap((segment, segmentIndex) => {
-        const lines: L.Polyline[] = [];
+      path.segments.forEach((segment, segmentIndex) => {
+        // 間引き率を設定（メモリ使用量削減のため）- ユーザーフィードバックに基づき調整
+        // ズームレベルに応じて間引き率を動的に調整
+        const zoomLevel = map.getZoom();
+        // ズームレベルに応じて間引き率を動的に調整（より滑らかな表示のために間引きを最小化）
+        const skipPoints = zoomLevel > 10 ? 0 : zoomLevel > 8 ? 1 : zoomLevel > 5 ? 1 : 2;
 
-        // セグメント内の各ポイント間に線を引く
-        for (let i = 0; i < segment.points.length - 1; i++) {
+        // 現在の地図の表示範囲を取得
+        const bounds = map.getBounds();
+
+        // セグメント内の各ポイント間に線を引く（間引きながら）
+        for (let i = 0; i < segment.points.length - 1; i += Math.max(1, skipPoints)) {
           const point1 = segment.points[i];
-          const point2 = segment.points[i + 1];
+          // 配列の範囲外アクセスを防止
+          const nextIndex = Math.min(i + Math.max(1, skipPoints), segment.points.length - 1);
+          const point2 = segment.points[nextIndex];
           const effectiveAngle = segment.effectiveAngles[i];
 
           // 日付変更線をまたぐ場合の処理
           // 経度の差が極端に大きい場合は日付変更線をまたいでいると判断
           let lngDiff = Math.abs(point1.lng - point2.lng);
-          if (lngDiff > 170) { // 170度以上の差がある場合は日付変更線をまたいでいる
+
+          // 日付変更線をまたぐ場合の処理を改善
+          // 完全に反対側にある場合のみスキップ（より連続的な表示のため）
+          if (lngDiff > 180) { // 180度以上の差がある場合のみスキップ
             // 日付変更線をまたぐ場合は線を引かない
             continue;
           }
 
-          // 観測地点からの距離制限を撤廃
-          // すべての軌道点を表示する
+          // 画面外の軌道は描画しない（メモリ使用量削減のため）
+          // ただし、線分の一部が画面内にある場合は描画する
+          const isPoint1Visible = bounds.contains([point1.lat, point1.lng]);
+          const isPoint2Visible = bounds.contains([point2.lat, point2.lng]);
+
+          // 両方のポイントが画面外の場合の処理
+          // 画面の端をまたぐ線分や近接する可能性のある軌道は描画する
+          // より連続的な軌道表示のために条件を緩和
+          if (!isPoint1Visible && !isPoint2Visible) {
+            // 画面の端をまたぐ可能性がある場合は描画する
+            // 経度方向の差が大きい場合は描画する
+            // 条件を緩和して、より多くの軌道を表示（30度未満→スキップ）
+            if (lngDiff < 30) {
+              continue;
+            }
+          }
 
           // 経度を-180〜180度の範囲に正規化
           let lng1 = point1.lng;
@@ -238,12 +337,13 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           opacity = opacitySet[styleCategory];
           dashArray = styleSet.dashArray;
 
-          // メインのラインを作成
+          // メインのラインを作成（smoothFactorを追加して曲線的に表示）
           const line = L.polyline(segmentPoints, {
             color,
             weight,
             opacity,
             dashArray,
+            smoothFactor: 0.5, // 曲線の滑らかさを設定（値が小さいほど滑らか、デフォルトは1）
             bubblingMouseEvents: true,
           }).addTo(map);
 
@@ -252,21 +352,18 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             `仰角: ${effectiveAngle.toFixed(1)}°, ${isDay ? '昼間' : '夜間'}`
           );
 
-          lines.push(line);
+          currentLines.push(line);
         }
-
-        return lines;
       });
     });
 
-    // 配列が入れ子になっているので、平坦化して一つの配列にする
-    const allLines = lines.flat();
-
     return () => {
       // クリーンアップ時に軌道パスを削除
-      allLines.forEach(line => line.remove());
+      currentLines.forEach(line => {
+        if (line) line.remove();
+      });
     };
-  }, [paths, map, currentTime, currentTime?.getTime()]); // currentTimeを依存配列に追加
+  }, [calculatedPaths, map, currentTime?.getTime(), map.getZoom()]); // ズームレベルの変更も監視
 
   return null;
 };

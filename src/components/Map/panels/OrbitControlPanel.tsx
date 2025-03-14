@@ -50,8 +50,17 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // シークバードラッグ中の一時的な時間状態
+  const [localTime, setLocalTime] = useState<Date>(currentTime);
+
+  // currentTimeが変更されたらlocalTimeも更新
+  useEffect(() => {
+    setLocalTime(currentTime);
+  }, [currentTime]);
+
   // 現在時刻のスライダー値（ミリ秒）
   const currentTimeValue = currentTime.getTime();
+  const localTimeValue = localTime.getTime();
   const startTimeValue = startTime.getTime();
   const endTimeValue = endTime.getTime();
 
@@ -134,20 +143,25 @@ const OrbitControlPanel: React.FC<OrbitControlPanelProps> = ({
             <TextField
               fullWidth
               size="small"
-              value={formatDate(currentTime) + " " + formatTime(currentTime)}
+              value={formatDate(localTime) + " " + formatTime(localTime)}
               sx={{ mb: 1 }}
               InputProps={{
                 readOnly: true,
               }}
             />
             <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>
-              UTC: {currentTime.toISOString().substring(0, 16).replace('T', ' ')}
+              UTC: {localTime.toISOString().substring(0, 16).replace('T', ' ')}
             </Typography>
             <Slider
-              value={currentTimeValue}
+              value={localTimeValue}
               min={startTimeValue}
               max={endTimeValue}
               onChange={(_, value) => {
+                // スライダードラッグ中は内部状態のみを更新
+                setLocalTime(new Date(value as number));
+              }}
+              onChangeCommitted={(_, value) => {
+                // スライダードラッグ終了時に実際の時間を更新
                 onSeek(new Date(value as number));
               }}
               sx={{
