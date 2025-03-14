@@ -106,8 +106,8 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             effectiveAngles: [] as number[]
           };
 
-          // 間引き率を設定（メモリ使用量削減のため）- ユーザーフィードバックに基づき調整
-          const skipPoints = 1; // 間引きを少なくして表示を細かく
+          // 間引き率を設定（メモリ使用量削減のため）- より滑らかな表示のために間引きを最小化
+          const skipPoints = 1; // 最小の間引き - ほぼすべてのポイントを使用して滑らかに表示
 
           for (let i = 0; i < passes[0].points.length; i += skipPoints) {
             const point = passes[0].points[i];
@@ -190,24 +190,27 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
         // 間引き率を設定（メモリ使用量削減のため）- ユーザーフィードバックに基づき調整
         // ズームレベルに応じて間引き率を動的に調整
         const zoomLevel = map.getZoom();
-        // ズームレベルに応じて間引き率を動的に調整（ズームが大きいほど細かく表示）
-        const skipPoints = zoomLevel > 8 ? 1 : zoomLevel > 5 ? 2 : 3;
+        // ズームレベルに応じて間引き率を動的に調整（より滑らかな表示のために間引きを最小化）
+        const skipPoints = zoomLevel > 10 ? 0 : zoomLevel > 8 ? 1 : zoomLevel > 5 ? 1 : 2;
 
         // 現在の地図の表示範囲を取得
         const bounds = map.getBounds();
 
         // セグメント内の各ポイント間に線を引く（間引きながら）
-        for (let i = 0; i < segment.points.length - 1; i += skipPoints) {
+        for (let i = 0; i < segment.points.length - 1; i += Math.max(1, skipPoints)) {
           const point1 = segment.points[i];
           // 配列の範囲外アクセスを防止
-          const nextIndex = Math.min(i + skipPoints, segment.points.length - 1);
+          const nextIndex = Math.min(i + Math.max(1, skipPoints), segment.points.length - 1);
           const point2 = segment.points[nextIndex];
           const effectiveAngle = segment.effectiveAngles[i];
 
           // 日付変更線をまたぐ場合の処理
           // 経度の差が極端に大きい場合は日付変更線をまたいでいると判断
           let lngDiff = Math.abs(point1.lng - point2.lng);
-          if (lngDiff > 170) { // 170度以上の差がある場合は日付変更線をまたいでいる
+
+          // 日付変更線をまたぐ場合の処理を改善
+          // 完全に反対側にある場合のみスキップ（より連続的な表示のため）
+          if (lngDiff > 180) { // 180度以上の差がある場合のみスキップ
             // 日付変更線をまたぐ場合は線を引かない
             continue;
           }
@@ -217,13 +220,14 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           const isPoint1Visible = bounds.contains([point1.lat, point1.lng]);
           const isPoint2Visible = bounds.contains([point2.lat, point2.lng]);
 
-          // 両方のポイントが画面外の場合はスキップ
-          // ただし、画面の端をまたぐ線分の場合は描画する必要があるため、
-          // 距離が近い場合のみスキップする
+          // 両方のポイントが画面外の場合の処理
+          // 画面の端をまたぐ線分や近接する可能性のある軌道は描画する
+          // より連続的な軌道表示のために条件を緩和
           if (!isPoint1Visible && !isPoint2Visible) {
             // 画面の端をまたぐ可能性がある場合は描画する
             // 経度方向の差が大きい場合は描画する
-            if (lngDiff < 50) {
+            // 条件を緩和して、より多くの軌道を表示（30度未満→スキップ）
+            if (lngDiff < 30) {
               continue;
             }
           }
@@ -333,12 +337,13 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           opacity = opacitySet[styleCategory];
           dashArray = styleSet.dashArray;
 
-          // メインのラインを作成
+          // メインのラインを作成（smoothFactorを追加して曲線的に表示）
           const line = L.polyline(segmentPoints, {
             color,
             weight,
             opacity,
             dashArray,
+            smoothFactor: 0.5, // 曲線の滑らかさを設定（値が小さいほど滑らか、デフォルトは1）
             bubblingMouseEvents: true,
           }).addTo(map);
 
