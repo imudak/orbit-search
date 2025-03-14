@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, createContext, useContext } from 'react';
 import { styled } from '@mui/material/styles';
 import { Box, Button, useTheme, useMediaQuery, Snackbar, Alert, Fade, Grid, LinearProgress, Typography, Paper } from '@mui/material';
-import type { Location, OrbitPath, SearchFilters } from '@/types';
+import type { Location, OrbitPath, SearchFilters, TLEData } from '@/types';
 
 // コンポーネントのインポート
 import MapView from './MapView';
@@ -22,6 +22,7 @@ import { OrbitType, DEFAULT_ORBIT_TYPES } from './layers/VisibilityCircleLayer';
 import { LayerProvider, useLayerManager, LayerRenderer } from './layers/LayerManager';
 import SearchPanel from '@/components/SearchPanel';
 import SatelliteList from '@/components/SatelliteList';
+import { orbitService } from '@/services/orbitService';
 
 // マップ状態管理のためのコンテキスト
 interface MapContextType {
@@ -39,6 +40,9 @@ interface MapContextType {
     showFootprints: boolean;
     showSunOrbit: boolean;
   }>>;
+  // 選択された衛星のTLEデータ
+  selectedTLE: TLEData | null;
+  setSelectedTLE: React.Dispatch<React.SetStateAction<TLEData | null>>;
 }
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
@@ -118,6 +122,9 @@ const Map: React.FC<MapProps> = ({
     showSunOrbit: true,
   });
 
+  // 選択された衛星のTLEデータ
+  const [selectedTLE, setSelectedTLE] = useState<TLEData | null>(null);
+
   // 再生/停止の切り替え
   const handlePlayPause = useCallback(() => {
     setAnimationState(prev => ({
@@ -175,6 +182,19 @@ const Map: React.FC<MapProps> = ({
       return () => clearInterval(interval);
     }
   }, [orbitPaths, animationState.isPlaying, animationState.currentTime, animationState.playbackSpeed, animationState.endTime, animationState.startTime]);
+
+  // 衛星選択時の処理
+  const handleSatelliteSelect = useCallback((satellite: any) => {
+    // 選択された衛星のTLEデータを保存
+    if (satellite && satellite.tle) {
+      setSelectedTLE(satellite.tle);
+    } else {
+      setSelectedTLE(null);
+    }
+
+    // 元の選択ハンドラーを呼び出す
+    onSatelliteSelect(satellite);
+  }, [onSatelliteSelect]);
 
   // 衛星データから軌道種類ごとの高度を集計
   const orbitTypes = useMemo(() => {
@@ -250,7 +270,7 @@ const Map: React.FC<MapProps> = ({
           satellites={satellites as any}
           onTLEDownload={onTLEDownload}
           onObservationDataRequest={onObservationDataRequest}
-          onSatelliteSelect={onSatelliteSelect}
+          onSatelliteSelect={handleSatelliteSelect}
           selectedSatellite={selectedSatellite}
           isLoading={isLoading}
           searchPanel={null} // 検索パネルは別途表示するため不要
@@ -526,7 +546,9 @@ const Map: React.FC<MapProps> = ({
     satellitePosition,
     setSatellitePosition,
     orbitVisibility,
-    setOrbitVisibility
+    setOrbitVisibility,
+    selectedTLE,
+    setSelectedTLE
   };
 
   return (
@@ -570,7 +592,7 @@ const Map: React.FC<MapProps> = ({
             </LayerRenderer>
 
             <LayerRenderer layerId="orbit-paths">
-              {orbitPaths.length > 0 && orbitVisibility.showOrbits && (
+              {orbitVisibility.showOrbits && (
                 <SatelliteOrbitLayer
                   paths={orbitPaths}
                   observerLocation={center}
@@ -603,7 +625,7 @@ const Map: React.FC<MapProps> = ({
 
             {/* 衛星アニメーション */}
             <LayerRenderer layerId="satellite-animation">
-              {orbitPaths.length > 0 && (
+              {selectedTLE && orbitPaths.length > 0 && (
                 <SatelliteAnimationLayer
                   path={orbitPaths[0]}
                   animationState={animationState}

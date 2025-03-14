@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useMap } from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
-import type { OrbitPath, PassPoint } from '@/types';
+import type { OrbitPath, PassPoint, SearchFilters } from '@/types';
 import { ELEVATION_COLORS } from './VisibilityCircleLayer';
 import { orbitService } from '@/services/orbitService';
 import { calculateSolarPosition } from '@/utils/sunCalculations';
+import { useMapContext } from '../index';
 
 // 昼夜に基づいた色の定義（夜間も昼間と同じ色を使用）
 const DAY_NIGHT_COLORS = {
@@ -69,30 +70,99 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
   currentTime = new Date() // デフォルト値として現在時刻を使用
 }) => {
   const map = useMap();
-  const [originalPassPoints, setOriginalPassPoints] = useState<PassPoint[]>([]);
+  const { selectedTLE, animationState } = useMapContext();
+  const [calculatedPaths, setCalculatedPaths] = useState<OrbitPath[]>(paths);
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
 
-  // 元のPassPointデータを取得する
+  // 選択されたTLEデータから軌道を計算
   useEffect(() => {
-    const fetchOriginalData = async () => {
-      if (paths.length === 0 || !paths[0].satelliteId) return;
+    const calculateOrbit = async () => {
+      // TLEデータがない場合は何もしない
+      if (!selectedTLE || !observerLocation) {
+        setCalculatedPaths([]);
+        return;
+      }
+
+      setIsCalculating(true);
 
       try {
-        // 現在表示中の衛星のIDを取得
-        const satelliteId = paths[0].satelliteId;
+        // 検索フィルターを作成
+        const filters: SearchFilters = {
+          startDate: animationState.startTime,
+          endDate: animationState.endTime,
+          minElevation: 0, // すべての仰角を含める
+          location: observerLocation
+        };
 
-        // ストアから衛星データを取得する処理を実装
-        // 注: 実際の実装では、ストアから選択された衛星とその軌道データを取得する必要があります
-        // ここでは簡略化のため、コメントアウトしています
+        // 軌道計算
+        const passes = await orbitService.calculatePasses(selectedTLE, observerLocation, filters);
 
-        // passPointMapをクリア
-        passPointMap.clear();
+        // 計算結果からOrbitPathを作成
+        if (passes.length > 0) {
+          // パスポイントをセグメントに分割
+          const tempSegments = [];
+          let currentSegment = {
+            points: [] as PassPoint[],
+            effectiveAngles: [] as number[]
+          };
+
+          for (let i = 0; i < passes[0].points.length; i++) {
+            const point = passes[0].points[i];
+
+            // 新しいセグメントを開始する必要がある場合
+            if (point.isNewSegment && currentSegment.points.length > 0) {
+              tempSegments.push(currentSegment);
+              currentSegment = {
+                points: [],
+                effectiveAngles: []
+              };
+            }
+
+            currentSegment.points.push(point);
+            currentSegment.effectiveAngles.push(point.effectiveAngle || 0);
+          }
+
+          // 最後のセグメントを追加
+          if (currentSegment.points.length > 0) {
+            tempSegments.push(currentSegment);
+          }
+
+          // PassPointからLatLngに変換
+          const orbitSegments = tempSegments.map(segment => {
+            // PassPointの配列からLatLngの配列に変換
+            const latLngPoints = segment.points.map(point => ({
+              lat: point.lat || 0,
+              lng: point.lng || 0
+            }));
+
+            return {
+              points: latLngPoints,
+              effectiveAngles: segment.effectiveAngles
+            };
+          });
+
+          // OrbitPathを作成
+          const orbitPath: OrbitPath = {
+            satelliteId: selectedTLE.line1.substring(2, 7).trim() || 'unknown', // TLEの1行目から衛星IDを抽出
+            maxElevation: passes[0].maxElevation,
+            segments: orbitSegments,
+            timestamp: new Date().toISOString() // 現在時刻をタイムスタンプとして使用
+          };
+
+          setCalculatedPaths([orbitPath]);
+        } else {
+          setCalculatedPaths([]);
+        }
       } catch (error) {
-        console.error('Failed to fetch original pass points:', error);
+        console.error('Failed to calculate orbit:', error);
+        setCalculatedPaths([]);
+      } finally {
+        setIsCalculating(false);
       }
     };
 
-    fetchOriginalData();
-  }, [paths]);
+    calculateOrbit();
+  }, [selectedTLE, observerLocation, animationState.startTime, animationState.endTime]);
 
   // 共通のユーティリティ関数を使用して昼夜を判定する関数
   const isDaylight = (lat: number, lng: number, date: Date = new Date()): boolean => {
@@ -105,13 +175,14 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
   };
 
   useEffect(() => {
-    if (!paths.length) return;
+    // 計算された軌道パスがない場合は何もしない
+    if (!calculatedPaths.length) return;
 
     // 観測地点の位置を取得（地図の中心点）
     const mapCenter = map.getCenter();
 
     // 軌道パスの描画
-    const lines = paths.flatMap((path, pathIndex) => {
+    const lines = calculatedPaths.flatMap((path, pathIndex) => {
       // 各セグメントのパスを作成
       return path.segments.flatMap((segment, segmentIndex) => {
         const lines: L.Polyline[] = [];
@@ -266,7 +337,7 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
       // クリーンアップ時に軌道パスを削除
       allLines.forEach(line => line.remove());
     };
-  }, [paths, map, currentTime, currentTime?.getTime()]); // currentTimeを依存配列に追加
+  }, [calculatedPaths, map, currentTime, currentTime?.getTime()]); // calculatedPathsとcurrentTimeを依存配列に追加
 
   return null;
 };
