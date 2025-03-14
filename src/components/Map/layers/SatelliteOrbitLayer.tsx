@@ -74,7 +74,7 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
   const [calculatedPaths, setCalculatedPaths] = useState<OrbitPath[]>(paths);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
 
-  // 選択されたTLEデータから軌道を計算
+  // 選択されたTLEデータから軌道を計算 - メモリ使用量最適化版
   useEffect(() => {
     const calculateOrbit = async () => {
       // TLEデータがない場合は何もしない
@@ -99,14 +99,17 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
 
         // 計算結果からOrbitPathを作成
         if (passes.length > 0) {
-          // パスポイントをセグメントに分割
+          // パスポイントをセグメントに分割 - 間引きを行う
           const tempSegments = [];
           let currentSegment = {
             points: [] as PassPoint[],
             effectiveAngles: [] as number[]
           };
 
-          for (let i = 0; i < passes[0].points.length; i++) {
+          // 間引き率を設定（メモリ使用量削減のため）- ユーザーフィードバックに基づき調整
+          const skipPoints = 1; // 間引きを少なくして表示を細かく
+
+          for (let i = 0; i < passes[0].points.length; i += skipPoints) {
             const point = passes[0].points[i];
 
             // 新しいセグメントを開始する必要がある場合
@@ -127,19 +130,14 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             tempSegments.push(currentSegment);
           }
 
-          // PassPointからLatLngに変換
-          const orbitSegments = tempSegments.map(segment => {
-            // PassPointの配列からLatLngの配列に変換
-            const latLngPoints = segment.points.map(point => ({
+          // PassPointからLatLngに変換 - 直接変換して中間配列を削減
+          const orbitSegments = tempSegments.map(segment => ({
+            points: segment.points.map(point => ({
               lat: point.lat || 0,
               lng: point.lng || 0
-            }));
-
-            return {
-              points: latLngPoints,
-              effectiveAngles: segment.effectiveAngles
-            };
-          });
+            })),
+            effectiveAngles: segment.effectiveAngles
+          }));
 
           // OrbitPathを作成
           const orbitPath: OrbitPath = {
@@ -174,23 +172,36 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
     return altitude > -0.833;
   };
 
+  // 軌道の描画 - メモリ使用量最適化版
   useEffect(() => {
     // 計算された軌道パスがない場合は何もしない
     if (!calculatedPaths.length) return;
+
+    // 軌道ラインを保持するローカル変数（ステートではなく）
+    const currentLines: L.Polyline[] = [];
 
     // 観測地点の位置を取得（地図の中心点）
     const mapCenter = map.getCenter();
 
     // 軌道パスの描画
-    const lines = calculatedPaths.flatMap((path, pathIndex) => {
+    calculatedPaths.forEach((path, pathIndex) => {
       // 各セグメントのパスを作成
-      return path.segments.flatMap((segment, segmentIndex) => {
-        const lines: L.Polyline[] = [];
+      path.segments.forEach((segment, segmentIndex) => {
+        // 間引き率を設定（メモリ使用量削減のため）- ユーザーフィードバックに基づき調整
+        // ズームレベルに応じて間引き率を動的に調整
+        const zoomLevel = map.getZoom();
+        // ズームレベルに応じて間引き率を動的に調整（ズームが大きいほど細かく表示）
+        const skipPoints = zoomLevel > 8 ? 1 : zoomLevel > 5 ? 2 : 3;
 
-        // セグメント内の各ポイント間に線を引く
-        for (let i = 0; i < segment.points.length - 1; i++) {
+        // 現在の地図の表示範囲を取得
+        const bounds = map.getBounds();
+
+        // セグメント内の各ポイント間に線を引く（間引きながら）
+        for (let i = 0; i < segment.points.length - 1; i += skipPoints) {
           const point1 = segment.points[i];
-          const point2 = segment.points[i + 1];
+          // 配列の範囲外アクセスを防止
+          const nextIndex = Math.min(i + skipPoints, segment.points.length - 1);
+          const point2 = segment.points[nextIndex];
           const effectiveAngle = segment.effectiveAngles[i];
 
           // 日付変更線をまたぐ場合の処理
@@ -201,8 +212,21 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             continue;
           }
 
-          // 観測地点からの距離制限を撤廃
-          // すべての軌道点を表示する
+          // 画面外の軌道は描画しない（メモリ使用量削減のため）
+          // ただし、線分の一部が画面内にある場合は描画する
+          const isPoint1Visible = bounds.contains([point1.lat, point1.lng]);
+          const isPoint2Visible = bounds.contains([point2.lat, point2.lng]);
+
+          // 両方のポイントが画面外の場合はスキップ
+          // ただし、画面の端をまたぐ線分の場合は描画する必要があるため、
+          // 距離が近い場合のみスキップする
+          if (!isPoint1Visible && !isPoint2Visible) {
+            // 画面の端をまたぐ可能性がある場合は描画する
+            // 経度方向の差が大きい場合は描画する
+            if (lngDiff < 50) {
+              continue;
+            }
+          }
 
           // 経度を-180〜180度の範囲に正規化
           let lng1 = point1.lng;
@@ -323,21 +347,18 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
             `仰角: ${effectiveAngle.toFixed(1)}°, ${isDay ? '昼間' : '夜間'}`
           );
 
-          lines.push(line);
+          currentLines.push(line);
         }
-
-        return lines;
       });
     });
 
-    // 配列が入れ子になっているので、平坦化して一つの配列にする
-    const allLines = lines.flat();
-
     return () => {
       // クリーンアップ時に軌道パスを削除
-      allLines.forEach(line => line.remove());
+      currentLines.forEach(line => {
+        if (line) line.remove();
+      });
     };
-  }, [calculatedPaths, map, currentTime, currentTime?.getTime()]); // calculatedPathsとcurrentTimeを依存配列に追加
+  }, [calculatedPaths, map, currentTime?.getTime(), map.getZoom()]); // ズームレベルの変更も監視
 
   return null;
 };
