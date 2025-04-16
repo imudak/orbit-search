@@ -182,7 +182,7 @@ export const isDaylight = (lat: number, lng: number, date: Date): boolean => {
   return altitude > -0.833;
 };
 
-// 昼夜の境界線（ターミネーター）を計算する関数（新規追加）
+// 昼夜の境界線（ターミネーター）を計算する関数（修正版）
 export const calculateTerminator = (date: Date, resolution: number = 1): { lat: number, lng: number }[] => {
   const points: { lat: number, lng: number }[] = [];
 
@@ -193,14 +193,15 @@ export const calculateTerminator = (date: Date, resolution: number = 1): { lat: 
   // 太陽の経度（太陽に正対している経度）を計算
   const subsolarLongitude = calculateSunLongitude(date);
 
-  // 昼夜の境界線を計算（-90度から90度まで）
+  // 昼夜の境界線を計算
+  // 北半球と南半球で別々に計算する
   for (let lat = -90; lat <= 90; lat += resolution) {
     const lat_rad = lat * DEG_TO_RAD;
 
     // 太陽高度が -0.833度（地平線の少し下）になる時角を計算
     const cosHourAngle = (Math.sin(-0.833 * DEG_TO_RAD) -
-                       Math.sin(lat_rad) * Math.sin(declination_rad)) /
-                       (Math.cos(lat_rad) * Math.cos(declination_rad));
+                      Math.sin(lat_rad) * Math.sin(declination_rad)) /
+                      (Math.cos(lat_rad) * Math.cos(declination_rad));
 
     // cosHourAngleが範囲外の場合（極夜/白夜）
     if (cosHourAngle > 1 || cosHourAngle < -1) {
@@ -220,11 +221,14 @@ export const calculateTerminator = (date: Date, resolution: number = 1): { lat: 
     let lngSunset = subsolarLongitude + hourAngle;
     while (lngSunset > 180) lngSunset -= 360;
     while (lngSunset < -180) lngSunset += 360;
-    points.push({ lat: -lat, lng: lngSunset }); // 対称点として反対の緯度を使用
+    points.push({ lat, lng: lngSunset });
   }
 
-  // 点を緯度でソートして北から南への連続的な線を確保
-  points.sort((a, b) => b.lat - a.lat);
+  // 点を経度でソートして連続的な線を確保
+  // 日の出側と日の入り側を分けてソート
+  const sunrisePoints = points.filter((p, i) => i % 2 === 0).sort((a, b) => a.lat - b.lat);
+  const sunsetPoints = points.filter((p, i) => i % 2 === 1).sort((a, b) => b.lat - a.lat);
 
-  return points;
+  // 日の出の境界線の後に日の入りの境界線を連結して閉じたポリゴンにする
+  return [...sunrisePoints, ...sunsetPoints];
 }

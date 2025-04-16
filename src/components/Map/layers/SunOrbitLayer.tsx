@@ -60,7 +60,7 @@ const SunOrbitLayer: React.FC<SunOrbitLayerProps> = ({
     }
   };
 
-  // 昼間の領域を計算する関数（ポリゴン）- 大幅に改善
+  // 昼間の領域を計算する関数（ポリゴン）- 修正版
   const calculateDaylightArea = (date: Date, resolution: number): LatLng[][] => {
     // 日付と解像度に基づいたキャッシュキーを生成
     const cacheKey = `${date.getTime()}_${resolution}`;
@@ -73,7 +73,7 @@ const SunOrbitLayer: React.FC<SunOrbitLayerProps> = ({
     // 太陽の位置を計算
     const { lat: subsolarLat, lng: subsolarLng } = calculateSunPosition(date);
 
-    // 新しい計算方法: 実際の昼夜の境界線（ターミネーター）に基づいて計算
+    // 新しい計算方法: 修正されたターミネーター計算を使用
     const terminatorPoints = calculateTerminator(date, resolution);
 
     if (terminatorPoints.length === 0) {
@@ -81,88 +81,50 @@ const SunOrbitLayer: React.FC<SunOrbitLayerProps> = ({
       return [];
     }
 
-    // 昼間側と夜間側を分離
-    const sunriseBoundary: LatLng[] = [];
-    const sunsetBoundary: LatLng[] = [];
+    // 昼間の領域ポリゴン生成
+    const polygons: LatLng[][] = [];
 
-    // 太陽の経度を基準に、東西に分類
-    for (const point of terminatorPoints) {
-      // 点の経度と太陽の経度の差を-180〜180の範囲に正規化
-      let lngDiff = point.lng - subsolarLng;
-      while (lngDiff > 180) lngDiff -= 360;
-      while (lngDiff < -180) lngDiff += 360;
+    // 太陽側のポリゴン
+    const daylightPolygon: LatLng[] = [];
 
-      // 太陽から見て東側（日の出側）か西側（日の入り側）かを判定
-      if (lngDiff < 0) {
-        // 東側（日の出側）
-        sunriseBoundary.push(new LatLng(point.lat, point.lng));
-      } else {
-        // 西側（日の入り側）
-        sunsetBoundary.push(new LatLng(point.lat, point.lng));
-      }
+    // 修正されたターミネーター計算により、点はすでに適切に整列されているはず
+    // 日の出側境界と日の入り側境界の点を使用してポリゴンを作成
+    for (let i = 0; i < terminatorPoints.length; i++) {
+      daylightPolygon.push(new LatLng(
+        terminatorPoints[i].lat,
+        terminatorPoints[i].lng
+      ));
     }
 
-    // 北極点と南極点の昼夜判定
+    // 北極と南極の昼夜判定
     const northPoleIsDaylight = isDaylight(90, 0, date);
     const southPoleIsDaylight = isDaylight(-90, 0, date);
 
-    // 日付変更線をまたぐ可能性を考慮
-    const polygons: LatLng[][] = [];
+    // 極点が昼間の場合、ポリゴンを閉じるために追加の点を入れる
+    if (northPoleIsDaylight) {
+      // 北極が昼間の場合、北極を通る子午線を追加
+      daylightPolygon.push(new LatLng(80, -180));
+      daylightPolygon.push(new LatLng(89.9, -180));
+      daylightPolygon.push(new LatLng(89.9, -90));
+      daylightPolygon.push(new LatLng(89.9, 0));
+      daylightPolygon.push(new LatLng(89.9, 90));
+      daylightPolygon.push(new LatLng(89.9, 180));
+    }
 
-    // 昼間の領域のポリゴンを作成
-    const createDaylightPolygon = () => {
-      // 北極側のポリゴン
-      if (northPoleIsDaylight) {
-        const northPolygon = [...sunriseBoundary];
+    if (southPoleIsDaylight) {
+      // 南極が昼間の場合、南極を通る子午線を追加
+      daylightPolygon.push(new LatLng(-80, 180));
+      daylightPolygon.push(new LatLng(-89.9, 180));
+      daylightPolygon.push(new LatLng(-89.9, 90));
+      daylightPolygon.push(new LatLng(-89.9, 0));
+      daylightPolygon.push(new LatLng(-89.9, -90));
+      daylightPolygon.push(new LatLng(-89.9, -180));
+    }
 
-        // 北極点を追加（複数の点で表現してポリゴンの品質を向上）
-        for (let lng = -180; lng <= 180; lng += 45) {
-          northPolygon.push(new LatLng(89.9, lng));
-        }
-
-        // 日の入り側の境界を反転して追加
-        for (let i = sunsetBoundary.length - 1; i >= 0; i--) {
-          northPolygon.push(sunsetBoundary[i]);
-        }
-
-        // ポリゴン配列に追加
-        polygons.push(northPolygon);
-      }
-
-      // 南極側のポリゴン
-      if (southPoleIsDaylight) {
-        const southPolygon = [...sunsetBoundary];
-
-        // 南極点を追加（複数の点で表現）
-        for (let lng = 180; lng >= -180; lng -= 45) {
-          southPolygon.push(new LatLng(-89.9, lng));
-        }
-
-        // 日の出側の境界を反転して追加
-        for (let i = sunriseBoundary.length - 1; i >= 0; i--) {
-          southPolygon.push(sunriseBoundary[i]);
-        }
-
-        // ポリゴン配列に追加
-        polygons.push(southPolygon);
-      }
-
-      // 赤道付近のポリゴン（北極も南極も夜の場合）
-      if (!northPoleIsDaylight && !southPoleIsDaylight) {
-        const equatorPolygon = [...sunriseBoundary];
-
-        // 日の入り側の境界を反転して追加
-        for (let i = sunsetBoundary.length - 1; i >= 0; i--) {
-          equatorPolygon.push(sunsetBoundary[i]);
-        }
-
-        // ポリゴン配列に追加
-        polygons.push(equatorPolygon);
-      }
-    };
-
-    // ポリゴンを作成
-    createDaylightPolygon();
+    // ポリゴン配列に追加
+    if (daylightPolygon.length > 0) {
+      polygons.push(daylightPolygon);
+    }
 
     // 計算結果をキャッシュ
     if (PERFORMANCE_CONFIG.cacheResults) {
