@@ -276,24 +276,24 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // 各ポイントの時刻に基づいて昼夜を判定
           // isDaylight関数は正確ですが、太陽の日陰/日向の判定と軌道上の点の判定が一致していない可能性がある
           // 地図上の昼夜表示（黄色い領域）とも一致させるために、太陽経度との比較で判定する
-
+          
           // 太陽の経度を取得
           const sunLongitude = calculateSunLongitude(currentTime);
-
+          
           // 点の経度と太陽経度の差を計算して昼夜を判定
           // 経度差が90度以内なら昼間
-          let lngDiff = Math.abs(lng1ForPoint - sunLongitude);
-          if (lngDiff > 180) lngDiff = 360 - lngDiff; // 反対側の差を取得
-
+          let sunLngDiff = Math.abs(lng1ForPoint - sunLongitude);
+          if (sunLngDiff > 180) sunLngDiff = 360 - sunLngDiff; // 反対側の差を取得
+          
           // 昼夜の判定（経度差が90度以内なら昼間）
-          const isDay = lngDiff <= 90;
-
+          const isDay = sunLngDiff <= 90;
+          
           // デバッグ用（問題が解決されたら削除）
           if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
-            console.log('Day/Night check:', {
-              pointLng: lng1ForPoint,
-              sunLng: sunLongitude,
-              lngDiff,
+            console.log('Day/Night check:', { 
+              pointLng: lng1ForPoint, 
+              sunLng: sunLongitude, 
+              sunLngDiff, 
               isDay,
               originalCheck: isDaylight(point1.lat, lng1ForPoint, currentTime)
             });
