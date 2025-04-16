@@ -53,13 +53,15 @@ export const calculateSolarHourAngle = (date: Date, longitude: number): number =
   return ((hourAngle + 180) % 360) - 180;
 };
 
-// 太陽の経度を計算する関数（改善版）
+// 太陽の経度を計算する関数（修正版）
 export const calculateSunLongitude = (date: Date): number => {
   // UTCからの時差を計算
   const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
 
-  // 時角から経度を計算（12時間を0度として1時間あたり15度）
-  let sunLng = (utcHours - 12) * 15;
+  // 時角から経度を計算
+  // UTCが0時のとき太陽は経度180度（日付変更線）
+  // 1時間あたり15度ずつ西へ移動（地球の自転）
+  let sunLng = 180 - (utcHours * 15);
 
   // 地球の軸の傾き（黄道傾角）による補正（季節による日の出・日の入りの位置変化）
   const declination = calculateSolarDeclination(date);
