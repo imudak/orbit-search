@@ -4,7 +4,7 @@ import L, { LatLng } from 'leaflet';
 import type { OrbitPath, PassPoint, SearchFilters } from '@/types';
 import { ELEVATION_COLORS } from './VisibilityCircleLayer';
 import { orbitService } from '@/services/orbitService';
-import { calculateSolarPosition } from '@/utils/sunCalculations';
+import { calculateSolarPosition, isDaylight } from '@/utils/sunCalculations';
 import { useMapContext } from '../index';
 
 // 昼夜に基づいた色の定義（夜間も昼間と同じ色を使用）
@@ -161,16 +161,6 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
 
     calculateOrbit();
   }, [selectedTLE, observerLocation, animationState.startTime, animationState.endTime]);
-
-  // 共通のユーティリティ関数を使用して昼夜を判定する関数
-  const isDaylight = (lat: number, lng: number, date: Date = new Date()): boolean => {
-    // 太陽の方位角と高度を計算
-    const { altitude } = calculateSolarPosition(lat, lng, date);
-
-    // 大気による屈折を考慮した太陽高度による昼夜判定
-    // -0.833は大気による屈折と太陽の視半径を考慮した値
-    return altitude > -0.833;
-  };
 
   // 軌道の描画 - メモリ使用量最適化版
   useEffect(() => {
