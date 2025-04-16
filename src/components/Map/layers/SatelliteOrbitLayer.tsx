@@ -4,7 +4,7 @@ import L, { LatLng } from 'leaflet';
 import type { OrbitPath, PassPoint, SearchFilters } from '@/types';
 import { ELEVATION_COLORS } from './VisibilityCircleLayer';
 import { orbitService } from '@/services/orbitService';
-import { calculateSolarPosition, isDaylight } from '@/utils/sunCalculations';
+import { calculateSolarPosition, isDaylight, calculateSunLongitude } from '@/utils/sunCalculations';
 import { useMapContext } from '../index';
 
 // 昼夜に基づいた色の定義（夜間も昼間と同じ色を使用）
@@ -274,13 +274,30 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           ];
 
           // 各ポイントの時刻に基づいて昼夜を判定
-          // 現在の時刻ではなく、軌道上の各ポイントの時刻を使用
+          // isDaylight関数は正確ですが、太陽の日陰/日向の判定と軌道上の点の判定が一致していない可能性がある
+          // 地図上の昼夜表示（黄色い領域）とも一致させるために、太陽経度との比較で判定する
 
-          // propsから受け取ったアニメーションの現在時刻を使用
-          // 注: 将来的には軌道上の各ポイントの正確な時刻を使用するように改善する必要があります
+          // 太陽の経度を取得
+          const sunLongitude = calculateSunLongitude(currentTime);
 
-          // 各ポイントの時刻に基づいて昼夜を判定
-          const isDay = isDaylight(point1.lat, lng1ForPoint, currentTime);
+          // 点の経度と太陽経度の差を計算して昼夜を判定
+          // 経度差が90度以内なら昼間
+          let lngDiff = Math.abs(lng1ForPoint - sunLongitude);
+          if (lngDiff > 180) lngDiff = 360 - lngDiff; // 反対側の差を取得
+
+          // 昼夜の判定（経度差が90度以内なら昼間）
+          const isDay = lngDiff <= 90;
+
+          // デバッグ用（問題が解決されたら削除）
+          if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
+            console.log('Day/Night check:', {
+              pointLng: lng1ForPoint,
+              sunLng: sunLongitude,
+              lngDiff,
+              isDay,
+              originalCheck: isDaylight(point1.lat, lng1ForPoint, currentTime)
+            });
+          }
 
           // 昼夜と仰角に基づいてスタイルを設定
           let color: string;
