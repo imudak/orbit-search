@@ -233,4 +233,108 @@ export const calculateTerminator = (date: Date, resolution: number = 1): { lat: 
 
   // 日の出の境界線の後に日の入りの境界線を連結して閉じたポリゴンにする
   return [...sunrisePoints, ...sunsetPoints];
+};
+
+/**
+ * 世界地図上に昼夜の境界線を描画するためのポイントを生成する
+ * @param date 日時
+ * @param numPoints 境界線上のポイント数
+ * @returns LatLng[] 昼夜の境界線を表すポリライン用の座標配列
+ */
+export function calculateTerminatorPoints(date: Date, numPoints: number = 100): [number, number][] {
+  const sunPos = calculateSunPosition(date);
+  const sunLng = sunPos.lng;
+  const points: [number, number][] = [];
+
+  // 昼夜の境界線は、太陽から90度離れた大円上にある
+  for (let i = 0; i < numPoints; i++) {
+    const lat = 90 - 180 * i / (numPoints - 1);
+
+    // 太陽経度から東西に90度離れた位置が昼夜の境界
+    let lng = sunLng + 90;
+    if (lng > 180) lng -= 360;
+
+    // 1つの半球の点を追加
+    points.push([lat, lng]);
+  }
+
+  // 反対側の半球の点を追加（東西に180度反転）
+  // 注: 日付変更線をまたぐ問題を解決するため、連続した点列を作成
+  for (let i = numPoints - 1; i >= 0; i--) {
+    const lat = points[i][0];
+    let lng = points[i][1] - 180;
+    if (lng < -180) lng += 360;
+
+    points.push([lat, lng]);
+  }
+
+  // 最後に最初の点を追加してポリゴンを閉じる
+  points.push([points[0][0], points[0][1]]);
+
+  return points;
+}
+
+/**
+ * 昼間領域を表すポリゴン用の座標配列を生成する
+ * @param date 日時
+ * @param numPoints 境界線上のポイント数
+ * @returns [number, number][][] 昼間領域を表すポリゴン用の座標配列
+ */
+export function calculateDaylightPolygon(date: Date, numPoints: number = 100): [number, number][][] {
+  const terminator = calculateTerminatorPoints(date, numPoints);
+  const sunPos = calculateSunPosition(date);
+
+  // 太陽が照らす半球の中心点
+  const sunLng = sunPos.lng;
+
+  // 昼間の半球を2つのポリゴンに分割（日付変更線をまたぐ場合の対応）
+  const daylightPolygon: [number, number][][] = [];
+
+  // 東半球と西半球に分割して処理
+  const eastPolygon: [number, number][] = [];
+  const westPolygon: [number, number][] = [];
+
+  // ターミネーターの点を東西に分類
+  for (const point of terminator) {
+    let lng = point[1];
+    let relativeLng = ((lng - sunLng + 540) % 360) - 180; // 相対経度を-180〜180に正規化
+
+    if (Math.abs(relativeLng) <= 90) {
+      // 昼間側（太陽から±90度以内）
+      if (lng > 0) {
+        eastPolygon.push(point);
+      } else {
+        westPolygon.push(point);
+      }
+    }
+  }
+
+  // 北極と南極を追加
+  if (eastPolygon.length > 0) {
+    // 東半球のポリゴンを形成
+    const eastPoly = [...eastPolygon];
+    if (eastPoly[0][0] !== 90) eastPoly.unshift([90, eastPoly[0][1]]);
+    if (eastPoly[eastPoly.length-1][0] !== -90) eastPoly.push([-90, eastPoly[eastPoly.length-1][1]]);
+
+    // ポリゴンを閉じる
+    if (eastPoly.length > 2) {
+      eastPoly.push([eastPoly[0][0], eastPoly[0][1]]);
+      daylightPolygon.push(eastPoly);
+    }
+  }
+
+  if (westPolygon.length > 0) {
+    // 西半球のポリゴンを形成
+    const westPoly = [...westPolygon];
+    if (westPoly[0][0] !== 90) westPoly.unshift([90, westPoly[0][1]]);
+    if (westPoly[westPoly.length-1][0] !== -90) westPoly.push([-90, westPoly[westPoly.length-1][1]]);
+
+    // ポリゴンを閉じる
+    if (westPoly.length > 2) {
+      westPoly.push([westPoly[0][0], westPoly[0][1]]);
+      daylightPolygon.push(westPoly);
+    }
+  }
+
+  return daylightPolygon;
 }

@@ -10,18 +10,18 @@ import { useMapContext } from '../index';
 // 昼夜に基づいた色の定義（夜間も昼間と同じ色を使用）
 const DAY_NIGHT_COLORS = {
   day: {
-    optimal: '#ffd54f',   // 明るい黄色（最適）- 昼間
-    good: '#ffb74d',      // 明るいオレンジ（良好）- 昼間
-    visible: '#ff9800',   // オレンジ（可視）- 昼間
-    poor: '#f44336',      // 赤（不良）- 昼間
-    invisible: '#9e9e9e'  // グレー（不可視）- 昼間
+    optimal: '#ffc107',   // 明るい黄色（最適）- 昼間 - より濃く
+    good: '#ff9800',      // 明るいオレンジ（良好）- 昼間 - より濃く
+    visible: '#f57c00',   // オレンジ（可視）- 昼間 - より濃く
+    poor: '#d32f2f',      // 赤（不良）- 昼間 - より濃く
+    invisible: '#757575'  // グレー（不可視）- 昼間 - より濃く
   },
   night: {
-    optimal: '#ffd54f',   // 明るい黄色（最適）- 夜間も昼間と同じ
-    good: '#ffb74d',      // 明るいオレンジ（良好）- 夜間も昼間と同じ
-    visible: '#ff9800',   // オレンジ（可視）- 夜間も昼間と同じ
-    poor: '#f44336',      // 赤（不良）- 夜間も昼間と同じ
-    invisible: '#9e9e9e'  // グレー（不可視）- 夜間も昼間と同じ
+    optimal: '#ffc107',   // 明るい黄色（最適）- 夜間も昼間と同じ - より濃く
+    good: '#ff9800',      // 明るいオレンジ（良好）- 夜間も昼間と同じ - より濃く
+    visible: '#f57c00',   // オレンジ（可視）- 夜間も昼間と同じ - より濃く
+    poor: '#d32f2f',      // 赤（不良）- 夜間も昼間と同じ - より濃く
+    invisible: '#757575'  // グレー（不可視）- 夜間も昼間と同じ - より濃く
   }
 };
 
@@ -276,24 +276,24 @@ const SatelliteOrbitLayer: React.FC<SatelliteOrbitLayerProps> = ({
           // 各ポイントの時刻に基づいて昼夜を判定
           // isDaylight関数は正確ですが、太陽の日陰/日向の判定と軌道上の点の判定が一致していない可能性がある
           // 地図上の昼夜表示（黄色い領域）とも一致させるために、太陽経度との比較で判定する
-          
+
           // 太陽の経度を取得
           const sunLongitude = calculateSunLongitude(currentTime);
-          
+
           // 点の経度と太陽経度の差を計算して昼夜を判定
           // 経度差が90度以内なら昼間
           let sunLngDiff = Math.abs(lng1ForPoint - sunLongitude);
           if (sunLngDiff > 180) sunLngDiff = 360 - sunLngDiff; // 反対側の差を取得
-          
+
           // 昼夜の判定（経度差が90度以内なら昼間）
           const isDay = sunLngDiff <= 90;
-          
+
           // デバッグ用（問題が解決されたら削除）
           if (process.env.NODE_ENV === 'development' && Math.random() < 0.001) {
-            console.log('Day/Night check:', { 
-              pointLng: lng1ForPoint, 
-              sunLng: sunLongitude, 
-              sunLngDiff, 
+            console.log('Day/Night check:', {
+              pointLng: lng1ForPoint,
+              sunLng: sunLongitude,
+              sunLngDiff,
               isDay,
               originalCheck: isDaylight(point1.lat, lng1ForPoint, currentTime)
             });
