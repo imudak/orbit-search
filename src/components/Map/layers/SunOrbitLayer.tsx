@@ -8,12 +8,14 @@ import {
   calculateSunLongitude,
   calculateSunPosition,
   calculateTerminator,
+  calculateTerminatorPoints,
+  calculateDaylightPolygon,
   isDaylight
 } from '@/utils/sunCalculations';
 
 // 太陽軌道の色の定義
 const SUN_ORBIT_COLORS = {
-  daylight: 'rgba(255, 255, 0, 0.1)', // 透明な黄色（昼間の帯）
+  daylight: 'rgba(255, 240, 64, 0.35)', // より濃い黄色（透明度を0.25から0.35に上げて視認性をさらに向上）
   terminator: '#4B0082' // インディゴ（昼夜の境界線）
 };
 
@@ -46,8 +48,27 @@ const SunOrbitLayer: React.FC<SunOrbitLayerProps> = ({
   const map = useMap();
 
   // キャッシュ用のrefオブジェクト
-  const terminatorCache = useRef<Map<string, L.LatLng[]>>(new Map());
+  const terminatorCache = useRef<Map<string, L.LatLng[][]>>(new Map());
   const daylightCache = useRef<Map<string, L.LatLng[][]>>(new Map());
+  const lastDate = useRef<number>(0); // 最後に描画した日時を保存
+
+  // コンポーネントマウント時にキャッシュをクリア
+  useEffect(() => {
+    // コンポーネントマウント時に一度キャッシュをクリア
+    clearCaches();
+
+    return () => {
+      // コンポーネントのアンマウント時にもキャッシュをクリア
+      clearCaches();
+    };
+  }, []);
+
+  // キャッシュをクリアする関数
+  const clearCaches = () => {
+    terminatorCache.current.clear();
+    daylightCache.current.clear();
+    lastDate.current = 0;
+  };
 
   // ズームレベルによる解像度（点の間隔）を取得
   const getResolutionByZoom = (zoomLevel: number): number => {
@@ -60,7 +81,7 @@ const SunOrbitLayer: React.FC<SunOrbitLayerProps> = ({
     }
   };
 
-  // 昼間の領域を計算する関数（ポリゴン）- 修正版
+  // 昼間の領域を計算する関数（ポリゴン）- 完全に修正版
   const calculateDaylightArea = (date: Date, resolution: number): LatLng[][] => {
     // 日付と解像度に基づいたキャッシュキーを生成
     const cacheKey = `${date.getTime()}_${resolution}`;
@@ -70,82 +91,79 @@ const SunOrbitLayer: React.FC<SunOrbitLayerProps> = ({
       return daylightCache.current.get(cacheKey) || [];
     }
 
-    // 太陽の位置を計算
-    const { lat: subsolarLat, lng: subsolarLng } = calculateSunPosition(date);
+    // sunCalculationsの関数を使用して昼間領域のポリゴンを取得
+    // この関数は既に適切に計算されたポリゴンを返す
+    try {
+      const polygons: LatLng[][] = [];
 
-    // 新しい計算方法: 修正されたターミネーター計算を使用
-    const terminatorPoints = calculateTerminator(date, resolution);
+      // 太陽の位置を計算（デバッグ用）
+      const { lat: subsolarLat, lng: subsolarLng } = calculateSunPosition(date);
 
-    if (terminatorPoints.length === 0) {
-      // ターミネーターがない場合（極地の白夜/極夜など）
-      return [];
-    }
+      // 太陽の赤緯を考慮した昼間領域の計算を行う
+      // numPointsを多めに設定して、より滑らかな境界線を描画
+      const numPoints = Math.floor(180 / resolution);
+      const daylightRegions = calculateDaylightPolygon(date, numPoints);
 
-    // 昼間の領域ポリゴン生成
-    const polygons: LatLng[][] = [];
+      // 昼間領域のポリゴンをLeaflet形式に変換
+      daylightRegions.forEach(region => {
+        const polygonPoints: LatLng[] = [];
+        region.forEach(point => {
+          polygonPoints.push(new LatLng(point[0], point[1]));
+        });
 
-    // 太陽側のポリゴン
-    const daylightPolygon: LatLng[] = [];
+        // 有効なポリゴンのみを追加
+        if (polygonPoints.length > 2) {
+          polygons.push(polygonPoints);
+        }
+      });
 
-    // 修正されたターミネーター計算により、点はすでに適切に整列されているはず
-    // 日の出側境界と日の入り側境界の点を使用してポリゴンを作成
-    for (let i = 0; i < terminatorPoints.length; i++) {
-      daylightPolygon.push(new LatLng(
-        terminatorPoints[i].lat,
-        terminatorPoints[i].lng
-      ));
-    }
+      // 北極と南極の昼夜判定
+      const northPoleIsDaylight = isDaylight(90, 0, date);
+      const southPoleIsDaylight = isDaylight(-90, 0, date);
 
-    // 北極と南極の昼夜判定
-    const northPoleIsDaylight = isDaylight(90, 0, date);
-    const southPoleIsDaylight = isDaylight(-90, 0, date);
+      // ポリゴンが不足している場合（例：極地の白夜など）
+      if (polygons.length === 0) {
+        if (northPoleIsDaylight || southPoleIsDaylight) {
+          // 極地が昼間の場合、適切な領域を作成
+          const specialPolygon: LatLng[] = [];
 
-    // 極点が昼間の場合、ポリゴンを閉じるために追加の点を入れる
-    if (northPoleIsDaylight) {
-      // 北極が昼間の場合、北極を通る子午線を追加
-      daylightPolygon.push(new LatLng(80, -180));
-      daylightPolygon.push(new LatLng(89.9, -180));
-      daylightPolygon.push(new LatLng(89.9, -90));
-      daylightPolygon.push(new LatLng(89.9, 0));
-      daylightPolygon.push(new LatLng(89.9, 90));
-      daylightPolygon.push(new LatLng(89.9, 180));
-    }
+          // 半球全体をカバーする
+          for (let lng = -180; lng <= 180; lng += 10) {
+            if (northPoleIsDaylight) {
+              specialPolygon.push(new LatLng(90, lng));
+            } else {
+              specialPolygon.push(new LatLng(-90, lng));
+            }
+          }
 
-    if (southPoleIsDaylight) {
-      // 南極が昼間の場合、南極を通る子午線を追加
-      daylightPolygon.push(new LatLng(-80, 180));
-      daylightPolygon.push(new LatLng(-89.9, 180));
-      daylightPolygon.push(new LatLng(-89.9, 90));
-      daylightPolygon.push(new LatLng(-89.9, 0));
-      daylightPolygon.push(new LatLng(-89.9, -90));
-      daylightPolygon.push(new LatLng(-89.9, -180));
-    }
-
-    // ポリゴン配列に追加
-    if (daylightPolygon.length > 0) {
-      polygons.push(daylightPolygon);
-    }
-
-    // 計算結果をキャッシュ
-    if (PERFORMANCE_CONFIG.cacheResults) {
-      daylightCache.current.set(cacheKey, polygons);
-
-      // キャッシュが大きくなりすぎないように古いエントリを削除
-      if (daylightCache.current.size > 100) {
-        // 最も古いキーを削除
-        const keys = Array.from(daylightCache.current.keys());
-        if (keys.length > 0) {
-          const oldestKey = keys[0];
-          daylightCache.current.delete(oldestKey);
+          polygons.push(specialPolygon);
         }
       }
-    }
 
-    return polygons;
+      // 計算結果をキャッシュ
+      if (PERFORMANCE_CONFIG.cacheResults) {
+        daylightCache.current.set(cacheKey, polygons);
+
+        // キャッシュが大きくなりすぎないように古いエントリを削除
+        if (daylightCache.current.size > 100) {
+          // 最も古いキーを削除
+          const keys = Array.from(daylightCache.current.keys());
+          if (keys.length > 0) {
+            const oldestKey = keys[0];
+            daylightCache.current.delete(oldestKey);
+          }
+        }
+      }
+
+      return polygons;
+    } catch (error) {
+      console.error('昼間領域の計算中にエラーが発生しました:', error);
+      return [];
+    }
   };
 
   // 昼夜の境界線（ターミネーター）を計算する関数 - 大幅に改善
-  const calculateTerminatorLine = (date: Date, resolution: number): LatLng[] => {
+  const calculateTerminatorLine = (date: Date, resolution: number): LatLng[][] => {
     // 日付と解像度に基づいたキャッシュキーを生成
     const cacheKey = `${date.getTime()}_${resolution}`;
 
@@ -155,12 +173,17 @@ const SunOrbitLayer: React.FC<SunOrbitLayerProps> = ({
     }
 
     // 新しい計算方法: 高精度なターミネーター計算を使用
-    const terminatorPoints = calculateTerminator(date, resolution);
-    const leafletPoints = terminatorPoints.map(point => new LatLng(point.lat, point.lng));
+    // 日付変更線をまたぐ場合に別々の線として返す
+    const terminatorLines = calculateTerminatorPoints(date, resolution);
+
+    // Leafletで使用できる形式に変換
+    const leafletLines = terminatorLines.map(line =>
+      line.map(point => new LatLng(point[0], point[1]))
+    ).filter(line => line.length > 1); // 1点だけの線は除外
 
     // 計算結果をキャッシュ
     if (PERFORMANCE_CONFIG.cacheResults) {
-      terminatorCache.current.set(cacheKey, leafletPoints);
+      terminatorCache.current.set(cacheKey, leafletLines);
 
       // キャッシュが大きくなりすぎないように古いエントリを削除
       if (terminatorCache.current.size > 100) {
@@ -173,93 +196,81 @@ const SunOrbitLayer: React.FC<SunOrbitLayerProps> = ({
       }
     }
 
-    return leafletPoints;
+    return leafletLines;
   };
 
-  // 太陽軌道を描画 - パフォーマンス最適化版
+  // 太陽軌道を描画 - シンプル最適化版
   useEffect(() => {
+    // 以前の図形をクリーンアップ
+    const currentShapes: (L.Polygon | L.Polyline)[] = [];
+
     // 現在のズームレベルを取得
     const zoomLevel = map.getZoom();
 
     // ズームレベルに応じた解像度（点の間隔）を取得
     const resolution = getResolutionByZoom(zoomLevel);
 
-    // 昼間の領域を計算 - 高精度な計算方法を使用
+    // 昼間の領域を計算 - シンプルな計算方法を使用
     const daylightPolygons = calculateDaylightArea(date, resolution);
 
-    // 昼夜の境界線を計算 - 高精度な計算方法を使用
-    const terminatorPoints = calculateTerminatorLine(date, resolution);
-
-    // 現在のレンダリングサイクルで作成されたすべての図形を保持するローカル変数
-    const currentShapes: (L.Polygon | L.Polyline)[] = [];
-
-    // 現在の地図の表示範囲を取得
-    const bounds = map.getBounds();
+    // 昼夜の境界線を計算
+    const terminatorLines = calculateTerminatorLine(date, resolution);
 
     // 描画レイヤーのオプション
-    const canvasRenderer = L.canvas({ padding: 0.5 });
+    const canvasRenderer = L.canvas({ padding: 1.0 });
 
-    // 昼間の領域をポリゴンとして描画（複数のポリゴンに対応）
-    const daylightAreas = daylightPolygons.map(points => {
-      // ポイント数が多すぎる場合は間引く
-      const optimizedPoints = points.length > PERFORMANCE_CONFIG.maxPoints
-        ? points.filter((_, i) => i % Math.ceil(points.length / PERFORMANCE_CONFIG.maxPoints) === 0)
-        : points;
+    // 昼間の領域を単一ポリゴンとして描画
+    if (daylightPolygons.length > 0) {
+      // 各ポリゴンを個別に描画（通常は1つか2つのみ）
+      daylightPolygons.forEach(points => {
+        if (points.length < 3) return; // 有効なポリゴンではない場合はスキップ
 
-      // 画面に表示される部分のみを描画するための最適化
-      // ポリゴン全体が画面外の場合はスキップ
-      let isVisible = false;
-      for (const point of optimizedPoints) {
-        if (bounds.contains(point)) {
-          isVisible = true;
-          break;
-        }
-      }
+        // ポイント数が多すぎる場合は間引く
+        const maxPoints = 500; // 最大点数を制限してパフォーマンスを向上
+        const optimizedPoints = points.length > maxPoints
+          ? points.filter((_, i) => i % Math.ceil(points.length / maxPoints) === 0)
+          : points;
 
-      // 画面外のポリゴンはスキップ（メモリ使用量削減のため）
-      if (!isVisible && optimizedPoints.length > 10) {
-        return null;
-      }
+        // パフォーマンス向上のためにCanvasレンダラーを使用
+        const polygon = L.polygon(optimizedPoints, {
+          renderer: canvasRenderer, // Canvasレンダラーを使用
+          color: SUN_ORBIT_COLORS.daylight,
+          fillColor: SUN_ORBIT_COLORS.daylight,
+          fillOpacity: 0.5,
+          weight: 1,
+          opacity: 0.3,
+          smoothFactor: 2.0 // 高い値を設定して曲線を滑らかにする
+        }).addTo(map);
 
-      // パフォーマンス向上のためにCanvasレンダラーを使用
-      const polygon = L.polygon(optimizedPoints, {
-        renderer: canvasRenderer, // Canvasレンダラーを使用
-        color: SUN_ORBIT_COLORS.daylight,
-        fillColor: SUN_ORBIT_COLORS.daylight,
-        fillOpacity: 0.3,
-        weight: 0, // 境界線なし
-        bubblingMouseEvents: true
-      }).addTo(map);
+        polygon.bindTooltip('昼間の領域');
+        currentShapes.push(polygon);
+      });
+    }
 
-      // ツールチップを設定
-      polygon.bindTooltip('昼間の領域');
+    // 昼夜の境界線をシンプルに表示
+    if (terminatorLines.length > 0) {
+      terminatorLines.forEach(line => {
+        if (line.length < 2) return;
 
-      // ローカル配列に追加
-      currentShapes.push(polygon);
+        // 点を間引いて滑らかにする
+        const maxLinePoints = 200;
+        const optimizedLine = line.length > maxLinePoints
+          ? line.filter((_, i) => i % Math.ceil(line.length / maxLinePoints) === 0)
+          : line;
 
-      return polygon;
-    }).filter(Boolean); // nullをフィルタリング
+        const polyline = L.polyline(optimizedLine, {
+          renderer: canvasRenderer,
+          color: SUN_ORBIT_COLORS.terminator,
+          weight: 1.5,
+          opacity: 0.6,
+          dashArray: '3, 7',
+          smoothFactor: 1.5 // 線の表示を滑らかにする
+        }).addTo(map);
 
-    // 昼夜の境界線を作成（パフォーマンス最適化）
-    // ポイント数が多すぎる場合は間引く
-    const optimizedTerminatorPoints = terminatorPoints.length > PERFORMANCE_CONFIG.maxPoints
-      ? terminatorPoints.filter((_, i) => i % Math.ceil(terminatorPoints.length / PERFORMANCE_CONFIG.maxPoints) === 0)
-      : terminatorPoints;
-
-    const terminatorLine = L.polyline(optimizedTerminatorPoints, {
-      renderer: canvasRenderer, // Canvasレンダラーを使用
-      color: SUN_ORBIT_COLORS.terminator,
-      weight: 1.5,
-      opacity: 0.6,
-      dashArray: '3, 7',
-      bubblingMouseEvents: true
-    }).addTo(map);
-
-    // ツールチップを設定
-    terminatorLine.bindTooltip('昼夜の境界線');
-
-    // ローカル配列に追加
-    currentShapes.push(terminatorLine);
+        polyline.bindTooltip('昼夜の境界線');
+        currentShapes.push(polyline);
+      });
+    }
 
     return () => {
       // クリーンアップ時に作成したすべての図形を削除

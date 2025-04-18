@@ -236,105 +236,216 @@ export const calculateTerminator = (date: Date, resolution: number = 1): { lat: 
 };
 
 /**
- * 世界地図上に昼夜の境界線を描画するためのポイントを生成する
- * @param date 日時
- * @param numPoints 境界線上のポイント数
- * @returns LatLng[] 昼夜の境界線を表すポリライン用の座標配列
- */
-export function calculateTerminatorPoints(date: Date, numPoints: number = 100): [number, number][] {
-  const sunPos = calculateSunPosition(date);
-  const sunLng = sunPos.lng;
-  const points: [number, number][] = [];
-
-  // 昼夜の境界線は、太陽から90度離れた大円上にある
-  for (let i = 0; i < numPoints; i++) {
-    const lat = 90 - 180 * i / (numPoints - 1);
-
-    // 太陽経度から東西に90度離れた位置が昼夜の境界
-    let lng = sunLng + 90;
-    if (lng > 180) lng -= 360;
-
-    // 1つの半球の点を追加
-    points.push([lat, lng]);
-  }
-
-  // 反対側の半球の点を追加（東西に180度反転）
-  // 注: 日付変更線をまたぐ問題を解決するため、連続した点列を作成
-  for (let i = numPoints - 1; i >= 0; i--) {
-    const lat = points[i][0];
-    let lng = points[i][1] - 180;
-    if (lng < -180) lng += 360;
-
-    points.push([lat, lng]);
-  }
-
-  // 最後に最初の点を追加してポリゴンを閉じる
-  points.push([points[0][0], points[0][1]]);
-
-  return points;
-}
-
-/**
- * 昼間領域を表すポリゴン用の座標配列を生成する
+ * 昼間領域を表すポリゴン用の座標配列を生成する（単一ポリゴン版）
  * @param date 日時
  * @param numPoints 境界線上のポイント数
  * @returns [number, number][][] 昼間領域を表すポリゴン用の座標配列
  */
 export function calculateDaylightPolygon(date: Date, numPoints: number = 100): [number, number][][] {
-  const terminator = calculateTerminatorPoints(date, numPoints);
+  // 太陽の位置を計算
   const sunPos = calculateSunPosition(date);
-
-  // 太陽が照らす半球の中心点
   const sunLng = sunPos.lng;
 
-  // 昼間の半球を2つのポリゴンに分割（日付変更線をまたぐ場合の対応）
-  const daylightPolygon: [number, number][][] = [];
+  // 北極と南極の昼夜判定
+  const northPoleIsDaylight = isDaylight(90, 0, date);
+  const southPoleIsDaylight = isDaylight(-90, 0, date);
 
-  // 東半球と西半球に分割して処理
-  const eastPolygon: [number, number][] = [];
-  const westPolygon: [number, number][] = [];
+  // 太陽の赤緯を計算
+  const declination = calculateSolarDeclination(date);
+  const declination_rad = declination * DEG_TO_RAD;
 
-  // ターミネーターの点を東西に分類
-  for (const point of terminator) {
-    let lng = point[1];
-    let relativeLng = ((lng - sunLng + 540) % 360) - 180; // 相対経度を-180〜180に正規化
+  // 昼夜の境界線（ターミネーター）を直接計算
+  const daylightPoints: [number, number][] = [];
 
-    if (Math.abs(relativeLng) <= 90) {
-      // 昼間側（太陽から±90度以内）
-      if (lng > 0) {
-        eastPolygon.push(point);
-      } else {
-        westPolygon.push(point);
+  // 極地が昼間の場合に極点を通る子午線を追加
+  if (northPoleIsDaylight) {
+    // 北極が昼間の場合、北極点を追加
+    daylightPoints.push([90, sunLng]);
+  }
+
+  // 北から南へ点を生成（日の出側）
+  for (let i = 0; i < numPoints; i++) {
+    const lat = northPoleIsDaylight ? (90 - 180 * i / numPoints) : (90 - 180 * i / (numPoints - 1));
+    if (lat < -90) continue;
+
+    const lat_rad = lat * DEG_TO_RAD;
+
+    // 太陽高度が -0.833度（地平線の少し下）になる時角を計算
+    const cosHourAngle = (Math.sin(-0.833 * DEG_TO_RAD) -
+                        Math.sin(lat_rad) * Math.sin(declination_rad)) /
+                        (Math.cos(lat_rad) * Math.cos(declination_rad));
+
+    // cosHourAngleが範囲外の場合（極夜/白夜）
+    if (cosHourAngle > 1 || cosHourAngle < -1) {
+      // 極地の昼夜状態に基づいて判断
+      if ((lat > 0 && northPoleIsDaylight) || (lat < 0 && southPoleIsDaylight)) {
+        // 昼間の極地の場合、経度線に沿って点を追加
+        let lng = sunLng - 90;
+        if (lng < -180) lng += 360;
+        daylightPoints.push([lat, lng]);
       }
+      continue; // その他の場合はスキップ
+    }
+
+    // 時角を度数に変換
+    const hourAngle = Math.acos(cosHourAngle) * RAD_TO_DEG;
+
+    // 朝（日の出）の境界点
+    let lngSunrise = sunLng - hourAngle;
+    if (lngSunrise < -180) lngSunrise += 360;
+    if (lngSunrise > 180) lngSunrise -= 360;
+
+    daylightPoints.push([lat, lngSunrise]);
+  }
+
+  // 南極点を追加（南極が昼間の場合）
+  if (southPoleIsDaylight) {
+    daylightPoints.push([-90, sunLng]);
+  }
+
+  // 南から北へ点を生成（日の入り側、逆順）
+  for (let i = 0; i < numPoints; i++) {
+    const lat = southPoleIsDaylight ? (-90 + 180 * i / numPoints) : (-90 + 180 * i / (numPoints - 1));
+    if (lat > 90) continue;
+
+    const lat_rad = lat * DEG_TO_RAD;
+
+    // 太陽高度が -0.833度（地平線の少し下）になる時角を計算
+    const cosHourAngle = (Math.sin(-0.833 * DEG_TO_RAD) -
+                        Math.sin(lat_rad) * Math.sin(declination_rad)) /
+                        (Math.cos(lat_rad) * Math.cos(declination_rad));
+
+    // cosHourAngleが範囲外の場合（極夜/白夜）
+    if (cosHourAngle > 1 || cosHourAngle < -1) {
+      // 極地の昼夜状態に基づいて判断
+      if ((lat > 0 && northPoleIsDaylight) || (lat < 0 && southPoleIsDaylight)) {
+        // 昼間の極地の場合、経度線に沿って点を追加
+        let lng = sunLng + 90;
+        if (lng > 180) lng -= 360;
+        daylightPoints.push([lat, lng]);
+      }
+      continue; // その他の場合はスキップ
+    }
+
+    // 時角を度数に変換
+    const hourAngle = Math.acos(cosHourAngle) * RAD_TO_DEG;
+
+    // 夕（日の入り）の境界点
+    let lngSunset = sunLng + hourAngle;
+    if (lngSunset < -180) lngSunset += 360;
+    if (lngSunset > 180) lngSunset -= 360;
+
+    daylightPoints.push([lat, lngSunset]);
+  }
+
+  // ポリゴンを閉じる（最初の点を最後にも追加）
+  if (daylightPoints.length > 2) {
+    daylightPoints.push([daylightPoints[0][0], daylightPoints[0][1]]);
+  }
+
+  // 全極夜/全白夜の特別なケース
+  if (daylightPoints.length < 3) {
+    if (northPoleIsDaylight) {
+      // 北極が昼間の場合（白夜）
+      const northPoly: [number, number][] = [];
+      for (let lng = -180; lng <= 180; lng += 10) {
+        northPoly.push([60, lng]);
+      }
+      northPoly.push([60, -180]); // ポリゴンを閉じる
+      return [northPoly];
+    } else if (southPoleIsDaylight) {
+      // 南極が昼間の場合（白夜）
+      const southPoly: [number, number][] = [];
+      for (let lng = -180; lng <= 180; lng += 10) {
+        southPoly.push([-60, lng]);
+      }
+      southPoly.push([-60, -180]); // ポリゴンを閉じる
+      return [southPoly];
+    } else {
+      // どちらも夜の場合は空配列
+      return [];
     }
   }
 
-  // 北極と南極を追加
-  if (eastPolygon.length > 0) {
-    // 東半球のポリゴンを形成
-    const eastPoly = [...eastPolygon];
-    if (eastPoly[0][0] !== 90) eastPoly.unshift([90, eastPoly[0][1]]);
-    if (eastPoly[eastPoly.length-1][0] !== -90) eastPoly.push([-90, eastPoly[eastPoly.length-1][1]]);
+  // 単一のポリゴンを返す
+  return [daylightPoints];
+}
 
-    // ポリゴンを閉じる
-    if (eastPoly.length > 2) {
-      eastPoly.push([eastPoly[0][0], eastPoly[0][1]]);
-      daylightPolygon.push(eastPoly);
+/**
+ * 世界地図上に昼夜の境界線を描画するためのポイントを生成する（改良版）
+ * 地図上で横断線が描画されないように、2つの独立したラインとして返す
+ * @param date 日時
+ * @param numPoints 境界線上のポイント数
+ * @returns [number, number][][] 昼夜の境界線を表す2つのラインのポイント配列
+ */
+export function calculateTerminatorPoints(date: Date, numPoints: number = 100): [number, number][][] {
+  const sunPos = calculateSunPosition(date);
+  const sunLng = sunPos.lng;
+
+  // 日の出側と日の入り側の境界線を別々に計算
+  const sunriseLine: [number, number][] = [];
+  const sunsetLine: [number, number][] = [];
+
+  // 太陽の赤緯を計算
+  const declination = calculateSolarDeclination(date);
+  const declination_rad = declination * DEG_TO_RAD;
+
+  // 北から南へ点を生成
+  for (let i = 0; i < numPoints; i++) {
+    const lat = 90 - 180 * i / (numPoints - 1);
+    const lat_rad = lat * DEG_TO_RAD;
+
+    // 太陽高度が -0.833度（地平線の少し下）になる時角を計算
+    const cosHourAngle = (Math.sin(-0.833 * DEG_TO_RAD) -
+                      Math.sin(lat_rad) * Math.sin(declination_rad)) /
+                      (Math.cos(lat_rad) * Math.cos(declination_rad));
+
+    // cosHourAngleが範囲外の場合（極夜/白夜）
+    if (cosHourAngle > 1 || cosHourAngle < -1) {
+      continue; // この緯度では昼夜の境界がないためスキップ
     }
+
+    // 時角を度数に変換
+    const hourAngle = Math.acos(cosHourAngle) * RAD_TO_DEG;
+
+    // 朝（日の出）の境界点
+    let lngSunrise = sunLng - hourAngle;
+    while (lngSunrise > 180) lngSunrise -= 360;
+    while (lngSunrise < -180) lngSunrise += 360;
+    sunriseLine.push([lat, lngSunrise]);
+
+    // 夕（日の入り）の境界点
+    let lngSunset = sunLng + hourAngle;
+    while (lngSunset > 180) lngSunset -= 360;
+    while (lngSunset < -180) lngSunset += 360;
+    sunsetLine.push([lat, lngSunset]);
   }
 
-  if (westPolygon.length > 0) {
-    // 西半球のポリゴンを形成
-    const westPoly = [...westPolygon];
-    if (westPoly[0][0] !== 90) westPoly.unshift([90, westPoly[0][1]]);
-    if (westPoly[westPoly.length-1][0] !== -90) westPoly.push([-90, westPoly[westPoly.length-1][1]]);
+  // 日の出側と日の入り側の線を別々に返す
+  return [sunriseLine, sunsetLine];
+}
 
-    // ポリゴンを閉じる
-    if (westPoly.length > 2) {
-      westPoly.push([westPoly[0][0], westPoly[0][1]]);
-      daylightPolygon.push(westPoly);
-    }
+/**
+ * 点がポリゴン内にあるかどうかを判定するヘルパー関数
+ * Ray casting アルゴリズムを使用
+ */
+function isPointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
+  if (polygon.length < 3) return false;
+
+  const x = point[0];
+  const y = point[1];
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0];
+    const yi = polygon[i][1];
+    const xj = polygon[j][0];
+    const yj = polygon[j][1];
+
+    const intersect = ((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
   }
 
-  return daylightPolygon;
+  return inside;
 }
