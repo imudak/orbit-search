@@ -1,0 +1,48 @@
+# MUSUBI Project Configuration
+name: orbit-search
+description: 衛星TLEデータ検索・可視性計算Webアプリ
+locale: ja
+version: "1.0.0"
+created: 2026-02-18
+updated: 2026-02-18
+
+# 事業コンテキスト
+organization: まるふく工房
+owner: imudak
+primary_agent: クロウ候
+百式_page_id: 3071aeb6-4b1d-81c5-b9cb-f70fbac4d15f
+
+# Technology Stack
+tech_stack:
+  approach: single
+  languages:
+    - typescript
+  framework: react
+  build_tool: vite
+  css: mui_emotion
+  state_management:
+    server: tanstack_query
+    client: zustand
+  map: leaflet
+  orbit_calc: satellite.js
+  storage: indexeddb
+  http: axios
+
+# データソース
+data_source:
+  name: CelesTrak
+  url: https://celestrak.org/
+  format: TLE（Two-Line Element Set）
+
+# デプロイ
+deployment:
+  platform: github_pages
+  build_command: npm run build
+  output_dir: dist
+
+# ルール
+rules:
+  - 軌道計算はsatellite.jsのみ（外部APIに依存しない）
+  - TLEデータはIndexedDBにキャッシュ（CelesTrak過負荷防止）
+  - 重い計算処理はWeb Worker経由
+  - 全コード変更前にMUSUBIプロセスを回す

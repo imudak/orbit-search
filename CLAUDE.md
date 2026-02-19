@@ -43,3 +43,10 @@ Check `.claude/skills/` directory for all installed skills.
 作業開始・終了時は `~/projects/flow-manager/docs/flows/work-protocol.md` を参照。
 
 百式page_id: 3071aeb6-4b1d-81c5-b9cb-f70fbac4d15f
+
+## Git Push ルール
+
+作業完了時は必ず `jj git push` を実行すること。
+- MUSUBIの各ステップ完了時
+- 機能実装完了時
+- steering files 更新時
